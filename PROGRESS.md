@@ -210,6 +210,7 @@ theater_death/
 - 2026-09-16（M3d）：浏览器实机 13 人全流程（12 名脚本玩家 + 1 名浏览器玩家）：创建/加入 → 准备 → 开局 → 首夜 → 遗言/竞选/发言/投票/计票公示 → 第二夜 → 科研员出局终局 → 复盘（身份/时间线/交流）全通过；夜间同屏验证窗口倒计时与个人流；公屏发言经 Socket.IO 回显正常。
 - 2026-09-16（M4c）：**服务器部署（Ubuntu + Docker + Cloudflare Tunnel 子域名）**：外网 `/healthz` 200、首页 200、未登录 API 401、Socket.IO 公网握手 200、浏览器恢复会话进入大厅正常；CI 链路（GitHub Actions → ghcr 镜像 → 服务器拉取更新）验证通过。
 - 2026-09-16（M4b）：**本地真实 LiveKit 容器链路验证**（livekit-server v1.9.7 + deploy/livekit.yaml）：服务端启动正常；我们签发的凭证经 TokenVerifier 验证通过（roomJoin/canSubscribe、canPublish=false）；createRoom / syncRoom（空房间静默）/ closeRoom（含幂等 404 静默）全部工作。
+- 2026-09-16（M4b）：**公网自托管可行性实测**：家宽出口 STUN 发现动态公网 IPv4（101.87.132.163）；Docker 内两种 compose 组合的 LiveKit nodeIP 均正确（本地 `127.0.0.1`+默认配置 / 公网组合自动发现公网 IP）。服务器实际启用仍需端口映射与 Tunnel 路由（RUNBOOK §7.2）。
 
 ## 下一步计划（细化）
 
@@ -247,9 +248,9 @@ theater_death/
   - `voice/policy.ts`：R-43 许可穷举（遗言者/当前候选/当前发言者/平票发言者；竞选投票、放逐投票与重投、夜间、晨间结算、指定与移交窗口全禁；死者仅旁听）；`voice/livekit.ts`：短期凭证（30 分钟、canPublish=false 由服务端动态授予）、`syncRoom`（listParticipants 差异更新 updateParticipant）、`closeRoom`（幂等 404 静默）
   - `server/rooms.ts` 每次推进后 fire-and-forget 同步媒体权限（失败只记日志，不影响胜负/计时），终局 closeRoom；`server/realtime.ts` 通过个人频道推送 `voice_permission`；`server/app.ts`：`POST /api/voice/token`（未启用 409 voice_disabled、未开局 409、限流）、`POST /api/voice/sync`、视图 `voice.enabled/permission`
   - 前端 `web/src/voice.tsx`：加入/离开、连接与重连状态、许可原因提示、本地静音（流程切换不强迫取消）、设备选择、死者旁听、失败重试；未启用/失败显示「文字测试模式」；`voice_permission` 事件驱动 + 2.5s 视图对账兜底
-  - 部署：compose `livekit` 服务（v1.9.7 锁定、`profiles: ["voice"]`、7881/TCP + 7882/UDP、node-ip 由 `LIVEKIT_NODE_IP` 注入）；`deploy/livekit.yaml`；`.env.example` 与 install 脚本生成 LiveKit 密钥；**`COMPOSE_PROFILES=voice` 写在 .env 即随 `--env-file` 生效**（脚本零改动）
-  - **服务器场景的关键结论**：浏览器必须直连媒体服务器，Cloudflare Tunnel 只能转发网页与信令 → 服务器在 NAT 后时采用托管媒体（如 LiveKit Cloud 免费层：5000 人·分钟/月、超限硬停不扣费、无需信用卡）；自托管用于本机/局域网/有公网入站场景。两栖由 `VOICE_SERVICE_URL` 配置切换，代码同一套（RUNBOOK §7）
-  - **待验收（M4d/M4e 一并）**：浏览器实听（加入、发言轮开麦、投票/夜间禁麦、死者旁听、手动静音、媒体失败文字继续 = §15 语音组）；语音启用后的部署验证
+  - 部署：compose `livekit` 服务（v1.9.7 锁定、`profiles: ["voice"]`、7881/TCP + 7882/UDP）；**双配置**：`livekit.yaml`（本地/局域网，`use_external_ip: false` + `LIVEKIT_NODE_IP` 经 sh 条件传 `--node-ip`）/ `livekit-public.yaml`（服务器公网，`use_external_ip: true`，`LIVEKIT_NODE_IP` 留空由 **STUN 自动发现动态公网 IP**），`.env` 用 `LIVEKIT_CONFIG_FILE` 选择；`.env.example` 与 install 脚本生成 LiveKit 密钥；**`COMPOSE_PROFILES=voice` 写在 .env 即随 `--env-file` 生效**（脚本零改动）
+  - **服务器场景结论（2026-09-16 实测）**：阿真家宽为电信**动态公网 IPv4**（STUN 实测发现 101.87.132.163）+ 公网 IPv6（240e 段）→ **自托管可直接用于服务器**，前提：① 光猫/路由器端口映射 UDP 7882 + TCP 7881 到服务器；② Tunnel 加 `livekit.<域名> → localhost:7880` 承载 wss 信令；③ `.env` 用 `livekit-public.yaml` 且 `LIVEKIT_NODE_IP` 留空。本机 Docker 实测两种组合 nodeIP 正确（本地 127.0.0.1 / 公网组合自动发现公网 IP）。无公网入站时仍可退回托管媒体（LiveKit Cloud 免费层）
+  - **待验收（M4d/M4e 一并）**：浏览器实听（加入、发言轮开麦、投票/夜间禁麦、死者旁听、手动静音、媒体失败文字继续 = §15 语音组）；服务器端口映射 + Tunnel 路由后的外网实测
 - **M4c 部署与运行手册 ✅ 完成**（2026-09-16）
   - 交付：`deploy/install|start|stop.{ps1,sh}`（首次与日常分开；.env 随机密钥生成；优先拉预构建镜像、回退本地构建）；`deploy/update.{ps1,sh}`（拉 ghcr 镜像更新，约 1-2 分钟）；`deploy/RUNBOOK.md`（系统要求/安装/启停/公网入口/数据日志/秘密注入/故障排查/不承诺）；`README.md`
   - **CI 镜像流程**：`.github/workflows/release.yml`（push main → 构建（镜像内含全部测试）→ 推 `ghcr.io/azhen073/theater-death:latest`；gha 层缓存后约 1 分钟）；镜像包已设公开（服务器匿名可拉）
@@ -289,3 +290,6 @@ theater_death/
 - **LiveKit 部署要点**（M4b）：浏览器必须直连媒体端口（7881/TCP、7882/UDP），HTTP 反代/隧道只能承载网页与信令；NAT 后服务器用托管媒体（Cloud `VOICE_SERVICE_URL=wss://xxx.livekit.cloud`，`VOICE_ADMIN_URL` 留空自动同值）；自托管镜像锁定 `livekit/livekit-server:v1.9.7`；`rtc.udp_port` 单端口复用简化端口暴露（config 里不要同时设 port_range）；Docker Desktop 下启动有 UDP buffer 警告（非致命）
 - **compose `COMPOSE_PROFILES` 可来自 `--env-file`**：`.env` 里 `COMPOSE_PROFILES=voice` 即让所有 compose 命令（pull/up/stop）自动包含 livekit 服务，无需改脚本；未启用语音时不写该行则只有 app 服务
 - LiveKit 凭证 JWT 用 `nbf`（非 `iat`）表示签发时间；`AccessToken.toJwt()` 为异步；`updateParticipant` 的 permission 是整体覆盖，切权限时必须带全 canPublish/canSubscribe/canPublishData
+- **LiveKit `--node-ip` 不覆盖配置里的 `use_external_ip: true`**（实测显式 node-ip 仍被 STUN 结果覆盖）→ 本地（要 127.0.0.1）与公网（要 STUN）必须用两份配置：`livekit.yaml` / `livekit-public.yaml`，由 `.env` 的 `LIVEKIT_CONFIG_FILE` 选择
+- **compose 的 sh 条件传参**：字符串形式 `command` 会被 split 成参数数组（不经 shell）→ 必须用数组形式 `command: ["exec ... $${VAR:+--node-ip $${VAR}}"]` + `entrypoint: ["/bin/sh","-c"]`；且 **`$${VAR:+...}` 读的是容器内环境变量**，compose 变量必须显式注入 `environment`（`LIVEKIT_NODE_IP: "${LIVEKIT_NODE_IP:-}"`）
+- LiveKit 1.9.7 无 `--rtc.use-external-ip` 类 CLI flag（只认配置文件）；`--node-ip ""` 空串报 `flag needs an argument`

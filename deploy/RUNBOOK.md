@@ -118,7 +118,23 @@ git pull
 3. `VOICE_SERVICE_URL`：本机自测填 `ws://localhost:7880`；局域网填 `ws://<宿主内网IP>:7880`。
 4. 浏览器必须能**直连**媒体端口 7881/TCP、7882/UDP——网页经隧道/反代可达**不等于**语音可用。
 
-### 7.2 托管媒体（服务器在 NAT 后、无公网入站时推荐）
+### 7.2 服务器公网自托管 LiveKit（有公网入站时，动态 IP 可用）
+
+前提：出口有**公网 IP**（IPv4 或 IPv6）且能在路由器/光猫上做端口映射。LiveKit 会自动用 STUN 发现当前公网 IP，**动态 IP 变化后重启容器即可**，不需要改配置。
+
+1. **端口映射**（路由器/光猫 → 服务器内网 IP）：`UDP 7882`、`TCP 7881`；服务器防火墙放行同样两个端口（如 `sudo ufw allow 7881/tcp && sudo ufw allow 7882/udp`）。
+2. **信号域名**：反代或 Cloudflare Tunnel 把 `livekit.<你的域名>` 指向本服务 `7880`（Tunnel 路由即可，媒体不走隧道）。
+3. `.env` 设置：
+   ```
+   VOICE_ENABLED=true
+   COMPOSE_PROFILES=voice
+   LIVEKIT_NODE_IP=                # 必须留空：交给 STUN 自动发现
+   LIVEKIT_CONFIG_FILE=livekit-public.yaml
+   VOICE_SERVICE_URL=wss://livekit.<你的域名>
+   ```
+4. 重启后验证：服务器日志出现 `nodeIP: <当前公网 IP>`；外网（手机流量）打开游戏加入语音实测。
+
+### 7.3 托管媒体（服务器无公网入站 / 不便做端口映射时）
 
 媒体流量不能经 HTTP 反向代理/隧道，服务器无法开放 7881/7882 时应使用托管服务（如 LiveKit Cloud 免费层）：
 
