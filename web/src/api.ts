@@ -5,6 +5,8 @@ import type {
   PushEvent,
   ReviewView,
   ViewResponse,
+  VoicePermission,
+  VoiceTokenResponse,
 } from './types.ts';
 
 export class ApiError extends Error {
@@ -85,11 +87,18 @@ export const api = {
       { channel, text },
     );
   },
+  voiceToken() {
+    return request<VoiceTokenResponse>('POST', '/api/voice/token');
+  },
+  voiceSync() {
+    return request<{ permission: VoicePermission }>('POST', '/api/voice/sync');
+  },
 };
 
 export interface SocketHandlers {
   onGameEvent(event: PushEvent): void;
   onChatMessage(message: ChatMessage): void;
+  onVoicePermission(permission: VoicePermission): void;
   onConnect(): void;
   onDisconnect(): void;
 }
@@ -100,5 +109,8 @@ export function connectSocket(handlers: SocketHandlers): Socket {
   socket.on('disconnect', handlers.onDisconnect);
   socket.on('game_event', (event: PushEvent) => handlers.onGameEvent(event));
   socket.on('chat_message', (message: ChatMessage) => handlers.onChatMessage(message));
+  socket.on('voice_permission', (permission: VoicePermission) =>
+    handlers.onVoicePermission(permission),
+  );
   return socket;
 }

@@ -10,14 +10,14 @@
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
-| M4 语音与部署 | 🟡 | M4a 规则收尾 ✅（T-49 实验模式 / T-50 / T-17 / T-36）· M4c 部署 ✅（服务器上线 + Cloudflare Tunnel + 脚本 + CI 镜像 + 退出/解散功能）；M4b 语音（LiveKit）/ M4d 浏览器与容量验收 / M4e 收官报告 未开始 |
+| M4 语音与部署 | 🟡 | M4a 规则收尾 ✅ · M4c 部署 ✅（服务器上线 + Cloudflare Tunnel + 脚本 + CI 镜像 + 退出/解散功能）· **M4b 语音 ✅ 代码完成**（LiveKit 适配：许可策略/凭证/服务端同步 + 前端语音条；本地真实 LiveKit 容器链路验证通过；浏览器实听与服务器部署待验收）；M4d 浏览器与容量验收 / M4e 收官报告 未开始 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
    工程规格查 `theater_death_development_requirements_v1.1.md`。
-3. 进度断点：**M4a（规则收尾）与 M4c（部署）已完成**——166 测试全过；服务已部署到阿真的 Ubuntu 服务器，经 Cloudflare Tunnel 子域名外网验证通过；CI（GitHub Actions → ghcr）构建镜像、服务器 `deploy/update.sh` 拉取更新。下一步 **M4b（LiveKit 语音，方案已拍板）**，随后 M4d（Playwright + 容量）、M4e（收官报告），详见"下一步计划"。
+3. 进度断点：**M4a（规则收尾）、M4c（部署）、M4b（语音，代码与本地链路）已完成**——186 测试全过；服务已部署到阿真的 Ubuntu 服务器，经 Cloudflare Tunnel 子域名外网验证通过；CI（GitHub Actions → ghcr）构建镜像、服务器 `deploy/update.sh` 拉取更新。M4b 待办：浏览器实听验收、语音启用后的部署验证（服务器媒体通路方案见 RUNBOOK §7——服务器在 NAT 后推荐托管媒体如 LiveKit Cloud）。下一步 **M4d（Playwright + 容量）→ M4e（收官报告）**。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
@@ -181,33 +181,35 @@ theater_death/
 ├─ .env.example / .gitignore / .dockerignore / .gitattributes
 ├─ .github/workflows/release.yml   CI：构建（含测试）并发布 ghcr 镜像
 ├─ deploy/  Dockerfile（node:24.15.0-bookworm-slim 锁定）· docker-compose.yml（image 指向 ghcr）
-│           · install/start/stop/update × {ps1,sh} · RUNBOOK.md（运行手册）
+│           · install/start/stop/update × {ps1,sh} · RUNBOOK.md（运行手册）· livekit.yaml（自托管媒体配置）
 ├─ engine/  index · types · events · emit · random · setup · proposal · night · victory · morning · stage · day
 ├─ rulesets/ index · types · roles · theater-death-13 · validate
 ├─ visibility/  index · context · deliver · rooms · chat · errors · projection · review
 ├─ server/  index.ts（express + Socket.IO 装配启动）· health.ts · app · session · rooms · log-store
 │           · realtime · clock · commands · night-driver · day-driver
-├─ tests/   14 个文件共 166 用例（见"测试状态"）：smoke · rulesets · engine-setup · engine-proposal
+├─ voice/   policy（R-43 许可策略，纯函数）· livekit（VoiceAdapter：凭证/权限同步/关房）
+├─ tests/   17 个文件共 186 用例（见"测试状态"）：smoke · rulesets · engine-setup · engine-proposal
 │           · engine-night · engine-morning · engine-info · engine-day · visibility · night-driver
-│           · server-api · realtime · day-driver · review（+ server-test-utils 工具）
+│           · server-api · realtime · day-driver · review · voice-policy · voice-livekit
+│           · voice-api（+ server-test-utils 工具）
 ├─ vite.config.ts               前端构建配置（root=web，产物 web/dist）
 ├─ web/  index.html · tsconfig.json（独立 DOM 环境与 JSX）
-│        src/ main.tsx · app.tsx · game.tsx · review.tsx · api.ts · format.ts · types.ts · styles.css · vite-env.d.ts
-├─ voice/       空（M4b：VoiceAdapter 与 R-43 发言许可）
+│        src/ main.tsx · app.tsx · game.tsx · review.tsx · voice.tsx（语音条与控制器）· api.ts · format.ts · types.ts · styles.css · vite-env.d.ts
 └─ data/        SQLite 落盘位置（compose 挂载 ../data:/app/data）
 ```
 
 ## 测试状态
 
-166 passed / 14 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
-已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘（身份/状态/胜负/时间线/含加入前历史的交流/无密钥）、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散（席位释放/解散/对局中拒绝）。
-未覆盖（属后续阶段）：§15 的 Playwright/真实设备/容量验收与语音组（M4b/M4d）。
+186 passed / 17 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
+已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与 LiveKit 适配（凭证内容/sync/close）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
+未覆盖（属后续阶段）：§15 的 Playwright/真实设备/容量验收（M4d）、语音浏览器实听与媒体失败场景。
 
 真实运行验证记录：
 - 2026-09-16：`docker compose up -d` → /healthz 正常、创建房间、SQLite 落盘。
 - 2026-09-16：容器内 socket.io-client 连接（会话 cookie）→ 收到 hello { gameId, playerId, roomCode }。
 - 2026-09-16（M3d）：浏览器实机 13 人全流程（12 名脚本玩家 + 1 名浏览器玩家）：创建/加入 → 准备 → 开局 → 首夜 → 遗言/竞选/发言/投票/计票公示 → 第二夜 → 科研员出局终局 → 复盘（身份/时间线/交流）全通过；夜间同屏验证窗口倒计时与个人流；公屏发言经 Socket.IO 回显正常。
 - 2026-09-16（M4c）：**服务器部署（Ubuntu + Docker + Cloudflare Tunnel 子域名）**：外网 `/healthz` 200、首页 200、未登录 API 401、Socket.IO 公网握手 200、浏览器恢复会话进入大厅正常；CI 链路（GitHub Actions → ghcr 镜像 → 服务器拉取更新）验证通过。
+- 2026-09-16（M4b）：**本地真实 LiveKit 容器链路验证**（livekit-server v1.9.7 + deploy/livekit.yaml）：服务端启动正常；我们签发的凭证经 TokenVerifier 验证通过（roomJoin/canSubscribe、canPublish=false）；createRoom / syncRoom（空房间静默）/ closeRoom（含幂等 404 静默）全部工作。
 
 ## 下一步计划（细化）
 
@@ -241,10 +243,13 @@ theater_death/
   - T-50 补齐：天理莱莱可禁投时决胜票不生效 → 平票重判（含二阶段恢复票权的反事实证明）→ tests/engine-day.test.ts
   - T-17 / T-36 补齐：二阶段未翻牌莱莱可每晚可刺（跨夜保留使用记录仍可刺）；一阶段 2 魂灵 + 死神未失技 = 4 个攻击名额全部合法、不强制用满
   - **实验模式（R-54 / T-49）落地**（阿真拍板"API 级 + 大厅横幅"）：`POST /api/rooms` 可传完整 ruleset（`validateRuleset` 校验；正式模式变体拒绝）；`GET /api/view` 加 `rulesetMode` / `requiredPlayers`（大厅与对局两种形态）；房主板子快照落 SQLite（log-store 新增 `rooms` 表）；前端大厅"实验模式"醒目横幅；房间全流程使用自己的板子（`Room.ruleset`）
-- **M4b 语音（LiveKit 自托管，阿真已拍板）⬜ 未开始**
-  - 待做：compose 加 livekit 服务与配置注入（.env：VOICE_ENABLED / VOICE_SERVICE_URL / API 密钥占位，不提交真实密钥）；`voice/` 模块（VoiceAdapter：短期最小权限凭证签发 + **服务端实施** R-43 发言许可——竞选候选发言轮 / 发言轮当前发言者 / 遗言者可发；投票期与夜间全体禁麦；不得只前端置灰）；前端语音 UI（加入/授权/静音/设备选择/文字模式/状态反馈；死者公共旁听；断线重连重校验资格）；媒体失败降级——"文字测试模式"明确标记，不改变胜负、不暂停计时
-  - 验收 = §15 语音组（未授权、手动静音、死者开麦、夜间发送、结束发言、重连旧凭证、媒体失败文字继续）
-  - **已知风险**：服务器在家宽 NAT 后、仅经 Cloudflare Tunnel 暴露 HTTPS——LiveKit 媒体端口（UDP/媒体 TCP）连通性需**独立验证**（需求原文："网页隧道连通不等于媒体可用"）；先本地容器验证，再到服务器实测，如实记录结论
+- **M4b 语音 ✅ 代码完成**（2026-09-16；阿真拍板 LiveKit + 平票者发言开麦）
+  - `voice/policy.ts`：R-43 许可穷举（遗言者/当前候选/当前发言者/平票发言者；竞选投票、放逐投票与重投、夜间、晨间结算、指定与移交窗口全禁；死者仅旁听）；`voice/livekit.ts`：短期凭证（30 分钟、canPublish=false 由服务端动态授予）、`syncRoom`（listParticipants 差异更新 updateParticipant）、`closeRoom`（幂等 404 静默）
+  - `server/rooms.ts` 每次推进后 fire-and-forget 同步媒体权限（失败只记日志，不影响胜负/计时），终局 closeRoom；`server/realtime.ts` 通过个人频道推送 `voice_permission`；`server/app.ts`：`POST /api/voice/token`（未启用 409 voice_disabled、未开局 409、限流）、`POST /api/voice/sync`、视图 `voice.enabled/permission`
+  - 前端 `web/src/voice.tsx`：加入/离开、连接与重连状态、许可原因提示、本地静音（流程切换不强迫取消）、设备选择、死者旁听、失败重试；未启用/失败显示「文字测试模式」；`voice_permission` 事件驱动 + 2.5s 视图对账兜底
+  - 部署：compose `livekit` 服务（v1.9.7 锁定、`profiles: ["voice"]`、7881/TCP + 7882/UDP、node-ip 由 `LIVEKIT_NODE_IP` 注入）；`deploy/livekit.yaml`；`.env.example` 与 install 脚本生成 LiveKit 密钥；**`COMPOSE_PROFILES=voice` 写在 .env 即随 `--env-file` 生效**（脚本零改动）
+  - **服务器场景的关键结论**：浏览器必须直连媒体服务器，Cloudflare Tunnel 只能转发网页与信令 → 服务器在 NAT 后时采用托管媒体（如 LiveKit Cloud 免费层：5000 人·分钟/月、超限硬停不扣费、无需信用卡）；自托管用于本机/局域网/有公网入站场景。两栖由 `VOICE_SERVICE_URL` 配置切换，代码同一套（RUNBOOK §7）
+  - **待验收（M4d/M4e 一并）**：浏览器实听（加入、发言轮开麦、投票/夜间禁麦、死者旁听、手动静音、媒体失败文字继续 = §15 语音组）；语音启用后的部署验证
 - **M4c 部署与运行手册 ✅ 完成**（2026-09-16）
   - 交付：`deploy/install|start|stop.{ps1,sh}`（首次与日常分开；.env 随机密钥生成；优先拉预构建镜像、回退本地构建）；`deploy/update.{ps1,sh}`（拉 ghcr 镜像更新，约 1-2 分钟）；`deploy/RUNBOOK.md`（系统要求/安装/启停/公网入口/数据日志/秘密注入/故障排查/不承诺）；`README.md`
   - **CI 镜像流程**：`.github/workflows/release.yml`（push main → 构建（镜像内含全部测试）→ 推 `ghcr.io/azhen073/theater-death:latest`；gha 层缓存后约 1 分钟）；镜像包已设公开（服务器匿名可拉）
@@ -281,3 +286,6 @@ theater_death/
 - **Windows 提交的 `.sh` 会丢可执行位**（100644）→ `git update-index --chmod=+x deploy/xxx.sh`（install/start/stop/update 均已补；以后新脚本一律补）
 - **CI flaky 教训**：跨连接的时序断言要 `waitFor` **双方条件都满足**，不能等完 A 同步断言 B；"不该收到"的反向断言留 ~200ms 缓冲（本地快掩盖、CI 高负载暴露）；tests/realtime.test.ts 已按此修
 - **ghcr 包默认私有**：GITHUB_TOKEN 推送的容器包需改公开（网页 Settings → Change visibility）；gh CLI 令牌缺 packages scope 时无法用 API 改
+- **LiveKit 部署要点**（M4b）：浏览器必须直连媒体端口（7881/TCP、7882/UDP），HTTP 反代/隧道只能承载网页与信令；NAT 后服务器用托管媒体（Cloud `VOICE_SERVICE_URL=wss://xxx.livekit.cloud`，`VOICE_ADMIN_URL` 留空自动同值）；自托管镜像锁定 `livekit/livekit-server:v1.9.7`；`rtc.udp_port` 单端口复用简化端口暴露（config 里不要同时设 port_range）；Docker Desktop 下启动有 UDP buffer 警告（非致命）
+- **compose `COMPOSE_PROFILES` 可来自 `--env-file`**：`.env` 里 `COMPOSE_PROFILES=voice` 即让所有 compose 命令（pull/up/stop）自动包含 livekit 服务，无需改脚本；未启用语音时不写该行则只有 app 服务
+- LiveKit 凭证 JWT 用 `nbf`（非 `iat`）表示签发时间；`AccessToken.toJwt()` 为异步；`updateParticipant` 的 permission 是整体覆盖，切权限时必须带全 canPublish/canSubscribe/canPublishData

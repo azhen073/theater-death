@@ -14,6 +14,8 @@ import type { GameCommand } from './commands.ts';
 import type { GameState } from '../engine/types.ts';
 import type { RulesetConfig } from '../rulesets/types.ts';
 import { validateRuleset } from '../rulesets/validate.ts';
+import type { VoiceService } from '../voice/livekit.ts';
+import { voicePermission } from '../voice/policy.ts';
 import { healthPayload } from './health.ts';
 import type { Broadcaster } from './realtime.ts';
 import type { CommandReceipt, Room, RoomMember, RoomRegistry } from './rooms.ts';
@@ -25,6 +27,8 @@ export interface AppDeps {
   readonly sessionSecret: string;
   readonly cookieSecure: boolean;
   readonly broadcaster?: Broadcaster;
+  /** 未配置语音时为 null；语音接口返回 409 voice_disabled */
+  readonly voice?: VoiceService | null;
   /** 前端静态产物目录（web/dist）；不存在则跳过托管（测试/纯 API 场景） */
   readonly webRoot?: string | null;
 }
@@ -38,6 +42,7 @@ export function createApp(deps: AppDeps): Express {
 
   const commandLimiter = createRateLimiter(8, 16);
   const chatLimiter = createRateLimiter(2, 5);
+  const voiceLimiter = createRateLimiter(2, 6);
 
   app.get('/healthz', (_req, res) => {
     res.json(healthPayload());
@@ -159,13 +164,18 @@ export function createApp(deps: AppDeps): Express {
       return;
     }
     const { room, member } = context;
+    const voiceEnabled = deps.voice !== null && deps.voice !== undefined;
     if (room.state === null) {
-      res.json(lobbyView(room, member));
+      res.json(lobbyView(room, member, voiceEnabled));
       return;
     }
     res.json({
       phase: room.state.phase,
       rulesetMode: room.ruleset.mode,
+      voice: {
+        enabled: voiceEnabled,
+        permission: voicePermission(room.state, member.playerId),
+      },
       view: buildPlayerView({
         state: room.state,
         events: room.events,
@@ -378,6 +388,70 @@ export function createApp(deps: AppDeps): Express {
     });
   });
 
+  app.post('/api/voice/token', async (req, res) => {
+    const context = resolveRoomMember(req, res, deps);
+    if (context === null) {
+      return;
+    }
+    const { room, session } = context;
+    const voice = deps.voice ?? null;
+    if (voice === null) {
+      fail(res, 409, 'voice_disabled', '语音未启用（文字测试模式）');
+      return;
+    }
+    if (room.state === null) {
+      fail(res, 409, 'game_not_started', '对局尚未开始，暂不能加入语音');
+      return;
+    }
+    if (room.state.win !== null) {
+      fail(res, 409, 'game_ended', '对局已经结束');
+      return;
+    }
+    if (!voiceLimiter(session.playerId, deps.clock.now())) {
+      fail(res, 429, 'rate_limited', '操作过于频繁');
+      return;
+    }
+    const permission = voicePermission(room.state, session.playerId);
+    const credentials = await voice.issueCredentials({
+      roomName: room.gameId,
+      playerId: session.playerId,
+    });
+    res.json({ ...credentials, permission });
+  });
+
+  app.post('/api/voice/sync', async (req, res) => {
+    const context = resolveRoomMember(req, res, deps);
+    if (context === null) {
+      return;
+    }
+    const { room, session } = context;
+    const voice = deps.voice ?? null;
+    if (voice === null) {
+      fail(res, 409, 'voice_disabled', '语音未启用（文字测试模式）');
+      return;
+    }
+    if (room.state === null) {
+      fail(res, 409, 'game_not_started', '对局尚未开始');
+      return;
+    }
+    if (!voiceLimiter(session.playerId, deps.clock.now())) {
+      fail(res, 429, 'rate_limited', '操作过于频繁');
+      return;
+    }
+    const state = room.state;
+    const permissions = new Map<string, boolean>(
+      state.players.map((player) => [player.playerId, voicePermission(state, player.playerId).canPublish]),
+    );
+    try {
+      await voice.syncRoom({ roomName: room.gameId, permissions });
+    } catch (error) {
+      console.warn(`[theater-death] 语音同步失败：${String(error)}`);
+      fail(res, 503, 'voice_unavailable', '媒体服务暂时不可用');
+      return;
+    }
+    res.json({ permission: voicePermission(state, session.playerId) });
+  });
+
   const webRoot = deps.webRoot ?? null;
   if (webRoot !== null && existsSync(webRoot)) {
     app.use(express.static(webRoot));
@@ -456,11 +530,16 @@ function resolveRoomMember(
   return { room, session, member };
 }
 
-function lobbyView(room: Room, member: RoomMember): Record<string, unknown> {
+function lobbyView(
+  room: Room,
+  member: RoomMember,
+  voiceEnabled: boolean,
+): Record<string, unknown> {
   return {
     phase: 'lobby',
     rulesetMode: room.ruleset.mode,
     requiredPlayers: room.requiredPlayerCount(),
+    voice: { enabled: voiceEnabled },
     roomCode: room.code,
     gameId: room.gameId,
     you: {

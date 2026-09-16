@@ -8,6 +8,7 @@ import { createFakeClock, type FakeClock } from '../server/clock.ts';
 import { createLogStore, type LogStore } from '../server/log-store.ts';
 import { createBroadcaster, type Broadcaster } from '../server/realtime.ts';
 import { RoomRegistry, type Room } from '../server/rooms.ts';
+import type { VoiceService } from '../voice/livekit.ts';
 
 export const TEST_SESSION_SECRET = 'test-secret';
 
@@ -31,16 +32,18 @@ afterEach(async () => {
 });
 
 export async function startTestServer(
-  options: { realtime?: boolean } = {},
+  options: { realtime?: boolean; voice?: VoiceService | null } = {},
 ): Promise<TestContext> {
   const clock = createFakeClock();
   const logStore = createLogStore(':memory:');
   const broadcaster = options.realtime === true ? createBroadcaster() : null;
+  const voice = options.voice ?? null;
   const registry = new RoomRegistry({
     clock,
     ruleset: THEATER_DEATH_13,
     logStore,
     ...(broadcaster !== null ? { broadcaster } : {}),
+    ...(voice !== null ? { voice } : {}),
   });
   const app = createApp({
     registry,
@@ -48,6 +51,7 @@ export async function startTestServer(
     sessionSecret: TEST_SESSION_SECRET,
     cookieSecure: false,
     ...(broadcaster !== null ? { broadcaster } : {}),
+    ...(voice !== null ? { voice } : {}),
   });
   const server: Server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -170,6 +174,7 @@ export interface TestSocket {
     payload: unknown;
   }>;
   chatMessages: Array<Record<string, unknown>>;
+  voicePermissions: Array<Record<string, unknown>>;
 }
 
 export async function connectClient(context: TestContext, cookie: string): Promise<TestSocket> {
@@ -177,7 +182,13 @@ export async function connectClient(context: TestContext, cookie: string): Promi
     extraHeaders: { cookie },
     reconnection: false,
   });
-  const client: TestSocket = { socket, hellos: [], gameEvents: [], chatMessages: [] };
+  const client: TestSocket = {
+    socket,
+    hellos: [],
+    gameEvents: [],
+    chatMessages: [],
+    voicePermissions: [],
+  };
   socket.on('hello', (payload: Record<string, unknown>) => {
     client.hellos.push(payload);
   });
@@ -189,6 +200,9 @@ export async function connectClient(context: TestContext, cookie: string): Promi
   );
   socket.on('chat_message', (message: Record<string, unknown>) => {
     client.chatMessages.push(message);
+  });
+  socket.on('voice_permission', (permission: Record<string, unknown>) => {
+    client.voicePermissions.push(permission);
   });
   await new Promise<void>((resolve, reject) => {
     socket.on('connect', () => resolve());

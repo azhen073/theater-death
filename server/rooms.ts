@@ -3,6 +3,8 @@ import type { GameEvent } from '../engine/events.ts';
 import { createGame } from '../engine/setup.ts';
 import type { GameState } from '../engine/types.ts';
 import { ROLE_IDS, type RulesetConfig } from '../rulesets/types.ts';
+import { voicePermission } from '../voice/policy.ts';
+import type { VoiceService } from '../voice/livekit.ts';
 import type { Clock } from './clock.ts';
 import { createDayDriver, type DayDriver } from './day-driver.ts';
 import type { LogStore, StoredMessage } from './log-store.ts';
@@ -59,6 +61,7 @@ export class Room {
   readonly chat: ChatMessage[] = [];
   nextMessageId = 1;
   readonly receipts = new Map<string, CommandReceipt>();
+  voiceClosed = false;
   #queue: Promise<unknown> = Promise.resolve();
 
   constructor(code: string, gameId: string, host: RoomMember, ruleset: RulesetConfig) {
@@ -88,6 +91,8 @@ export interface RoomDeps {
   readonly ruleset: RulesetConfig;
   readonly logStore: LogStore;
   readonly broadcaster?: Broadcaster;
+  /** 未配置语音时为 null；语音失败不影响对局流程 */
+  readonly voice?: VoiceService | null;
 }
 
 export class RoomRegistry {
@@ -175,6 +180,40 @@ export class RoomRegistry {
     room.events.push(...result.events);
     this.#deps.logStore.appendEvents(room.gameId, result.events);
     this.#deps.broadcaster?.emitGameEvents(room.gameId, result.events, result.state);
+    this.#afterStep(room);
+  }
+
+  /** 每次状态推进后：广播每人自己的语音许可，并把发布权同步到媒体服务（失败只记日志） */
+  #afterStep(room: Room): void {
+    const state = room.state;
+    if (state === null) {
+      return;
+    }
+    const permissions = new Map(
+      state.players.map((player) => [player.playerId, voicePermission(state, player.playerId)]),
+    );
+    this.#deps.broadcaster?.emitVoicePermission(room.gameId, permissions);
+
+    const voice = this.#deps.voice ?? null;
+    if (voice === null) {
+      return;
+    }
+    if (state.win !== null) {
+      if (!room.voiceClosed) {
+        room.voiceClosed = true;
+        void voice.closeRoom(room.gameId).catch((error: unknown) => {
+          console.warn(`[theater-death] 关闭语音房间失败：${String(error)}`);
+        });
+      }
+      return;
+    }
+    const canPublish = new Map<string, boolean>();
+    for (const [playerId, permission] of permissions) {
+      canPublish.set(playerId, permission.canPublish);
+    }
+    void voice.syncRoom({ roomName: room.gameId, permissions: canPublish }).catch((error: unknown) => {
+      console.warn(`[theater-death] 同步语音许可失败：${String(error)}`);
+    });
   }
 
   #startNight(room: Room, state: GameState): void {

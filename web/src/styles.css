@@ -461,3 +461,38 @@ input {
     grid-template-columns: 1fr;
   }
 }
+
+/* 语音面板 */
+.conn.warn {
+  color: #d9a441;
+}
+
+.voice p {
+  margin: 0;
+}
+
+.voice-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-controls button {
+  flex: 1;
+}
+
+.voice-device {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.voice-device select {
+  flex: 1;
+  background: var(--panel);
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 6px;
+}

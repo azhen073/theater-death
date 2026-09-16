@@ -1,0 +1,23 @@
+# LiveKit 自托管配置（由 deploy/docker-compose.yml 的 livekit 服务加载）
+#
+# 端口：
+#   7880  信令 HTTP/WS —— 容器网络内由 app 的服务端 admin API 访问（VOICE_ADMIN_URL），
+#         浏览器不直连此端口；公网部署由反向代理 / 隧道暴露 wss 地址。
+#   7881  WebRTC over TCP —— 浏览器在 UDP 不可用时回落，需要公网可达（局域网可忽略）。
+#   7882  WebRTC over UDP（单端口复用）—— 媒体主通道，需要公网可达。
+#
+# node-ip 由 compose 的 LIVEKIT_NODE_IP 环境变量经 --node-ip 传入：
+#   本地开发 127.0.0.1；局域网填宿主机内网 IP（如 192.168.1.10）。
+#
+# 服务器在 NAT 后、无法开放 7881/7882 入站时，不要使用自托管媒体；
+# 请改用托管服务（如 LiveKit Cloud）并把 VOICE_SERVICE_URL 指向其 wss 地址。
+
+port: 7880
+
+rtc:
+  tcp_port: 7881
+  udp_port: 7882
+  use_external_ip: false
+
+logging:
+  level: info

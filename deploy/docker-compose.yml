@@ -6,6 +6,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
+    restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
@@ -14,5 +15,23 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-change-me}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
+      VOICE_ENABLED: ${VOICE_ENABLED:-false}
+      VOICE_SERVICE_URL: ${VOICE_SERVICE_URL:-}
+      VOICE_ADMIN_URL: ${VOICE_ADMIN_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
     volumes:
       - ../data:/app/data
+
+  livekit:
+    image: livekit/livekit-server:v1.9.7
+    profiles: ["voice"]
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml", "--node-ip", "${LIVEKIT_NODE_IP:-127.0.0.1}"]
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecret-change-me}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7881:7881"
+      - "7882:7882/udp"

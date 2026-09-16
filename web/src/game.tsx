@@ -18,7 +18,9 @@ import type {
   GameViewResponse,
   LifeState,
   SeatPublicView,
+  VoicePermission,
 } from './types.ts';
+import { VoicePanel } from './voice.tsx';
 
 interface GameScreenProps {
   readonly data: GameViewResponse;
@@ -26,6 +28,7 @@ interface GameScreenProps {
   readonly personalEvents: readonly DisplayEvent[];
   readonly messages: readonly ChatMessage[];
   readonly serverOffset: number;
+  readonly voicePermission: VoicePermission | null;
   onCommand(action: string, extra?: Record<string, unknown>): Promise<CommandReceipt>;
   onOpenReview(): void;
 }
@@ -138,12 +141,18 @@ export function GameScreen(props: GameScreenProps) {
             </button>
           </section>
         ) : (
-          <ActionPanel
-            data={data}
-            labels={labels}
-            personalEvents={personalEvents}
-            onCommand={props.onCommand}
-          />
+          <>
+            <ActionPanel
+              data={data}
+              labels={labels}
+              personalEvents={personalEvents}
+              onCommand={props.onCommand}
+            />
+            <VoicePanel
+              enabled={data.voice.enabled}
+              permission={props.voicePermission ?? data.voice.permission}
+            />
+          </>
         )}
         <ChatPanel
           room={view.room}

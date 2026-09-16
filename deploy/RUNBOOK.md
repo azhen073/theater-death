@@ -100,13 +100,31 @@ git pull
 | PUBLIC_BASE_URL | 入口地址（公网部署填隧道或反代域名） |
 | SESSION_SECRET | 会话签名密钥；轮换后所有人需重新加入（房间是内存态，不恢复） |
 | SESSION_COOKIE_SECURE | HTTPS 部署时设为 true |
-| VOICE_ENABLED / VOICE_SERVICE_URL | 语音总开关与媒体服务地址（见 §7） |
+| VOICE_ENABLED / VOICE_SERVICE_URL / VOICE_ADMIN_URL | 语音总开关与媒体地址（见 §7） |
+| LIVEKIT_API_KEY / LIVEKIT_API_SECRET | LiveKit 密钥（安装脚本自动生成；托管服务时填控制台中的值） |
+| LIVEKIT_NODE_IP | 自托管 LiveKit 对外公布的节点地址（本地 127.0.0.1；局域网填宿主内网 IP） |
+| COMPOSE_PROFILES | 启用自托管语音时设为 voice，compose 会额外启动 livekit 容器 |
 
 ## 7 语音（公共白天语音）
 
-- 语音未启用或媒体服务不可用时：页面明确显示「**文字测试模式**」，白天公屏照常可用，夜间仅获准阵营房文字协商；**不得声称语音功能已完成**。
-- 启用后：仅公共白天允许**获准发言的存活玩家**开麦（发言许可由服务端按规则窗口签发，不只是前端置灰）；投票期间全体禁麦；夜间全体禁麦；死者仅公共旁听。
-- 媒体失败不改变胜负、不暂停计时，自动回落文字。
+- **未启用或媒体不可用时**：页面明确显示「**文字测试模式**」，白天公屏照常可用，夜间仅获准阵营房文字协商；**不得声称语音功能已完成**。媒体失败不改变胜负、不暂停计时，自动回落文字。
+- **发言许可**（R-43，服务端实施，不只是前端置灰）：竞选候选发言轮（仅当前候选）、发言轮（仅当前发言者）、遗言（仅遗言者）、平票者发言轮（仅当前平票发言者）可开麦；竞选/放逐投票与重投期间、夜间（含晨间结算）全体禁麦；死者仅公共旁听。
+- 凭证为短期最小权限：加入语音时签发，**不含发布权**；发布权由服务端在每次状态推进时同步给媒体服务，重连后重新校验资格；玩家自己的静音不会被流程切换强制取消。
+
+### 7.1 本机 / 局域网自托管 LiveKit
+
+1. `.env` 设置：`VOICE_ENABLED=true`、取消 `COMPOSE_PROFILES=voice` 注释、`LIVEKIT_NODE_IP=<宿主内网 IP 或 127.0.0.1>`（自托管密钥安装脚本已生成）。
+2. `deploy/update.sh` 或 `deploy/start.sh` 重启后，compose 会额外启动 livekit 容器（版本锁定 v1.9.7，配置见 `deploy/livekit.yaml`）。
+3. `VOICE_SERVICE_URL`：本机自测填 `ws://localhost:7880`；局域网填 `ws://<宿主内网IP>:7880`。
+4. 浏览器必须能**直连**媒体端口 7881/TCP、7882/UDP——网页经隧道/反代可达**不等于**语音可用。
+
+### 7.2 托管媒体（服务器在 NAT 后、无公网入站时推荐）
+
+媒体流量不能经 HTTP 反向代理/隧道，服务器无法开放 7881/7882 时应使用托管服务（如 LiveKit Cloud 免费层）：
+
+1. 在媒体服务控制台创建项目，取得 **WebSocket URL**（如 `wss://xxx.livekit.cloud`）与 **API Key / Secret**。
+2. `.env`：`VOICE_ENABLED=true`、`VOICE_SERVICE_URL=<wss 地址>`、`VOICE_ADMIN_URL=`（留空，自动取同值）、`LIVEKIT_API_KEY/SECRET=<控制台值>`；**不要**设置 `COMPOSE_PROFILES`（不启动本地 livekit 容器）。
+3. 免费层超出月度额度后新请求自动失败（不产生费用），页面回落文字模式。
 
 ## 8 故障排查
 
@@ -116,6 +134,8 @@ git pull
 | 日志提示 SESSION_SECRET 未设置 | 用安装脚本生成 `.env`；手动部署确保含随机值 |
 | 隧道 530 / error 1033 | cloudflared 连接器没连上：检查本机 cloudflared 进程与 Zero Trust 面板 Tunnel 状态 |
 | 加入房间提示房间不存在 | 房间在后端内存中：服务重启后旧房间码失效，重新创建房间即可 |
+| 语音按钮提示连接失败 | ① 浏览器能否访问 `VOICE_SERVICE_URL`（自托管须直连 7881/7882）；② 托管密钥是否正确；③ `docker compose ... logs livekit`（自托管） |
+| 加入语音后说不了话 | 正常受限：界面会显示原因（夜间静音 / 投票禁麦 / 非你的发言时间 / 已出局旁听）；服务端发布权不受浏览器本地状态影响 |
 | 构建失败 | 多为网络问题：确认 Docker 可用、registry 加速已配置，重跑安装脚本 |
 
 ## 9 不承诺

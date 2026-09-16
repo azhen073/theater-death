@@ -119,9 +119,36 @@ export interface GameHints {
   readonly candidateSeats: readonly number[];
 }
 
+export type VoicePermissionReason =
+  | 'speaker'
+  | 'dead_listener'
+  | 'night_silence'
+  | 'vote_silence'
+  | 'not_your_turn'
+  | 'game_not_started'
+  | 'game_ended';
+
+export interface VoicePermission {
+  readonly canPublish: boolean;
+  readonly reason: VoicePermissionReason;
+}
+
+export interface VoiceView {
+  readonly enabled: boolean;
+  readonly permission: VoicePermission;
+}
+
+export interface VoiceTokenResponse {
+  readonly url: string;
+  readonly token: string;
+  readonly roomName: string;
+  readonly permission: VoicePermission;
+}
+
 export interface GameViewResponse {
   readonly phase: GamePhase;
   readonly rulesetMode: RulesetMode;
+  readonly voice: VoiceView;
   readonly view: PlayerView;
   readonly proposal: ProposalView | null;
   readonly hints: GameHints;
@@ -142,6 +169,7 @@ export interface LobbyView {
   readonly phase: 'lobby';
   readonly rulesetMode: RulesetMode;
   readonly requiredPlayers: number;
+  readonly voice: { readonly enabled: boolean };
   readonly roomCode: string;
   readonly gameId: string;
   readonly you: {

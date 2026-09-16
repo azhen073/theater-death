@@ -13,6 +13,7 @@ import type {
   PushEvent,
   ReviewView,
   ViewResponse,
+  VoicePermission,
 } from './types.ts';
 
 type Session =
@@ -53,6 +54,7 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [review, setReview] = useState<ReviewView | null>(null);
   const [connected, setConnected] = useState(false);
+  const [voicePermission, setVoicePermission] = useState<VoicePermission | null>(null);
   const serverOffset = useRef(0);
 
   const loadView = useCallback(async (mode: 'state' | 'all') => {
@@ -60,6 +62,7 @@ export function App() {
       const response: ViewResponse = await api.view();
       if ('view' in response) {
         setSession({ kind: 'game', data: response });
+        setVoicePermission(response.voice.permission);
         serverOffset.current = response.serverTime - Date.now();
         if (mode === 'all') {
           setPublicEvents(response.view.publicEvents.map(toDisplay));
@@ -130,6 +133,9 @@ export function App() {
       },
       onChatMessage: (incoming) => {
         setMessages((previous) => mergeMessages(previous, [incoming]));
+      },
+      onVoicePermission: (permission) => {
+        setVoicePermission(permission);
       },
     });
     return () => {
@@ -216,6 +222,7 @@ export function App() {
           personalEvents={personalEvents}
           messages={messages}
           serverOffset={serverOffset.current}
+          voicePermission={voicePermission}
           onCommand={sendCommand}
           onOpenReview={() => void openReview()}
         />
@@ -313,6 +320,9 @@ function LobbyScreen({ lobby, onChanged }: { lobby: LobbyView; onChanged: () => 
         <p className="banner-experimental">
           实验模式：本局使用非默认板子配置，未经完整验证，仅供测试，不代表正式功能。
         </p>
+      )}
+      {!lobby.voice.enabled && (
+        <p className="muted">语音未启用 · 文字测试模式（公屏与阵营房照常使用）</p>
       )}
       <p className="muted">
         把房间码发给同伴；满 {lobby.requiredPlayers} 人且全部准备后，由房主开始对局。

@@ -13,15 +13,22 @@ if [ -f "$ENV_FILE" ]; then
   echo "检测到既有 .env，跳过生成（如需重建请先删除 .env）。"
 else
   secret="$(head -c 48 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  livekit_key="LK$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  livekit_secret="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   {
     echo '# 由 deploy/install.sh 生成；请勿提交到版本库'
     echo 'APP_PORT=3000'
     echo "SESSION_SECRET=$secret"
     echo 'SESSION_COOKIE_SECURE=false'
     echo 'PUBLIC_BASE_URL=http://localhost:3000'
+    echo '# 启用自托管语音：把 VOICE_ENABLED 改为 true，并取消 COMPOSE_PROFILES 注释'
     echo 'VOICE_ENABLED=false'
+    echo "LIVEKIT_API_KEY=$livekit_key"
+    echo "LIVEKIT_API_SECRET=$livekit_secret"
+    echo 'LIVEKIT_NODE_IP=127.0.0.1'
+    echo '# COMPOSE_PROFILES=voice'
   } > "$ENV_FILE"
-  echo "已生成 .env（含随机 SESSION_SECRET）。"
+  echo "已生成 .env（含随机 SESSION_SECRET 与 LiveKit 密钥）。"
 fi
 
 echo "尝试拉取预构建镜像（由 CI 构建）..."
