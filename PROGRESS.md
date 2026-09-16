@@ -212,6 +212,7 @@ theater_death/
 - 2026-09-16（M4b）：**本地真实 LiveKit 容器链路验证**（livekit-server v1.9.7 + deploy/livekit.yaml）：服务端启动正常；我们签发的凭证经 TokenVerifier 验证通过（roomJoin/canSubscribe、canPublish=false）；createRoom / syncRoom（空房间静默）/ closeRoom（含幂等 404 静默）全部工作。
 - 2026-09-16（M4b）：**公网自托管可行性实测**：家宽出口 STUN 发现动态公网 IPv4（101.87.132.163）；Docker 内两种 compose 组合的 LiveKit nodeIP 均正确（本地 `127.0.0.1`+默认配置 / 公网组合自动发现公网 IP）。服务器实际启用仍需端口映射与 Tunnel 路由（RUNBOOK §7.2）。
 - 2026-09-16（M4b）：**LiveKit Cloud 链路验证通过（服务器最终方案）**：以托管项目凭证完成——签发凭证经云端验证、云端 createRoom / syncRoom / closeRoom 全部成功、`wss://` 地址可直接作服务端管理地址（`VOICE_ADMIN_URL` 留空自动同值）。
+- 2026-09-16（M4b）：**服务器实机语音验收通过**（阿真两台设备：电脑 + 手机 4G）：修复发布竞态后，竞选发言轮开麦成功、双设备互听正常；云端音轨与服务端权限均验证正确（服务器媒体方案 = LiveKit Cloud 托管）。
 - 2026-09-16（M4b）：**服务器实机验收抓获并修复发布竞态**（详见踩坑）：Playwright 虚拟麦克风完整复现（夜间加入 → 竞选发言 → 修复前 `tracks:[]` 报错、修复后云端出现音频轨）→ 修复推送待服务器更新后由阿真复测。
 
 ## 下一步计划（细化）
@@ -252,7 +253,7 @@ theater_death/
   - 前端 `web/src/voice.tsx`：加入/离开、连接与重连状态、许可原因提示、本地静音（流程切换不强迫取消）、设备选择、死者旁听、失败重试；未启用/失败显示「文字测试模式」；`voice_permission` 事件驱动 + 2.5s 视图对账兜底
   - 部署：compose `livekit` 服务（v1.9.7 锁定、`profiles: ["voice"]`、7881/TCP + 7882/UDP）；**双配置**：`livekit.yaml`（本地/局域网，`use_external_ip: false` + `LIVEKIT_NODE_IP` 经 sh 条件传 `--node-ip`）/ `livekit-public.yaml`（服务器公网，`use_external_ip: true`，`LIVEKIT_NODE_IP` 留空由 **STUN 自动发现动态公网 IP**），`.env` 用 `LIVEKIT_CONFIG_FILE` 选择；`.env.example` 与 install 脚本生成 LiveKit 密钥；**`COMPOSE_PROFILES=voice` 写在 .env 即随 `--env-file` 生效**（脚本零改动）
   - **服务器方案（2026-09-16 定案）**：家宽虽有动态公网 IPv4/IPv6（STUN 实测），但光猫端口映射受阻 → **服务器采用托管媒体 LiveKit Cloud 免费层**（阿真拍板；连接器与信令域名由部署者自行配置）；自托管代码保留，适用于本机/局域网/有公网入站场景。**云链路已实测**：签发凭证经云端验证、云端 createRoom/syncRoom/closeRoom、`wss://` 直接作为服务端管理地址均通过。托管凭证只入服务器 `.env`（不入库）
-  - **待验收（M4d/M4e 一并）**：浏览器实听（加入、发言轮开麦、投票/夜间禁麦、死者旁听、手动静音、媒体失败文字继续 = §15 语音组）；服务器切云配置后的外网实测（内部部署清单已交付，含全部步骤与验证命令）
+  - **待验收（M4d/M4e 一并）**：**已完成**——服务器外网实机语音（阿真两台设备：电脑 + 手机 4G；加入语音、竞选发言轮开麦、双设备互听）；**待 M4d 自动化覆盖**：投票/夜间禁麦、死者旁听、手动静音、媒体失败文字继续（§15 语音组其余项）
 - **M4c 部署与运行手册 ✅ 完成**（2026-09-16）
   - 交付：`deploy/install|start|stop.{ps1,sh}`（首次与日常分开；.env 随机密钥生成；优先拉预构建镜像、回退本地构建）；`deploy/update.{ps1,sh}`（拉 ghcr 镜像更新，约 1-2 分钟）；`deploy/RUNBOOK.md`（系统要求/安装/启停/公网入口/数据日志/秘密注入/故障排查/不承诺）；`README.md`
   - **CI 镜像流程**：`.github/workflows/release.yml`（push main → 构建（镜像内含全部测试）→ 推 `ghcr.io/azhen073/theater-death:latest`；gha 层缓存后约 1 分钟）；镜像包已设公开（服务器匿名可拉）
