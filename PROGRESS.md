@@ -10,15 +10,23 @@
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
-| M4 语音与部署 | ⬜ | 未开始 |
+| M4 语音与部署 | 🟡 | M4a 规则收尾 ✅（T-49 实验模式 / T-50 / T-17 / T-36）· M4c 部署 ✅（服务器上线 + Cloudflare Tunnel + 脚本 + CI 镜像 + 退出/解散功能）；M4b 语音（LiveKit）/ M4d 浏览器与容量验收 / M4e 收官报告 未开始 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
    工程规格查 `theater_death_development_requirements_v1.1.md`。
-3. 进度断点：**M3 全部完成**（M3d 前端 158 测试全过 + 浏览器实机验收：创建房间 → 13 人开局 → 昼夜循环 → 投票 → 终局复盘）；下一步 **M4：语音与部署**——开工前需阿真拍板两件事（语音服务选型 / 实验模式形态，见"下一步计划"）。
+3. 进度断点：**M4a（规则收尾）与 M4c（部署）已完成**——166 测试全过；服务已部署到阿真的 Ubuntu 服务器，经 Cloudflare Tunnel 子域名外网验证通过；CI（GitHub Actions → ghcr）构建镜像、服务器 `deploy/update.sh` 拉取更新。下一步 **M4b（LiveKit 语音，方案已拍板）**，随后 M4d（Playwright + 容量）、M4e（收官报告），详见"下一步计划"。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
+
+## 仓库与交付
+
+- GitHub（公开）：`https://github.com/azhen073/theater-death`
+- CI：push main → GitHub Actions 构建（镜像构建内含全部测试）→ 发布 `ghcr.io/azhen073/theater-death:latest`（包已设公开，服务器匿名可拉；层缓存后约 1 分钟）
+- 部署（服务器）：`git clone` → `./deploy/install.sh`（优先拉镜像、回退本地构建）；更新：`git pull && ./deploy/update.sh`；详见 `deploy/RUNBOOK.md`
+- **生产环境细节（域名、服务器地址）不在仓库内记录**，需要时问阿真
+- Windows 提交的 `.sh` 必须在 git 里补可执行位：`git update-index --chmod=+x deploy/xxx.sh`
 
 ## 环境与命令（Windows + PowerShell）
 
@@ -166,36 +174,40 @@ server/ HTTP 层（M2b-2 已落地）
 theater_death/
 ├─ AGENTS.md                       项目规则（含 Docker 约束）
 ├─ PROGRESS.md                     本文件
+├─ README.md                       项目门面（快速开始/开发/部署指引）
 ├─ theater_death_rulebook_v1.1.md
 ├─ theater_death_development_requirements_v1.1.md
 ├─ package.json / package-lock.json / tsconfig.json / vitest.config.ts
-├─ .env.example / .gitignore / .dockerignore
-├─ deploy/  Dockerfile（node:24.15.0-bookworm-slim 锁定）· docker-compose.yml
+├─ .env.example / .gitignore / .dockerignore / .gitattributes
+├─ .github/workflows/release.yml   CI：构建（含测试）并发布 ghcr 镜像
+├─ deploy/  Dockerfile（node:24.15.0-bookworm-slim 锁定）· docker-compose.yml（image 指向 ghcr）
+│           · install/start/stop/update × {ps1,sh} · RUNBOOK.md（运行手册）
 ├─ engine/  index · types · events · emit · random · setup · proposal · night · victory · morning · stage · day
 ├─ rulesets/ index · types · roles · theater-death-13 · validate
 ├─ visibility/  index · context · deliver · rooms · chat · errors · projection · review
 ├─ server/  index.ts（express + Socket.IO 装配启动）· health.ts · app · session · rooms · log-store
 │           · realtime · clock · commands · night-driver · day-driver
-├─ tests/   smoke · rulesets(18) · engine-setup(6) · engine-proposal(8) · engine-night(25)
-│           · engine-morning(17) · engine-info(10) · visibility(12) · night-driver(13)
-│           · server-api(9) · realtime(6) · engine-day(22) · day-driver(8) · review(2) · server-test-utils
+├─ tests/   14 个文件共 166 用例（见"测试状态"）：smoke · rulesets · engine-setup · engine-proposal
+│           · engine-night · engine-morning · engine-info · engine-day · visibility · night-driver
+│           · server-api · realtime · day-driver · review（+ server-test-utils 工具）
 ├─ vite.config.ts               前端构建配置（root=web，产物 web/dist）
 ├─ web/  index.html · tsconfig.json（独立 DOM 环境与 JSX）
 │        src/ main.tsx · app.tsx · game.tsx · review.tsx · api.ts · format.ts · types.ts · styles.css · vite-env.d.ts
-├─ voice/       空（M4：VoiceAdapter 与 R-43 发言许可）
+├─ voice/       空（M4b：VoiceAdapter 与 R-43 发言许可）
 └─ data/        SQLite 落盘位置（compose 挂载 ../data:/app/data）
 ```
 
 ## 测试状态
 
-158 passed / 14 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
-已覆盖：T-01、T-03–T-16、T-19–T-30、T-34、T-35、T-37–T-45、T-46（引擎与驱动）、T-47、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘（身份/状态/胜负/时间线/含加入前历史的交流/无密钥）。
-未覆盖（属后续阶段）：T-17、T-36（引擎样例）；T-49（实验模式）与 T-50（天理莱莱可决胜票）待 M4 核对补齐；§15 的 Playwright/真实设备/容量验收（M4；M3d 已做浏览器手测全流程）。
+166 passed / 14 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
+已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘（身份/状态/胜负/时间线/含加入前历史的交流/无密钥）、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散（席位释放/解散/对局中拒绝）。
+未覆盖（属后续阶段）：§15 的 Playwright/真实设备/容量验收与语音组（M4b/M4d）。
 
 真实运行验证记录：
 - 2026-09-16：`docker compose up -d` → /healthz 正常、创建房间、SQLite 落盘。
 - 2026-09-16：容器内 socket.io-client 连接（会话 cookie）→ 收到 hello { gameId, playerId, roomCode }。
 - 2026-09-16（M3d）：浏览器实机 13 人全流程（12 名脚本玩家 + 1 名浏览器玩家）：创建/加入 → 准备 → 开局 → 首夜 → 遗言/竞选/发言/投票/计票公示 → 第二夜 → 科研员出局终局 → 复盘（身份/时间线/交流）全通过；夜间同屏验证窗口倒计时与个人流；公屏发言经 Socket.IO 回显正常。
+- 2026-09-16（M4c）：**服务器部署（Ubuntu + Docker + Cloudflare Tunnel 子域名）**：外网 `/healthz` 200、首页 200、未登录 API 401、Socket.IO 公网握手 200、浏览器恢复会话进入大厅正常；CI 链路（GitHub Actions → ghcr 镜像 → 服务器拉取更新）验证通过。
 
 ## 下一步计划（细化）
 
@@ -223,27 +235,29 @@ theater_death/
   - 验收：浏览器实机 13 人全流程（见上）；夜间角色操作面板（守护/提案/查验/还魂曲）与阵营房 UI 未拿到对应角色，靠类型检查与代码审查覆盖
   - **验收中发现并修复生产崩溃**：day-driver 提前结算后原窗口定时器到点重复结算 → 引擎抛错进程退出；修复（所有到点回调加 phase 守卫）+ 回归测试（tests/day-driver.test.ts）
 
-### M4 语音与部署（细化；开工前需阿真拍板 2 件事）
-- **待拍板**：① 媒体服务选型（需求禁止自动开通付费资源；候选：自托管 LiveKit @ Docker / 暂不接媒体只留适配接口 + 明确"文字测试模式"）；② 实验模式（R-54 / T-49）的入口形态（创建房间时选变体？API 参数？）
-- **M4a 规则收尾（引擎）**：核对并补齐 T-49（正式仅默认 13 人预设；实验模式大厅醒目标记并保存实验值）、T-50（天理为禁投莱莱可时决胜票不生效、按剩余票重新判断）；顺带 T-17/T-36 视情补样例
-- **M4b VoiceAdapter（公共白天语音，§10）**：
-  - 服务端实施发言许可（R-43：竞选候选发言轮 / 发言轮当前发言者 / 遗言者可开麦；投票期全体禁麦；夜间全体静音）；不得只做前端置灰
-  - 短期最小权限媒体凭证；voice/ 模块放适配层与许可逻辑
-  - 前端：加入语音/授权、静音、设备选择、文字模式、清晰状态反馈；死者公共旁听；断线重连重校验资格
-  - 失败语义：语音失败不改变胜负、不暂停计时；公屏白天照常；夜间不得为降级开放全体公屏；未接媒体时页面明确"文字测试模式"标记
+### M4 语音与部署（a/c 已完成；b/d/e 待做）
+
+- **M4a 规则收尾 ✅ 完成**（2026-09-16）
+  - T-50 补齐：天理莱莱可禁投时决胜票不生效 → 平票重判（含二阶段恢复票权的反事实证明）→ tests/engine-day.test.ts
+  - T-17 / T-36 补齐：二阶段未翻牌莱莱可每晚可刺（跨夜保留使用记录仍可刺）；一阶段 2 魂灵 + 死神未失技 = 4 个攻击名额全部合法、不强制用满
+  - **实验模式（R-54 / T-49）落地**（阿真拍板"API 级 + 大厅横幅"）：`POST /api/rooms` 可传完整 ruleset（`validateRuleset` 校验；正式模式变体拒绝）；`GET /api/view` 加 `rulesetMode` / `requiredPlayers`（大厅与对局两种形态）；房主板子快照落 SQLite（log-store 新增 `rooms` 表）；前端大厅"实验模式"醒目横幅；房间全流程使用自己的板子（`Room.ruleset`）
+- **M4b 语音（LiveKit 自托管，阿真已拍板）⬜ 未开始**
+  - 待做：compose 加 livekit 服务与配置注入（.env：VOICE_ENABLED / VOICE_SERVICE_URL / API 密钥占位，不提交真实密钥）；`voice/` 模块（VoiceAdapter：短期最小权限凭证签发 + **服务端实施** R-43 发言许可——竞选候选发言轮 / 发言轮当前发言者 / 遗言者可发；投票期与夜间全体禁麦；不得只前端置灰）；前端语音 UI（加入/授权/静音/设备选择/文字模式/状态反馈；死者公共旁听；断线重连重校验资格）；媒体失败降级——"文字测试模式"明确标记，不改变胜负、不暂停计时
   - 验收 = §15 语音组（未授权、手动静音、死者开麦、夜间发送、结束发言、重连旧凭证、媒体失败文字继续）
-- **M4c 部署与运行手册（§12）**：
-  - .env.example 补全（PUBLIC_BASE_URL、语音开关、媒体地址与密钥占位；不提交真实密钥）；compose 加媒体配置位
-  - 启动脚本（首次安装与日常启动分开）+ 启动输出实际访问入口与邀请信息
-  - Cloudflare Tunnel 玩家电脑托管验证（出站隧道，无需公网 IP）；**从真实不同网络验证可达性**（非本机回环）
-  - 运行手册：支持系统与版本、安装/启动/停止、入口失效排查、日志位置与删除/导出、秘密注入、媒体关闭与失败提示
-- **M4d 浏览器与容量验收（§15）**：
-  - Playwright（Chromium + WebKit）：13 个浏览器上下文全角色操作（覆盖 M3d 遗留的夜间角色面板与阵营房 UI）；越权反例与泄漏检查；断线刷新恢复
+  - **已知风险**：服务器在家宽 NAT 后、仅经 Cloudflare Tunnel 暴露 HTTPS——LiveKit 媒体端口（UDP/媒体 TCP）连通性需**独立验证**（需求原文："网页隧道连通不等于媒体可用"）；先本地容器验证，再到服务器实测，如实记录结论
+- **M4c 部署与运行手册 ✅ 完成**（2026-09-16）
+  - 交付：`deploy/install|start|stop.{ps1,sh}`（首次与日常分开；.env 随机密钥生成；优先拉预构建镜像、回退本地构建）；`deploy/update.{ps1,sh}`（拉 ghcr 镜像更新，约 1-2 分钟）；`deploy/RUNBOOK.md`（系统要求/安装/启停/公网入口/数据日志/秘密注入/故障排查/不承诺）；`README.md`
+  - **CI 镜像流程**：`.github/workflows/release.yml`（push main → 构建（镜像内含全部测试）→ 推 `ghcr.io/azhen073/theater-death:latest`；gha 层缓存后约 1 分钟）；镜像包已设公开（服务器匿名可拉）
+  - **大厅退出 / 解散**（阿真要求补齐）：`POST /api/rooms/:code/leave`——普通成员释放席位（可重新加入）、房主解散全房间、对局开始后 409 拒绝；成功即清会话 Cookie；前端按钮 + 解散确认弹窗
+  - **服务器部署与外网验证**：部署到阿真的 Ubuntu 服务器，Cloudflare Tunnel 路由（面板操作用 webclaw）指向 `localhost:3000`；外网验证：/healthz 200、首页 200、未登录 401、Socket.IO 公网握手 200、浏览器会话恢复进大厅
+  - **取消项**：玩家电脑托管的 cloudflared 本机快速隧道验证（阿真决定聚焦服务器部署，相关文档内容已删）
+- **M4d 浏览器与容量验收（§15）⬜ 未开始**
+  - Playwright（Chromium + WebKit）：13 个浏览器上下文全角色操作（覆盖 M3d 遗留的夜间角色面板与阵营房 UI）；断线/越权反例/泄漏检查（含"公开时间变化"渠道）；刷新恢复
   - 容量：13 脚本客户端完整日夜循环 + 资源/延迟记录（可脚本化重跑）；报告分开列自动化与真实设备
   - 真实桌面/手机 Safari + 麦克风由阿真人工验收，与自动化结果分开列出
   - 运行方式候选：单独 E2E 镜像/compose profile（不污染生产镜像）或宿主 Playwright——遵守 Docker 约束前提下由阿真定
-- **M4e 收官报告（§15 交付格式）**：实际运行命令、代码/配置版本、环境、用例总数与通过/失败/跳过、失败序列与重现种子、证据路径、未测设备、未覆盖 Q 条款；实验模式配置单独标出，不计入"全部通过"
-- 建议顺序：M4a → M4c（部署先能用）→ M4b（媒体接入）→ M4d → M4e；M3d 遗留的 UI 补测并入 M4d
+- **M4e 收官报告（§15 交付格式）⬜ 未开始**：实际运行命令、代码/配置版本、环境、用例总数与通过/失败/跳过、失败序列与重现种子、证据路径、未测设备、未覆盖 Q 条款；实验模式配置单独标出，不计入"全部通过"
+- 顺序建议：M4b → M4d → M4e（规则收尾与部署已完成）
 
 ## 提醒事项（踩坑记录）
 
@@ -263,3 +277,7 @@ theater_death/
 - 前端构建纳入 Docker 构建链：typecheck（根）→ typecheck:web → 测试 → vite build；web/dist 由 express 静态托管（SPA fallback 排除 /api、/healthz、/socket.io）
 - 前端引入后：vite 相关依赖加进根 package.json 的 devDependencies（lock 由容器更新）；web 的类型检查用独立 tsconfig（不要并入根 tsconfig 的 node 环境）
 - 本地联调脚本经验（PowerShell 5.1）：Invoke-RestMethod 不能通过 -Headers 传 Cookie（受限头被静默忽略）→ 用 WebRequestSession + CookieContainer；发送中文 JSON 用 UTF-8 字节数组（`Invoke-WebRequest -Body $bytes`），否则昵称乱码
+- **窗口固定时长是刻意的防泄露设计**（2026-09-16 决策：不做"无事可做提前结束"）：需求明文"不因隐藏角色死亡、失技或提前确认产生可识别的时长变化"；随机 15–20s 只能模糊秒数、隐藏不了窗口明显变短；逐窗口复核无安全缩短场景（并行窗口 + 技能使用状态保密，水妖回归窗口与还魂曲独立不存在空转）
+- **Windows 提交的 `.sh` 会丢可执行位**（100644）→ `git update-index --chmod=+x deploy/xxx.sh`（install/start/stop/update 均已补；以后新脚本一律补）
+- **CI flaky 教训**：跨连接的时序断言要 `waitFor` **双方条件都满足**，不能等完 A 同步断言 B；"不该收到"的反向断言留 ~200ms 缓冲（本地快掩盖、CI 高负载暴露）；tests/realtime.test.ts 已按此修
+- **ghcr 包默认私有**：GITHUB_TOKEN 推送的容器包需改公开（网页 Settings → Change visibility）；gh CLI 令牌缺 packages scope 时无法用 API 改
