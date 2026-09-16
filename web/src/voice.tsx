@@ -83,6 +83,8 @@ class VoiceController {
     publishing: false,
   };
   #room: Room | null = null;
+  #retryCount = 0;
+  #retryTimer: number | null = null;
   readonly #listeners = new Set<(state: VoiceUiState) => void>();
 
   subscribe(listener: (state: VoiceUiState) => void): () => void {
@@ -126,6 +128,16 @@ class VoiceController {
         })
         .on(RoomEvent.AudioPlaybackStatusChanged, () => {
           this.#set({ audioBlocked: !room.canPlaybackAudio });
+        })
+        .on(RoomEvent.ParticipantPermissionsChanged, (_prevPermissions, participant) => {
+          // 服务端把发布权同步到媒体服务有延迟；权限事件到达时重试开麦
+          if (
+            room.localParticipant.identity === participant.identity &&
+            participant.permissions?.canPublish === true
+          ) {
+            this.#clearRetry();
+            void this.#applyPublish();
+          }
         })
         .on(RoomEvent.Reconnecting, () => this.#set({ connection: 'reconnecting' }))
         .on(RoomEvent.Reconnected, () => {
@@ -204,6 +216,7 @@ class VoiceController {
     }
     const shouldPublish = this.#state.permission.canPublish && !this.#state.muted;
     if (!shouldPublish) {
+      this.#clearRetry();
       try {
         await room.localParticipant.setMicrophoneEnabled(false);
       } catch {
@@ -215,9 +228,30 @@ class VoiceController {
     this.#set({ publishing: true });
     try {
       await room.localParticipant.setMicrophoneEnabled(true);
+      this.#clearRetry();
       this.#set({ publishError: null, publishing: false });
     } catch (error) {
+      const text = errorText(error);
+      const permissionRace = /insufficient permissions/i.test(text);
+      if (permissionRace && this.#retryCount < 8) {
+        // 权限尚未在媒体服务生效：显示进行中并自动重试
+        this.#retryCount += 1;
+        this.#set({ publishing: true, publishError: null });
+        this.#retryTimer = window.setTimeout(() => {
+          this.#retryTimer = null;
+          void this.#applyPublish();
+        }, 800);
+        return;
+      }
       this.#set({ publishError: describeMediaError(error), publishing: false });
+    }
+  }
+
+  #clearRetry(): void {
+    this.#retryCount = 0;
+    if (this.#retryTimer !== null) {
+      window.clearTimeout(this.#retryTimer);
+      this.#retryTimer = null;
     }
   }
 
@@ -253,6 +287,7 @@ class VoiceController {
   }
 
   #teardown(): void {
+    this.#clearRetry();
     const room = this.#room;
     this.#room = null;
     for (const element of Array.from(document.querySelectorAll('audio[data-voice="remote"]'))) {

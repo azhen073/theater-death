@@ -212,6 +212,7 @@ theater_death/
 - 2026-09-16（M4b）：**本地真实 LiveKit 容器链路验证**（livekit-server v1.9.7 + deploy/livekit.yaml）：服务端启动正常；我们签发的凭证经 TokenVerifier 验证通过（roomJoin/canSubscribe、canPublish=false）；createRoom / syncRoom（空房间静默）/ closeRoom（含幂等 404 静默）全部工作。
 - 2026-09-16（M4b）：**公网自托管可行性实测**：家宽出口 STUN 发现动态公网 IPv4（101.87.132.163）；Docker 内两种 compose 组合的 LiveKit nodeIP 均正确（本地 `127.0.0.1`+默认配置 / 公网组合自动发现公网 IP）。服务器实际启用仍需端口映射与 Tunnel 路由（RUNBOOK §7.2）。
 - 2026-09-16（M4b）：**LiveKit Cloud 链路验证通过（服务器最终方案）**：以托管项目凭证完成——签发凭证经云端验证、云端 createRoom / syncRoom / closeRoom 全部成功、`wss://` 地址可直接作服务端管理地址（`VOICE_ADMIN_URL` 留空自动同值）。
+- 2026-09-16（M4b）：**服务器实机验收抓获并修复发布竞态**（详见踩坑）：Playwright 虚拟麦克风完整复现（夜间加入 → 竞选发言 → 修复前 `tracks:[]` 报错、修复后云端出现音频轨）→ 修复推送待服务器更新后由阿真复测。
 
 ## 下一步计划（细化）
 
@@ -294,3 +295,5 @@ theater_death/
 - **LiveKit `--node-ip` 不覆盖配置里的 `use_external_ip: true`**（实测显式 node-ip 仍被 STUN 结果覆盖）→ 本地（要 127.0.0.1）与公网（要 STUN）必须用两份配置：`livekit.yaml` / `livekit-public.yaml`，由 `.env` 的 `LIVEKIT_CONFIG_FILE` 选择
 - **compose 的 sh 条件传参**：字符串形式 `command` 会被 split 成参数数组（不经 shell）→ 必须用数组形式 `command: ["exec ... $${VAR:+--node-ip $${VAR}}"]` + `entrypoint: ["/bin/sh","-c"]`；且 **`$${VAR:+...}` 读的是容器内环境变量**，compose 变量必须显式注入 `environment`（`LIVEKIT_NODE_IP: "${LIVEKIT_NODE_IP:-}"`）
 - LiveKit 1.9.7 无 `--rtc.use-external-ip` 类 CLI flag（只认配置文件）；`--node-ip ""` 空串报 `flag needs an argument`
+- **LiveKit 发布权限竞态（M4b 实机验收抓获 + 已修）**：服务端广播 `voice_permission`（Socket.IO，即时）与同步媒体权限（LiveKit admin API，异步）并行，前端在权限于媒体服务落地前调用 `setMicrophoneEnabled(true)` 会被拒（`insufficient permissions to publish`），且旧版把错误静默吞掉 → 表现为"连接正常但谁都没声音、云端 `tracks: []`"。修复：失败自动重试（≤8 次 × 800ms）+ 监听 `RoomEvent.ParticipantPermissionsChanged`（注意签名 `(prevPermissions, participant)`、属性是 `participant.permissions` 复数）触发重发
+- **浏览器端语音复现方法（Playwright + 虚拟麦克风）**：`chromium --use-fake-device-for-media-stream --use-fake-ui-for-media-stream`，1 浏览器 + 12 脚本玩家组 13 人局；脚本在 `temp\td-e2e\repro-voice.mjs`（含云端 admin API 校验 tracks/permission）；断言点=云端 `tracks` 出现音频轨（本地 HTTP 服务需重新 `vite build` 才生效）
