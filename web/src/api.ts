@@ -57,6 +57,9 @@ export const api = {
   setReady(code: string, ready: boolean) {
     return request<{ ready: boolean }>('POST', `/api/rooms/${code}/ready`, { ready });
   },
+  leaveRoom(code: string) {
+    return request<{ left: boolean; dissolved: boolean }>('POST', `/api/rooms/${code}/leave`);
+  },
   startGame(code: string) {
     return request<{ started: boolean; dayNumber: number }>('POST', `/api/rooms/${code}/start`);
   },

@@ -38,6 +38,15 @@ export type JoinResult =
       readonly message: string;
     };
 
+export type LeaveResult =
+  | { readonly ok: true; readonly dissolved: boolean }
+  | {
+      readonly ok: false;
+      readonly status: number;
+      readonly code: string;
+      readonly message: string;
+    };
+
 export class Room {
   readonly code: string;
   readonly gameId: string;
@@ -123,6 +132,23 @@ export class RoomRegistry {
     const member = this.#makeMember(nickname);
     room.members.push(member);
     return { ok: true, room, member };
+  }
+
+  leaveRoom(room: Room, playerId: string): LeaveResult {
+    if (room.state !== null) {
+      return { ok: false, status: 409, code: 'game_started', message: '对局已经开始，不能退出' };
+    }
+    if (playerId === room.hostPlayerId) {
+      this.#roomsByCode.delete(room.code);
+      this.#roomsByGameId.delete(room.gameId);
+      return { ok: true, dissolved: true };
+    }
+    const index = room.members.findIndex((item) => item.playerId === playerId);
+    if (index === -1) {
+      return { ok: false, status: 404, code: 'not_a_member', message: '你不在这个房间里' };
+    }
+    room.members.splice(index, 1);
+    return { ok: true, dissolved: false };
   }
 
   startGame(room: Room): GameState {

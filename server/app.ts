@@ -134,6 +134,25 @@ export function createApp(deps: AppDeps): Express {
     res.json({ started: true, dayNumber: startedState.dayNumber });
   });
 
+  app.post('/api/rooms/:code/leave', (req, res) => {
+    const context = resolveRoomMember(req, res, deps);
+    if (context === null) {
+      return;
+    }
+    const { room, member } = context;
+    if (room.code !== String(req.params.code ?? '').toUpperCase()) {
+      fail(res, 404, 'room_not_found', '房间码与会话不一致');
+      return;
+    }
+    const result = deps.registry.leaveRoom(room, member.playerId);
+    if (!result.ok) {
+      fail(res, result.status, result.code, result.message);
+      return;
+    }
+    clearSessionCookie(res, deps);
+    res.json({ left: true, dissolved: result.dissolved });
+  });
+
   app.get('/api/view', (req, res) => {
     const context = resolveRoomMember(req, res, deps);
     if (context === null) {
@@ -393,6 +412,15 @@ function setSessionCookie(res: Response, deps: AppDeps, gameId: string, playerId
     secure: deps.cookieSecure,
     path: '/',
     maxAge: 7 * 24 * 3600 * 1000,
+  });
+}
+
+function clearSessionCookie(res: Response, deps: AppDeps): void {
+  res.clearCookie(SESSION_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: deps.cookieSecure,
+    path: '/',
   });
 }
 

@@ -341,6 +341,18 @@ function LobbyScreen({ lobby, onChanged }: { lobby: LobbyView; onChanged: () => 
             开始对局
           </button>
         )}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            if (lobby.you.isHost && !window.confirm('确定解散房间？所有成员将回到入口页。')) {
+              return;
+            }
+            void run(() => api.leaveRoom(lobby.roomCode));
+          }}
+        >
+          {lobby.you.isHost ? '解散房间' : '退出房间'}
+        </button>
       </div>
       {error !== null && <p className="error">{error}</p>}
     </div>

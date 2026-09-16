@@ -4,6 +4,7 @@ import {
   clientForRole,
   getJson,
   postJson,
+  setupLobby,
   setupStartedGame,
   startTestServer,
   type Client,
@@ -412,5 +413,54 @@ describe('HTTP：实验模式房间（R-54 / T-49）', () => {
     );
     expect(roleCounts.spirit).toBe(3);
     expect(roleCounts.civilian).toBe(3);
+  });
+});
+
+describe('HTTP：离开与解散房间', () => {
+  it('普通成员退出后席位释放，可重新加入', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+    const leaver = lobby.clients[12];
+
+    const left = await postJson(context, `/api/rooms/${lobby.roomCode}/leave`, {}, leaver.cookie);
+    expect(left.status).toBe(200);
+    expect(left.json.dissolved).toBe(false);
+
+    const afterLeave = await getJson(context, '/api/view', leaver.cookie);
+    expect(afterLeave.status).toBe(403);
+
+    const rejoined = await postJson(context, `/api/rooms/${lobby.roomCode}/join`, {
+      nickname: '回来了',
+    });
+    expect(rejoined.status).toBe(201);
+  });
+
+  it('房主解散房间：房间消失，其余成员会话失效', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+
+    const dissolved = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/leave`,
+      {},
+      lobby.hostClient.cookie,
+    );
+    expect(dissolved.status).toBe(200);
+    expect(dissolved.json.dissolved).toBe(true);
+
+    const otherView = await getJson(context, '/api/view', lobby.clients[1].cookie);
+    expect(otherView.status).toBe(404);
+    const joinAttempt = await postJson(context, `/api/rooms/${lobby.roomCode}/join`, {
+      nickname: '新来的',
+    });
+    expect(joinAttempt.status).toBe(404);
+  });
+
+  it('对局开始后不能退出', async () => {
+    const context = await startTestServer();
+    const { roomCode, clients } = await setupStartedGame(context);
+    const leave = await postJson(context, `/api/rooms/${roomCode}/leave`, {}, clients[0].cookie);
+    expect(leave.status).toBe(409);
+    expect((leave.json.error as Record<string, unknown>).code).toBe('game_started');
   });
 });
