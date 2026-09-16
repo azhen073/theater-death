@@ -12,6 +12,11 @@ interface VoiceUiState {
   readonly error: string | null;
   readonly devices: readonly MediaDeviceInfo[];
   readonly activeDeviceId: string | null;
+  /** 浏览器阻止自动播放（需要用户点一下启用声音） */
+  readonly audioBlocked: boolean;
+  /** 麦克风发布失败的原因（权限/设备），null 表示正常 */
+  readonly publishError: string | null;
+  readonly publishing: boolean;
 }
 
 const DEFAULT_PERMISSION: VoicePermission = { canPublish: false, reason: 'not_your_turn' };
@@ -45,6 +50,22 @@ function errorText(error: unknown): string {
   return String(error);
 }
 
+function describeMediaError(error: unknown): string {
+  if (error instanceof DOMException) {
+    switch (error.name) {
+      case 'NotAllowedError':
+        return '麦克风权限被拒绝：请点击浏览器地址栏的权限图标，允许麦克风后重试';
+      case 'NotFoundError':
+        return '未找到麦克风设备：请检查设备连接后重试';
+      case 'NotReadableError':
+        return '麦克风无法读取：可能被其他程序占用，关闭后重试';
+      default:
+        return `麦克风启用失败：${error.name} ${error.message}`;
+    }
+  }
+  return `麦克风启用失败：${errorText(error)}`;
+}
+
 /**
  * 语音连接控制器：凭证由服务端签发（短期、无发布权），
  * 发布权完全由服务端按 R-43 动态授予（LiveKit 服务端权限），本地静音只是叠加状态。
@@ -57,6 +78,9 @@ class VoiceController {
     error: null,
     devices: [],
     activeDeviceId: null,
+    audioBlocked: false,
+    publishError: null,
+    publishing: false,
   };
   #room: Room | null = null;
   readonly #listeners = new Set<(state: VoiceUiState) => void>();
@@ -92,12 +116,16 @@ class VoiceController {
             const element = track.attach();
             element.dataset.voice = 'remote';
             document.body.appendChild(element);
+            void element.play().catch(() => this.#set({ audioBlocked: true }));
           }
         })
         .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
           for (const element of track.detach()) {
             element.remove();
           }
+        })
+        .on(RoomEvent.AudioPlaybackStatusChanged, () => {
+          this.#set({ audioBlocked: !room.canPlaybackAudio });
         })
         .on(RoomEvent.Reconnecting, () => this.#set({ connection: 'reconnecting' }))
         .on(RoomEvent.Reconnected, () => {
@@ -123,7 +151,14 @@ class VoiceController {
   async leave(): Promise<void> {
     const room = this.#room;
     this.#teardown();
-    this.#set({ connection: 'idle', muted: false, error: null });
+    this.#set({
+      connection: 'idle',
+      muted: false,
+      error: null,
+      audioBlocked: false,
+      publishError: null,
+      publishing: false,
+    });
     if (room !== null) {
       await room.disconnect().catch(() => undefined);
     }
@@ -168,11 +203,41 @@ class VoiceController {
       return;
     }
     const shouldPublish = this.#state.permission.canPublish && !this.#state.muted;
-    try {
-      await room.localParticipant.setMicrophoneEnabled(shouldPublish);
-    } catch {
-      // 服务端尚未授权或设备不可用；界面以许可状态为准
+    if (!shouldPublish) {
+      try {
+        await room.localParticipant.setMicrophoneEnabled(false);
+      } catch {
+        // 关闭失败不影响状态
+      }
+      this.#set({ publishError: null, publishing: false });
+      return;
     }
+    this.#set({ publishing: true });
+    try {
+      await room.localParticipant.setMicrophoneEnabled(true);
+      this.#set({ publishError: null, publishing: false });
+    } catch (error) {
+      this.#set({ publishError: describeMediaError(error), publishing: false });
+    }
+  }
+
+  /** 浏览器阻止自动播放时由用户点击调用（必须在用户手势中执行） */
+  async enableAudio(): Promise<void> {
+    const room = this.#room;
+    if (room === null) {
+      return;
+    }
+    try {
+      await room.startAudio();
+    } catch {
+      // 仍失败则保持提示
+    }
+    this.#set({ audioBlocked: !room.canPlaybackAudio });
+  }
+
+  /** 用户点击「重试麦克风」时重新尝试发布（权限弹窗需要用户手势） */
+  async retryPublish(): Promise<void> {
+    await this.#applyPublish();
   }
 
   async #refreshDevices(): Promise<void> {
@@ -232,8 +297,8 @@ export function VoicePanel(props: { enabled: boolean; permission: VoicePermissio
   }
 
   const { connection, permission, muted, error, devices, activeDeviceId } = state;
+  const { publishing, publishError, audioBlocked } = state;
   const joined = connection === 'connected' || connection === 'reconnecting';
-
   return (
     <section className="card voice">
       <h3>语音</h3>
@@ -268,6 +333,20 @@ export function VoicePanel(props: { enabled: boolean; permission: VoicePermissio
                 : '轮到你发言，可以开麦'
               : voiceReasonText(permission.reason)}
           </p>
+          {publishing && <p className="muted">正在启用麦克风…（浏览器会请求麦克风授权）</p>}
+          {publishError !== null && (
+            <>
+              <p className="error">{publishError}</p>
+              <button type="button" onClick={() => void controller.retryPublish()}>
+                重试麦克风
+              </button>
+            </>
+          )}
+          {audioBlocked && (
+            <button type="button" onClick={() => void controller.enableAudio()}>
+              点击启用声音（浏览器阻止了自动播放）
+            </button>
+          )}
           <div className="voice-controls">
             <button type="button" onClick={() => void controller.toggleMute()}>
               {muted ? '取消静音' : '静音'}
