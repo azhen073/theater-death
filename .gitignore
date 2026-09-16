@@ -3,3 +3,5 @@ dist/
 coverage/
 data/
 .env
+e2e-results/
+e2e/results/
