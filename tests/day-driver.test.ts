@@ -153,6 +153,29 @@ describe('白天驱动：命令提交', () => {
     expect(driver.snapshot()?.day?.speechRound?.order.slice(0, 2)).toEqual(['p_5', 'p_4']);
   });
 
+  it('天理提前指定发言顺序后，指定窗口的超时定时器不得再触发（防崩溃）', () => {
+    const clock = createFakeClock();
+    const { driver } = createDriver(clock);
+    driver.start(withSheriff({ ...morningState(), dayNumber: 2 }, 'p_6'));
+
+    expect(driver.windows().map((window) => window.id)).toEqual(['speech_order']);
+    expect(
+      driver.submit({
+        type: 'DESIGNATE_SPEECH',
+        playerId: 'p_6',
+        startPlayerId: 'p_5',
+        direction: 'asc',
+      }).accepted,
+    ).toBe(true);
+    expect(driver.windows().map((window) => window.id)).toEqual(['speech_round']);
+
+    // 原「指定窗口」的超时时刻到达：旧定时器必须已被取消或受守卫保护，不得抛错
+    expect(() => clock.advance(45_000)).not.toThrow();
+    // 发言轮保持天理指定的顺序，未被默认升序覆盖
+    expect(driver.snapshot()?.day?.speechRound?.order[0]).toBe('p_5');
+    expect(driver.windows().map((window) => window.id)).toEqual(['speech_round']);
+  });
+
   it('放逐投票全员投完提前结算，出局者遗言可主动结束，随后自动结算', () => {
     const clock = createFakeClock();
     const { driver, completions } = createDriver(clock);

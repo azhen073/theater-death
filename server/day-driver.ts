@@ -118,6 +118,11 @@ export function createDayDriver(options: {
   }
 
   function scheduleWindow(id: DayWindowId, seconds: number, callback: () => void): void {
+    // 白天窗口同一时刻只有一个：切换窗口时取消旧定时器，
+    // 防止被事件驱动提前结束的窗口在超时时刻再次触发（曾导致进程崩溃）。
+    for (const handle of handles.splice(0)) {
+      clock.cancel(handle);
+    }
     phase = id;
     closesAt = clock.now() + seconds * 1000;
     handles.push(clock.schedule(seconds * 1000, callback));
@@ -189,6 +194,9 @@ export function createDayDriver(options: {
   function openSpeechRoundWindow(context: DayContext): void {
     if (context.speechRound === null) {
       scheduleWindow('speech_order', timers().ability, () => {
+        if (phase !== 'speech_order') {
+          return;
+        }
         apply(startDefaultSpeechRound(current()));
       });
       return;

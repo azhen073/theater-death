@@ -1,0 +1,12 @@
+# 端到端验收运行器（Chromium/WebKit 头浏览器 + 虚拟麦克风）
+# 与生产镜像（deploy/Dockerfile）分离：本镜像只用于 M4d 验收，不参与部署。
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
+
+WORKDIR /e2e
+
+COPY e2e/package.json e2e/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY e2e/ ./
+
+CMD ["npx", "playwright", "test"]

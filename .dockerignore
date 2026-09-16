@@ -5,3 +5,5 @@ coverage
 .env
 .git
 **/*.md
+e2e-results
+e2e/results
