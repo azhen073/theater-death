@@ -10,14 +10,14 @@
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
-| M4 语音与部署 | 🟡 | M4a 规则收尾 ✅ · M4c 部署 ✅（服务器上线 + Cloudflare Tunnel + 脚本 + CI 镜像 + 退出/解散功能）· **M4b 语音 ✅ 代码完成**（LiveKit 适配：许可策略/凭证/服务端同步 + 前端语音条；本地真实 LiveKit 容器链路验证通过；浏览器实听与服务器部署待验收）；M4d 浏览器与容量验收 / M4e 收官报告 未开始 |
+| M4 语音与部署 | 🟡 | M4a 规则收尾 ✅ · **M4b 语音 ✅ 完成**（LiveKit 适配：许可策略/凭证/服务端同步 + 前端语音条；发布竞态修复；服务器实机双设备验收通过；媒体 = LiveKit Cloud 托管）· M4c 部署 ✅（服务器上线 + Cloudflare Tunnel + 脚本 + CI 镜像 + 退出/解散）；M4d 浏览器与容量验收 / M4e 收官报告 未开始 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
    工程规格查 `theater_death_development_requirements_v1.1.md`。
-3. 进度断点：**M4a（规则收尾）、M4c（部署）、M4b（语音，代码与本地链路）已完成**——186 测试全过；服务已部署到阿真的 Ubuntu 服务器，经 Cloudflare Tunnel 子域名外网验证通过；CI（GitHub Actions → ghcr）构建镜像、服务器 `deploy/update.sh` 拉取更新。M4b 待办：浏览器实听验收、语音启用后的部署验证（服务器媒体通路方案见 RUNBOOK §7——服务器在 NAT 后推荐托管媒体如 LiveKit Cloud）。下一步 **M4d（Playwright + 容量）→ M4e（收官报告）**。
+3. 进度断点：**M4a / M4b / M4c 全部完成**——186 测试全过；服务器（theater-death 子域名 + LiveKit Cloud 语音）已实机验收（双设备互听）；CI（GitHub Actions → ghcr）构建镜像、服务器 `deploy/update.sh` 拉取更新。语音实现与竞态修复细节、E2E 复现原型（`temp\td-e2e\repro-voice.mjs`）见"下一步计划"/"提醒事项"。下一步 **M4d（E2E 全 Docker 化：13 全角色 + 语音组 + 越权/泄漏 + 断线 + 容量）→ M4e（收官报告）**。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
@@ -181,7 +181,8 @@ theater_death/
 ├─ .env.example / .gitignore / .dockerignore / .gitattributes
 ├─ .github/workflows/release.yml   CI：构建（含测试）并发布 ghcr 镜像
 ├─ deploy/  Dockerfile（node:24.15.0-bookworm-slim 锁定）· docker-compose.yml（image 指向 ghcr）
-│           · install/start/stop/update × {ps1,sh} · RUNBOOK.md（运行手册）· livekit.yaml（自托管媒体配置）
+│           · install/start/stop/update × {ps1,sh} · RUNBOOK.md（运行手册）
+│           · livekit.yaml / livekit-public.yaml（自托管媒体配置：本地 / 公网）
 ├─ engine/  index · types · events · emit · random · setup · proposal · night · victory · morning · stage · day
 ├─ rulesets/ index · types · roles · theater-death-13 · validate
 ├─ visibility/  index · context · deliver · rooms · chat · errors · projection · review
@@ -241,7 +242,7 @@ theater_death/
   - 验收：浏览器实机 13 人全流程（见上）；夜间角色操作面板（守护/提案/查验/还魂曲）与阵营房 UI 未拿到对应角色，靠类型检查与代码审查覆盖
   - **验收中发现并修复生产崩溃**：day-driver 提前结算后原窗口定时器到点重复结算 → 引擎抛错进程退出；修复（所有到点回调加 phase 守卫）+ 回归测试（tests/day-driver.test.ts）
 
-### M4 语音与部署（a/c 已完成；b/d/e 待做）
+### M4 语音与部署（a/b/c 已完成；d/e 待做）
 
 - **M4a 规则收尾 ✅ 完成**（2026-09-16）
   - T-50 补齐：天理莱莱可禁投时决胜票不生效 → 平票重判（含二阶段恢复票权的反事实证明）→ tests/engine-day.test.ts
@@ -260,13 +261,19 @@ theater_death/
   - **大厅退出 / 解散**（阿真要求补齐）：`POST /api/rooms/:code/leave`——普通成员释放席位（可重新加入）、房主解散全房间、对局开始后 409 拒绝；成功即清会话 Cookie；前端按钮 + 解散确认弹窗
   - **服务器部署与外网验证**：部署到阿真的 Ubuntu 服务器，Cloudflare Tunnel 路由（面板操作用 webclaw）指向 `localhost:3000`；外网验证：/healthz 200、首页 200、未登录 401、Socket.IO 公网握手 200、浏览器会话恢复进大厅
   - **取消项**：玩家电脑托管的 cloudflared 本机快速隧道验证（阿真决定聚焦服务器部署，相关文档内容已删）
-- **M4d 浏览器与容量验收（§15）⬜ 未开始**
-  - Playwright（Chromium + WebKit）：13 个浏览器上下文全角色操作（覆盖 M3d 遗留的夜间角色面板与阵营房 UI）；断线/越权反例/泄漏检查（含"公开时间变化"渠道）；刷新恢复
-  - 容量：13 脚本客户端完整日夜循环 + 资源/延迟记录（可脚本化重跑）；报告分开列自动化与真实设备
-  - 真实桌面/手机 Safari + 麦克风由阿真人工验收，与自动化结果分开列出
-  - 运行方式候选：单独 E2E 镜像/compose profile（不污染生产镜像）或宿主 Playwright——遵守 Docker 约束前提下由阿真定
-- **M4e 收官报告（§15 交付格式）⬜ 未开始**：实际运行命令、代码/配置版本、环境、用例总数与通过/失败/跳过、失败序列与重现种子、证据路径、未测设备、未覆盖 Q 条款；实验模式配置单独标出，不计入"全部通过"
-- 顺序建议：M4b → M4d → M4e（规则收尾与部署已完成）
+- **M4d 浏览器与容量验收（§15）⬜ 下一步**
+  - **形式**：E2E 全 Docker 化——新增 `e2e/`（用例入仓库）+ `deploy/Dockerfile.e2e`（基于 `mcr.microsoft.com/playwright` 镜像）+ compose profile `e2e`（app + 自托管 livekit + playwright runner，**不依赖云凭证**）；不在 CI 跑（CI 不注入媒体凭证），本地/服务器手动触发并记录命令
+  - **可复用原型**（`temp\td-e2e\repro-voice.mjs`，已验证）：HTTP 脚本建局（房主 + 11 陪练准备——**房主自己也要 ready**，否则 409 not_ready）→ chromium fake mic（`--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`）加入第 13 人 → 按按钮文字驱动（加入房间/准备/我要竞选天理/加入语音）→ 用 `livekit-server-sdk` 拉云端 tracks/permission 断言；**语音发布成功判据 = 云端出现音频轨**；本地跑需先 `vite build`（静态产物）
+  - **用例集**：
+    1. **13 上下文全角色**（Chromium 多 context）：覆盖 M3d 遗留——夜间角色面板（守护/提案/查验/还魂曲/莱莱可刺杀）、阵营房 UI、遗言/竞选/发言/投票/天理移交全流程
+    2. **语音组（§15）**：未授权、手动静音、死者开麦被拒、夜间发送被拒、结束发言权限收回、重连旧凭证（重连后按当前策略重新校验）、媒体失败文字继续
+    3. **越权反例**：A 会话传 B 的 playerId、非成员读取、死者提交夜间命令、大厅提交、跨房间 cookie、未终局查复盘
+    4. **泄漏检查**：公开流不含他人私有信息；"公开时间变化"（固定窗口时长核对）；服务端投影先授权后发送
+    5. **断线/刷新恢复**：reload 恢复身份/历史/倒计时；Socket 断线重连对账
+  - **容量**：13 个纯脚本客户端（Node HTTP+Socket.IO，无浏览器）完整日夜循环（真实时长约 10–15 分钟）+ `docker stats` 采样 CPU/内存 + 命令延迟统计；可脚本化重跑，结果入报告
+  - **WebKit**：覆盖界面/流程（fake 麦克风仅 Chromium）；真实桌面/手机 Safari + 麦克风由阿真人工验收（已做一轮），报告分开列
+- **M4e 收官报告（§15 交付格式）⬜ 最后**：实际运行命令、代码/配置版本、环境、用例总数与通过/失败/跳过、失败序列与重现种子、证据路径、未测设备、未覆盖 Q 条款；实验模式配置单独标出，不计入"全部通过"
+- 顺序建议：M4d（先语音组与越权自动化，再容量）→ M4e
 
 ## 提醒事项（踩坑记录）
 
