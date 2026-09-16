@@ -25,9 +25,15 @@ if (Test-Path -LiteralPath $envPath) {
   Write-Host '已生成 .env（含随机 SESSION_SECRET）。'
 }
 
-Write-Host '构建镜像（包含全部测试，首次约需数分钟）...'
-docker compose --env-file $envPath -f docker-compose.yml build
-if (-not $?) { exit 1 }
+Write-Host '尝试拉取预构建镜像（由 CI 构建）...'
+docker compose --env-file $envPath -f docker-compose.yml pull
+if ($?) {
+  Write-Host '已获取预构建镜像。'
+} else {
+  Write-Host '预构建镜像不可用，改为本地构建（包含全部测试，首次约需数分钟）...'
+  docker compose --env-file $envPath -f docker-compose.yml build
+  if (-not $?) { exit 1 }
+}
 
 docker compose --env-file $envPath -f docker-compose.yml up -d
 if (-not $?) { exit 1 }

@@ -2,10 +2,10 @@ name: theater-death
 
 services:
   app:
+    image: ghcr.io/azhen073/theater-death:latest
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: theater-death:latest
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:

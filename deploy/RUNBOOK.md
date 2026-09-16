@@ -62,12 +62,22 @@ cd theater-death
 
 5. 从**外部网络**（例如手机流量、朋友家宽）访问域名验证可达性。
 
-**更新已部署的版本**：
+**更新已部署的版本（快，推荐）**：
 
 ```bash
 cd theater-death
 git pull
-./deploy/install.sh   # 幂等：保留既有 .env，重新构建镜像并重启
+./deploy/update.sh   # 拉取 CI 构建的最新镜像并重启（约 1-2 分钟）
+```
+
+镜像由 GitHub Actions 在推送代码时自动构建并发布到 `ghcr.io/azhen073/theater-death:latest`，服务器只下载变动层，不装依赖、不跑测试。
+
+**从源码构建更新（慢，备用；CI 镜像不可用时）**：
+
+```bash
+cd theater-death
+git pull
+./deploy/install.sh   # 在本机构建镜像（含全部测试）
 ```
 
 > 网页入口连通不等于语音媒体可用；媒体通道需按 §7 独立验证。

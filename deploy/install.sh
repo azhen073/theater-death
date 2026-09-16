@@ -24,8 +24,13 @@ else
   echo "已生成 .env（含随机 SESSION_SECRET）。"
 fi
 
-echo "构建镜像（包含全部测试，首次约需数分钟）..."
-docker compose --env-file "$ENV_FILE" -f docker-compose.yml build
+echo "尝试拉取预构建镜像（由 CI 构建）..."
+if docker compose --env-file "$ENV_FILE" -f docker-compose.yml pull; then
+  echo "已获取预构建镜像。"
+else
+  echo "预构建镜像不可用，改为本地构建（包含全部测试，首次约需数分钟）..."
+  docker compose --env-file "$ENV_FILE" -f docker-compose.yml build
+fi
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml up -d
 
 echo ""
