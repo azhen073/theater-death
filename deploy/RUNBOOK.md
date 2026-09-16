@@ -43,7 +43,14 @@ docker compose --env-file .env -f deploy/docker-compose.yml down
 ### 4.2 第三方服务器托管（推荐；含公网入口）
 
 1. 服务器安装 Docker Engine + compose v2（Ubuntu 22.04+）。
-2. 把项目目录复制到服务器（scp 或 git），在项目根运行 `./deploy/install.sh`（生成 .env、构建镜像、启动服务）。
+2. 拉取项目并一键安装：
+
+```bash
+git clone https://github.com/azhen073/theater-death.git
+cd theater-death
+./deploy/install.sh
+```
+
 3. 为公网配置 HTTPS 入口（任选其一）：
    - **Cloudflare Tunnel**：服务器安装 cloudflared 并注册为系统服务；在 Zero Trust 面板创建隧道，添加公开主机名路由到 `http://localhost:3000`。出站连接，无需公网 IP、无需端口映射。
    - **反向代理**：Nginx / Caddy 转发到 `localhost:3000` 并配置 HTTPS 证书。
@@ -54,6 +61,14 @@ docker compose --env-file .env -f deploy/docker-compose.yml down
 ```
 
 5. 从**外部网络**（例如手机流量、朋友家宽）访问域名验证可达性。
+
+**更新已部署的版本**：
+
+```bash
+cd theater-death
+git pull
+./deploy/install.sh   # 幂等：保留既有 .env，重新构建镜像并重启
+```
 
 > 网页入口连通不等于语音媒体可用；媒体通道需按 §7 独立验证。
 
