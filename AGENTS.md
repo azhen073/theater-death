@@ -19,7 +19,7 @@
 - M4a 完成：规则收尾（实验模式 API + 大厅横幅 + 落盘、T-50/T-17/T-36 测试补齐）；M4c 完成：部署与运行手册（install/start/stop/update 脚本、RUNBOOK）、大厅退出/解散功能、GitHub（公开）仓库 + Actions 构建发布 ghcr 镜像、服务器部署并经外网域名验证。
 - M4b 语音代码完成（LiveKit：R-43 许可策略、短期凭证与服务端权限同步、前端语音条、compose voice profile、RUNBOOK §7；本地真实 LiveKit 容器链路验证通过）；待浏览器实听与部署验证。
 - 186 个单测全过（镜像构建含服务端/前端类型检查与 vite build）。下一步：M4d（Playwright 浏览器与容量验收）→ M4e（收官报告）；细化计划见 `PROGRESS.md`。
-- 语音关键约束：浏览器必须**直连**媒体端口（反代/隧道只承载网页与信令）；服务器自托管需端口映射 UDP 7882/TCP 7881——家宽已实测有动态公网 IP，LiveKit STUN 可自动发现（`.env` 用 `LIVEKIT_CONFIG_FILE=livekit-public.yaml`）；无公网入站条件时用托管媒体（LiveKit Cloud 免费层）；两栖只换 `.env` 配置，代码同一套。
+- 语音关键约束：服务器语音采用托管媒体 **LiveKit Cloud 免费层**（凭证只入服务器 `.env`，不入库；云链路已实测）；自托管保留给本机/局域网/有公网入站场景（需浏览器直连 UDP 7882/TCP 7881，反代与隧道只承载网页与信令）；两栖只换 `.env` 配置，代码同一套。
 - 关于夜间窗口"无事可做提前结束"的提案已讨论并否决：固定时长是防泄露设计（需求明文），不要重新引入。
 - 构建/测试命令：`docker compose -f deploy/docker-compose.yml build`（构建即跑全部测试）。
 
