@@ -154,7 +154,18 @@ git pull
 | 加入语音后说不了话 | 正常受限：界面会显示原因（夜间静音 / 投票禁麦 / 非你的发言时间 / 已出局旁听）；服务端发布权不受浏览器本地状态影响 |
 | 构建失败 | 多为网络问题：确认 Docker 可用、registry 加速已配置，重跑安装脚本 |
 
-## 9 不承诺
+## 9 端到端验收（E2E，开发/验收用，可选）
+
+全部在容器内运行，媒体后端使用自托管 LiveKit（**不依赖云凭证**），不影响生产部署。
+
+1. 构建（首次或代码变更后）：`docker compose -f deploy/docker-compose.yml --env-file deploy/e2e.env build app e2e`
+2. 全部用例（约 18 分钟）：`docker compose -f deploy/docker-compose.yml --env-file deploy/e2e.env --profile e2e run --rm e2e npx playwright test`
+3. 容量测试（正式板完整日夜循环，约 4 分钟）：`… run --rm e2e node capacity.mjs`
+4. 结果：项目根 `e2e-results/`（HTML 报告 `html/index.html`、失败截图/trace、`capacity-*.json`）
+
+说明：功能用例使用实验模式缩短板（大厅有醒目提示，不代表正式板时长）；端口冲突时改 `deploy/e2e.env` 的 `APP_PORT`；开发迭代可挂载 `-v "<repo>/e2e:/src:ro"` 并前置 `cp -r /src/. /e2e/`。
+
+## 10 不承诺
 
 - 休眠、断电、进程崩溃后的对局恢复（房间为内存态；数据库只用于事件与聊天审计）
 - 高可用、自动迁移、多租户平台

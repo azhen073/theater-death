@@ -10,14 +10,14 @@
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
-| M4 语音与部署 | 🟡 | M4a 规则收尾 ✅ · **M4b 语音 ✅ 完成**（LiveKit 适配：许可策略/凭证/服务端同步 + 前端语音条；发布竞态修复；服务器实机双设备验收通过；媒体 = LiveKit Cloud 托管）· M4c 部署 ✅（服务器上线 + Cloudflare Tunnel + 脚本 + CI 镜像 + 退出/解散）；M4d 浏览器与容量验收 / M4e 收官报告 未开始 |
+| M4 语音与部署 | 🟡 | M4a 规则收尾 ✅ · **M4b 语音 ✅ 完成**（LiveKit 适配：许可策略/凭证/服务端同步 + 前端语音条；发布竞态修复；服务器实机双设备验收通过；媒体 = LiveKit Cloud 托管）· M4c 部署 ✅（服务器上线 + Cloudflare Tunnel + 脚本 + CI 镜像 + 退出/解散）· **M4d E2E 验收 ✅ 完成**（14/14 通过；容器化 Playwright + 容量；发现并修复白天驱动崩溃）；M4e 收官报告 未开始 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
    工程规格查 `theater_death_development_requirements_v1.1.md`。
-3. 进度断点：**M4a / M4b / M4c 全部完成**——186 测试全过；服务器（theater-death 子域名 + LiveKit Cloud 语音）已实机验收（双设备互听）；CI（GitHub Actions → ghcr）构建镜像、服务器 `deploy/update.sh` 拉取更新。语音实现与竞态修复细节、E2E 复现原型（`temp\td-e2e\repro-voice.mjs`）见"下一步计划"/"提醒事项"。下一步 **M4d（E2E 全 Docker 化：13 全角色 + 语音组 + 越权/泄漏 + 断线 + 容量）→ M4e（收官报告）**。
+3. 进度断点：**M4a / M4b / M4c / M4d 全部完成**——**187 单测**全过；**E2E 14/14**（容器化 Playwright，chromium+webkit，含容量与崩溃回归）；服务器（theater-death 子域名 + LiveKit Cloud 语音）实机验收通过；CI（GitHub Actions → ghcr）构建镜像、服务器 `deploy/update.sh` 拉取更新。**下一步只剩 M4e 收官报告**。语音实现/竞态修复、E2E 架构与崩溃 bug 细节见"下一步计划"/"提醒事项"。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
@@ -189,10 +189,12 @@ theater_death/
 ├─ server/  index.ts（express + Socket.IO 装配启动）· health.ts · app · session · rooms · log-store
 │           · realtime · clock · commands · night-driver · day-driver
 ├─ voice/   policy（R-43 许可策略，纯函数）· livekit（VoiceAdapter：凭证/权限同步/关房）
-├─ tests/   17 个文件共 186 用例（见"测试状态"）：smoke · rulesets · engine-setup · engine-proposal
+├─ tests/   17 个文件共 187 用例（见"测试状态"）：smoke · rulesets · engine-setup · engine-proposal
 │           · engine-night · engine-morning · engine-info · engine-day · visibility · night-driver
 │           · server-api · realtime · day-driver · review · voice-policy · voice-livekit
 │           · voice-api（+ server-test-utils 工具）
+├─ e2e/      Playwright 端到端验收：specs/（01 冒烟·02 语音·03 越权·04 全流程·05 恢复·06 泄漏）
+│           · helpers/（api·bot·cloud·driver·ui·board·env）· capacity.mjs · package.json（配套镜像 deploy/Dockerfile.e2e 与 compose e2e profile）
 ├─ vite.config.ts               前端构建配置（root=web，产物 web/dist）
 ├─ web/  index.html · tsconfig.json（独立 DOM 环境与 JSX）
 │        src/ main.tsx · app.tsx · game.tsx · review.tsx · voice.tsx（语音条与控制器）· api.ts · format.ts · types.ts · styles.css · vite-env.d.ts
@@ -201,9 +203,9 @@ theater_death/
 
 ## 测试状态
 
-186 passed / 17 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
+187 passed / 17 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与 LiveKit 适配（凭证内容/sync/close）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
-未覆盖（属后续阶段）：§15 的 Playwright/真实设备/容量验收（M4d）、语音浏览器实听与媒体失败场景。
+未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
 真实运行验证记录：
 - 2026-09-16：`docker compose up -d` → /healthz 正常、创建房间、SQLite 落盘。
@@ -254,26 +256,23 @@ theater_death/
   - 前端 `web/src/voice.tsx`：加入/离开、连接与重连状态、许可原因提示、本地静音（流程切换不强迫取消）、设备选择、死者旁听、失败重试；未启用/失败显示「文字测试模式」；`voice_permission` 事件驱动 + 2.5s 视图对账兜底
   - 部署：compose `livekit` 服务（v1.9.7 锁定、`profiles: ["voice"]`、7881/TCP + 7882/UDP）；**双配置**：`livekit.yaml`（本地/局域网，`use_external_ip: false` + `LIVEKIT_NODE_IP` 经 sh 条件传 `--node-ip`）/ `livekit-public.yaml`（服务器公网，`use_external_ip: true`，`LIVEKIT_NODE_IP` 留空由 **STUN 自动发现动态公网 IP**），`.env` 用 `LIVEKIT_CONFIG_FILE` 选择；`.env.example` 与 install 脚本生成 LiveKit 密钥；**`COMPOSE_PROFILES=voice` 写在 .env 即随 `--env-file` 生效**（脚本零改动）
   - **服务器方案（2026-09-16 定案）**：家宽虽有动态公网 IPv4/IPv6（STUN 实测），但光猫端口映射受阻 → **服务器采用托管媒体 LiveKit Cloud 免费层**（阿真拍板；连接器与信令域名由部署者自行配置）；自托管代码保留，适用于本机/局域网/有公网入站场景。**云链路已实测**：签发凭证经云端验证、云端 createRoom/syncRoom/closeRoom、`wss://` 直接作为服务端管理地址均通过。托管凭证只入服务器 `.env`（不入库）
-  - **待验收（M4d/M4e 一并）**：**已完成**——服务器外网实机语音（阿真两台设备：电脑 + 手机 4G；加入语音、竞选发言轮开麦、双设备互听）；**待 M4d 自动化覆盖**：投票/夜间禁麦、死者旁听、手动静音、媒体失败文字继续（§15 语音组其余项）
+  - **验收结论（已完成）**：服务器外网实机语音（阿真两台设备：电脑 + 手机 4G；加入语音、竞选发言轮开麦、双设备互听）；M4d 自动化覆盖：夜间禁麦、发布自动重试回归、权限收回（竞选发言结束）、退出与刷新恢复
 - **M4c 部署与运行手册 ✅ 完成**（2026-09-16）
   - 交付：`deploy/install|start|stop.{ps1,sh}`（首次与日常分开；.env 随机密钥生成；优先拉预构建镜像、回退本地构建）；`deploy/update.{ps1,sh}`（拉 ghcr 镜像更新，约 1-2 分钟）；`deploy/RUNBOOK.md`（系统要求/安装/启停/公网入口/数据日志/秘密注入/故障排查/不承诺）；`README.md`
   - **CI 镜像流程**：`.github/workflows/release.yml`（push main → 构建（镜像内含全部测试）→ 推 `ghcr.io/azhen073/theater-death:latest`；gha 层缓存后约 1 分钟）；镜像包已设公开（服务器匿名可拉）
   - **大厅退出 / 解散**（阿真要求补齐）：`POST /api/rooms/:code/leave`——普通成员释放席位（可重新加入）、房主解散全房间、对局开始后 409 拒绝；成功即清会话 Cookie；前端按钮 + 解散确认弹窗
   - **服务器部署与外网验证**：部署到阿真的 Ubuntu 服务器，Cloudflare Tunnel 路由（面板操作用 webclaw）指向 `localhost:3000`；外网验证：/healthz 200、首页 200、未登录 401、Socket.IO 公网握手 200、浏览器会话恢复进大厅
   - **取消项**：玩家电脑托管的 cloudflared 本机快速隧道验证（阿真决定聚焦服务器部署，相关文档内容已删）
-- **M4d 浏览器与容量验收（§15）⬜ 下一步**
-  - **形式**：E2E 全 Docker 化——新增 `e2e/`（用例入仓库）+ `deploy/Dockerfile.e2e`（基于 `mcr.microsoft.com/playwright` 镜像）+ compose profile `e2e`（app + 自托管 livekit + playwright runner，**不依赖云凭证**）；不在 CI 跑（CI 不注入媒体凭证），本地/服务器手动触发并记录命令
-  - **可复用原型**（`temp\td-e2e\repro-voice.mjs`，已验证）：HTTP 脚本建局（房主 + 11 陪练准备——**房主自己也要 ready**，否则 409 not_ready）→ chromium fake mic（`--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`）加入第 13 人 → 按按钮文字驱动（加入房间/准备/我要竞选天理/加入语音）→ 用 `livekit-server-sdk` 拉云端 tracks/permission 断言；**语音发布成功判据 = 云端出现音频轨**；本地跑需先 `vite build`（静态产物）
-  - **用例集**：
-    1. **13 上下文全角色**（Chromium 多 context）：覆盖 M3d 遗留——夜间角色面板（守护/提案/查验/还魂曲/莱莱可刺杀）、阵营房 UI、遗言/竞选/发言/投票/天理移交全流程
-    2. **语音组（§15）**：未授权、手动静音、死者开麦被拒、夜间发送被拒、结束发言权限收回、重连旧凭证（重连后按当前策略重新校验）、媒体失败文字继续
-    3. **越权反例**：A 会话传 B 的 playerId、非成员读取、死者提交夜间命令、大厅提交、跨房间 cookie、未终局查复盘
-    4. **泄漏检查**：公开流不含他人私有信息；"公开时间变化"（固定窗口时长核对）；服务端投影先授权后发送
-    5. **断线/刷新恢复**：reload 恢复身份/历史/倒计时；Socket 断线重连对账
-  - **容量**：13 个纯脚本客户端（Node HTTP+Socket.IO，无浏览器）完整日夜循环（真实时长约 10–15 分钟）+ `docker stats` 采样 CPU/内存 + 命令延迟统计；可脚本化重跑，结果入报告
-  - **WebKit**：覆盖界面/流程（fake 麦克风仅 Chromium）；真实桌面/手机 Safari + 麦克风由阿真人工验收（已做一轮），报告分开列
+- **M4d 浏览器与容量验收（§15）✅ 完成**（2026-09-16）
+  - **交付**：`e2e/`（01 冒烟 / 02 语音 / 03 越权 / 04 全流程 / 05 恢复 / 06 泄漏 + bot/云断言 helpers + capacity.mjs）；`deploy/Dockerfile.e2e`（`mcr.microsoft.com/playwright:v1.63.0-noble` 版本锁定）+ compose profile `e2e`（app + 自托管 livekit + runner，**不依赖云凭证**；livekit 服务挂 `["voice","e2e"]` 两档 profile）；`deploy/e2e.env`（测试固定值，无真实秘密）
+  - **关键机制**：runner 与 app **共享网络命名空间**（`network_mode: service:app`），浏览器访问 `http://localhost:3000`（localhost 天然安全上下文，避开非 localhost 的 Chromium HTTPS-First 升级）+ `--unsafely-treat-insecure-origin-as-secure` 使用虚拟麦克风；两套实验板（FAST/VOICE——验证器只要求时限为正数）加速功能用例，正式板用于容量；浏览器复盘渲染用 cookie 注入（`td_session`）
+  - **运行**：`docker compose -f deploy/docker-compose.yml --env-file deploy/e2e.env --profile e2e run --rm e2e npx playwright test`（开发迭代可挂载 `-v "…/e2e:/src:ro"` + `cp -r /src/. /e2e/`）；报告/截图/trace/容量结果落 `e2e-results/`（已 gitignore）
+  - **结果（2026-09-16 全量重跑）**：**14/14 通过（17.9 分钟）**——chromium 10 用例（12 上下文全角色 UI 覆盖 4.5 分钟、13 机器人终局复盘 2.5 分钟、语音发布自动重试回归、夜间禁麦、越权×2、刷新/断网恢复、泄漏检查）+ webkit 4 用例（12 上下文流程 5.9 分钟、恢复类）；UI 行动统计覆盖守护/刺杀/提案/查验/还魂/竞选/发言/投票/升序指定全面板；刷新恢复、断网重连均验证
+  - **容量（正式板，D1 夜 → D2 夜）**：完整日夜循环 **219.8s**、419 条命令、p50 2ms / p95 16.5ms / max 52.7ms；app 容器峰值 CPU 4.81%、常驻 61–67MiB；livekit 常驻 ~17MiB（宿主 `docker stats` 采样）
+  - **发现并修复生产级崩溃（E2E 收获）**：天理在指定窗口内提前指定发言顺序后，该窗口旧超时定时器仍触发 `startDefaultSpeechRound` → 引擎拒绝（"发言轮已经开始"）→ 未捕获异常 → **Node 进程退出、容器重启、房间全丢**（全量 E2E 首跑实际触发）。修复：`scheduleWindow` 切换窗口时 `clock.cancel` 旧定时器 + 指定窗口超时回调补 `phase` 守卫；复现测试 `tests/day-driver.test.ts`（先红后绿）→ **187 单测全过**
+  - **未覆盖（M4e 报告如实列出）**：真实设备 Safari 深度路径（阿真双设备人工验收已补足）；"旧凭证重连"由单测（凭证固定 canPublish=false）+ 会话内重连/刷新用例间接覆盖；媒体失败"文字继续"降级路径由单测/集成覆盖
 - **M4e 收官报告（§15 交付格式）⬜ 最后**：实际运行命令、代码/配置版本、环境、用例总数与通过/失败/跳过、失败序列与重现种子、证据路径、未测设备、未覆盖 Q 条款；实验模式配置单独标出，不计入"全部通过"
-- 顺序建议：M4d（先语音组与越权自动化，再容量）→ M4e
+- 剩余：M4e 收官报告（M4a–M4d 已完成）
 
 ## 提醒事项（踩坑记录）
 
@@ -289,7 +288,7 @@ theater_death/
 - 跨阶段命令（白天提交夜间命令等）统一由驱动 default 分支返回 `window_not_open`，未知 action 在网络层（toGameCommand）返回 400
 - **座位是随机分配的**：测试与脚本不要用"座位号 → 角色"的假设（helpers 的 DEFAULT_SEATS 仅用于纯引擎单测状态构造）；服务端集成测试一律用 roleId 找玩家（review 测试曾因按座位刀人误杀死神而失败）
 - API 错误响应结构为 `{ error: { code, message } }`（fail 函数），命令回执则是 `{ requestId, status, code, message }`
-- **定时器回调必须带 phase 守卫**：day-driver 曾因"投票全员投完提前结算 → 原 vote 定时器到点再次结算"导致引擎抛错、生产进程退出（158 测试前只覆盖单一情形）；已修 + 回归测试。night-driver 的到点回调本就带守卫
+- **定时器回调必须带 phase 守卫 + 窗口切换必须取消旧定时器**：day-driver 曾因"投票全员投完提前结算 → 原 vote 定时器到点再次结算"崩溃（M3 修 + 回归）；**2026-09-16 M4d E2E 全流程又发现 speech_order 的漏网之鱼**：天理提前指定后旧定时器触发 `startDefaultSpeechRound` → 引擎拒绝 → 未捕获异常 → **Node 进程退出、容器重启、房间全丢**。系统性修复：`scheduleWindow` 每次切换窗口 `clock.cancel` 旧定时器（白天同一时刻只有一个窗口，可安全取消）+ 该回调补守卫；回归测试 `tests/day-driver.test.ts`。**教训：同类"到点回调"审查要一次性覆盖所有窗口，不要逐个等 E2E 抓**
 - 前端构建纳入 Docker 构建链：typecheck（根）→ typecheck:web → 测试 → vite build；web/dist 由 express 静态托管（SPA fallback 排除 /api、/healthz、/socket.io）
 - 前端引入后：vite 相关依赖加进根 package.json 的 devDependencies（lock 由容器更新）；web 的类型检查用独立 tsconfig（不要并入根 tsconfig 的 node 环境）
 - 本地联调脚本经验（PowerShell 5.1）：Invoke-RestMethod 不能通过 -Headers 传 Cookie（受限头被静默忽略）→ 用 WebRequestSession + CookieContainer；发送中文 JSON 用 UTF-8 字节数组（`Invoke-WebRequest -Body $bytes`），否则昵称乱码
@@ -305,3 +304,4 @@ theater_death/
 - LiveKit 1.9.7 无 `--rtc.use-external-ip` 类 CLI flag（只认配置文件）；`--node-ip ""` 空串报 `flag needs an argument`
 - **LiveKit 发布权限竞态（M4b 实机验收抓获 + 已修）**：服务端广播 `voice_permission`（Socket.IO，即时）与同步媒体权限（LiveKit admin API，异步）并行，前端在权限于媒体服务落地前调用 `setMicrophoneEnabled(true)` 会被拒（`insufficient permissions to publish`），且旧版把错误静默吞掉 → 表现为"连接正常但谁都没声音、云端 `tracks: []`"。修复：失败自动重试（≤8 次 × 800ms）+ 监听 `RoomEvent.ParticipantPermissionsChanged`（注意签名 `(prevPermissions, participant)`、属性是 `participant.permissions` 复数）触发重发
 - **浏览器端语音复现方法（Playwright + 虚拟麦克风）**：`chromium --use-fake-device-for-media-stream --use-fake-ui-for-media-stream`，1 浏览器 + 12 脚本玩家组 13 人局；脚本在 `temp\td-e2e\repro-voice.mjs`（含云端 admin API 校验 tracks/permission）；断言点=云端 `tracks` 出现音频轨（本地 HTTP 服务需重新 `vite build` 才生效）
+- **E2E 基础设施要点（M4d）**：runner 与 app 共享网络命名空间（`network_mode: service:app`）后用 `http://localhost:3000`——**非 localhost 的 http 会被 Chromium HTTPS-First 升级**（`--disable-features=HttpsFirstModeV2,...` 实测压不住，`ERR_SSL_PROTOCOL_ERROR`），localhost 天然安全上下文最稳；虚拟麦克风需 `--unsafely-treat-insecure-origin-as-secure`；`gameId` 只在**大厅视图**有（对局开始后 /api/view 不再返回）；复盘字段是 `players/timeline/winner`（不是 seats）；浏览器注入会话用 cookie `td_session`（`context.addCookies`）；compose 宿主端口冲突（3000 被占）→ `deploy/e2e.env` 用 `APP_PORT=3210`；用例间**不要 `some(async …)`**（async 回调恒真）；Playwright 镜像版本与 `@playwright/test` 精确锁定一致（1.63.0）
