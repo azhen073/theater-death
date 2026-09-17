@@ -1,23 +1,24 @@
 # theater_death 进度与交接
 
-更新时间：2026-09-16 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-09-17 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
-| 文档 | ✅ | 规则书 v1.1 + 需求文档 v1.1，Q-01–Q-08 全量定值（规则书第 09 章） |
+| 文档 | ✅ | 规则书 v1.1 + 需求文档 v1.2（v1.1 + 观战增补），Q-01–Q-08 全量定值（规则书第 09 章） |
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
 | M4 语音与部署 | ✅ | **全部完成**：M4a 规则收尾 · M4b 语音（发布竞态修复 + 服务器实机双设备验收）· M4c 部署（服务器上线 + Tunnel + CI 镜像 + 退出/解散）· M4d E2E 验收（14/14，含容量；发现并修复白天驱动崩溃）· **M4e 收官报告**（`M4_ACCEPTANCE_REPORT.md`，§15 格式） |
+| 观战（v1.2 增补） | ✅ | 绑定玩家只读第二屏：入口选择目标、只读大厅/对局、语音旁听、终局复盘同权；194 单测 + E2E 16/16 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`。
-3. 进度断点：**M1–M4 全部完成**——**187 单测**全过、**E2E 14/14**（chromium+webkit）、收官报告 `M4_ACCEPTANCE_REPORT.md`（§15）；服务器（`theater-death.azhen73.com` + LiveKit Cloud 语音）实机验收通过。**遗留动作（重要）**：服务器镜像需 `cd ~/theater-death && git pull && ./deploy/update.sh` 应用白天驱动崩溃修复（80cb92b 起，见报告 §11.4）；崩溃修复前的服务器版本不适合长时间对局。语音竞态修复、E2E 架构与崩溃细节见"下一步计划"/"提醒事项"。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（v1.2：§07 旁观者小节 + 文末版本记录）。
+3. 进度断点：**M1–M4 + 观战全部完成**——**194 单测**全过、**E2E 16/16**（chromium 12 + webkit 4）、收官报告 `M4_ACCEPTANCE_REPORT.md`（§15）；服务器（`theater-death.azhen73.com` + LiveKit Cloud 语音）实机验收通过。**遗留动作（重要）**：服务器镜像需 `cd ~/theater-death && git pull && ./deploy/update.sh` 应用白天驱动崩溃修复（80cb92b 起）与观战功能；崩溃修复前的服务器版本不适合长时间对局。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
@@ -274,6 +275,16 @@ theater_death/
 - **M4e 收官报告 ✅ 完成**（2026-09-16）：`M4_ACCEPTANCE_REPORT.md`（§15 交付格式：版本/环境/命令/统计/覆盖矩阵/真实设备/时间线/实验模式/未覆盖/证据路径/发现的问题）；时间线产物脚本 `e2e/timeline.mjs`（13 机器人整局 + 复盘落盘，8 天 284 事件）
 - 项目状态：**M1–M4 全部里程碑完成**。遗留动作：服务器应用崩溃修复镜像（见"接续指引"第 3 条）
 
+### 观战：绑定玩家只读第二屏 ✅ 完成（2026-09-17，需求 v1.2 增补）
+
+- **产品模型（阿真拍板）**：观众绑定一名玩家，看到**该玩家的完整视角**（含身份与私有信息）；每名玩家最多一名观众（双向 1:1）；昵称必填；大厅/对局/终局均可加入；只读 + 语音只旁听
+- **服务端**：`SessionPayload.kind='spectator'`（playerId 即 spectatorId）；`Room.spectators`（`watchRoom`/`removeSpectator`；玩家离开大厅时其观众一并清理；`startGame` 与 `members` 不受影响）；端点 `POST /api/rooms/:code/watch`、`POST /api/spectate/leave`、`GET /api/rooms/:code/members`（公开：昵称/座位/存活/是否已有观众，无身份字段）；`resolveViewer` 分流——`/api/view`、`GET /api/chat`、`/api/review`、语音凭证按**绑定玩家**处理，`/api/command`、`POST /api/chat`、`/api/voice/sync` 观众一律 403 `spectator_readonly`；视图响应新增 `spectating` 标记与 `spectators` 名单
+- **实时**：观众 socket 只入公共频道 + 绑定玩家的个人频道（与绑定玩家收同一事件流）；`hello` 带 `kind`/`spectatorId`；语音许可事件照发（前端旁听模式忽略）
+- **语音**：观众 token 按 spectatorId 签发（identity 唯一，不与玩家冲突）；`SPECTATOR_PERMISSION = { canPublish:false, reason:'spectator' }`；`syncRoom` 对未知 identity 默认 false，观众天然不受影响；前端 `VoicePanel` 旁听模式（不调 voiceSync/不申请麦克风/无静音与设备选择）
+- **前端**：入口页"观战（只看不玩）"→ 拉公开名单 → 选择绑定目标 → 观战；大厅只读横幅 + "退出观战"；对局屏复用玩家视图渲染（`绑定玩家的身份`/`仅绑定玩家可见` 标题、无行动面板、聊天 `观战只读`）；顶栏"观战"标签；终局后观众可看同一份复盘
+- **测试**：`tests/spectator.test.ts` 7 例（加入守卫/视图一致/只读/读取范围/人数与离开清理/入口名单/复盘/实时同流）；E2E `07-spectator.spec.ts` 2 例（大厅只读 + 对局中一致性/终局复盘，含 bot 快进）；**194 单测 + E2E 16/16**
+- **E2E 驱动修复（重要教训）**：12 上下文用例在容器负载下从 ~5 分钟漂移到 13 分钟——根因是 `actFollowing` 的 `.click()` 无超时（默认 30s），视图 2.5s 轮询下按钮消失即空等 30s；修复：点击统一 3s 超时快失败 + 初始化与主循环并发化（覆盖强度不变）
+
 ## 提醒事项（踩坑记录）
 
 - `NODE_ENV=production` 会跳过 devDependencies → Dockerfile 用 `npm ci --include=dev`
@@ -300,6 +311,8 @@ theater_death/
 - **compose `COMPOSE_PROFILES` 可来自 `--env-file`**：`.env` 里 `COMPOSE_PROFILES=voice` 即让所有 compose 命令（pull/up/stop）自动包含 livekit 服务，无需改脚本；未启用语音时不写该行则只有 app 服务
 - LiveKit 凭证 JWT 用 `nbf`（非 `iat`）表示签发时间；`AccessToken.toJwt()` 为异步；`updateParticipant` 的 permission 是整体覆盖，切权限时必须带全 canPublish/canSubscribe/canPublishData
 - **LiveKit `--node-ip` 不覆盖配置里的 `use_external_ip: true`**（实测显式 node-ip 仍被 STUN 结果覆盖）→ 本地（要 127.0.0.1）与公网（要 STUN）必须用两份配置：`livekit.yaml` / `livekit-public.yaml`，由 `.env` 的 `LIVEKIT_CONFIG_FILE` 选择
+- **Playwright 点击必须带超时（观战任务教训，2026-09-17）**：E2E 快语速板下视图 2.5s 轮询，按旧视图点已消失的按钮时 `.click()` 默认等 30s；12 上下文用例每轮若命中数次，240s 主循环被拖成 13 分钟并超时。驱动点击统一 `{ timeout: 3000 }` + 外层 catch 跳过（`actFollowing`）
+- **观战（v1.2）设计要点**：观众是"绑定玩家的只读第二屏"（信任模型——可见绑定玩家全部信息）；1:1 双向绑定（每玩家最多一名观众）；所有写操作在 HTTP 层 403 `spectator_readonly`；观众计入 LiveKit 计量；同浏览器"玩+看"互斥（单会话 cookie，观战需无痕/另一设备）；换绑 = 退出观战重进
 - **compose 的 sh 条件传参**：字符串形式 `command` 会被 split 成参数数组（不经 shell）→ 必须用数组形式 `command: ["exec ... $${VAR:+--node-ip $${VAR}}"]` + `entrypoint: ["/bin/sh","-c"]`；且 **`$${VAR:+...}` 读的是容器内环境变量**，compose 变量必须显式注入 `environment`（`LIVEKIT_NODE_IP: "${LIVEKIT_NODE_IP:-}"`）
 - LiveKit 1.9.7 无 `--rtc.use-external-ip` 类 CLI flag（只认配置文件）；`--node-ip ""` 空串报 `flag needs an argument`
 - **LiveKit 发布权限竞态（M4b 实机验收抓获 + 已修）**：服务端广播 `voice_permission`（Socket.IO，即时）与同步媒体权限（LiveKit admin API，异步）并行，前端在权限于媒体服务落地前调用 `setMicrophoneEnabled(true)` 会被拒（`insufficient permissions to publish`），且旧版把错误静默吞掉 → 表现为"连接正常但谁都没声音、云端 `tracks: []`"。修复：失败自动重试（≤8 次 × 800ms）+ 监听 `RoomEvent.ParticipantPermissionsChanged`（注意签名 `(prevPermissions, participant)`、属性是 `participant.permissions` 复数）触发重发
