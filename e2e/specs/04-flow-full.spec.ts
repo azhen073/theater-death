@@ -11,7 +11,7 @@ import { ENV } from '../helpers/env.ts';
  * 验证各角色面板（守护/刺杀/提案/查验/还魂/竞选/发言/投票）在真实浏览器中可用。
  */
 test('12 浏览器上下文：全角色面板跟随操作覆盖', async ({ browser }) => {
-  test.setTimeout(480_000);
+  test.setTimeout(780_000);
 
   const host = await createRoom({ nickname: '房主', ruleset: FAST_BOARD });
   const roomCode = host.roomCode;
@@ -23,9 +23,13 @@ test('12 浏览器上下文：全角色面板跟随操作覆盖', async ({ brows
     const page = await context.newPage();
     contexts.push(context);
     pages.push(page);
-    await joinLobbyViaUi(page, { nickname: `玩家${seat}`, roomCode });
-    await readyViaUi(page);
   }
+  // 12 个上下文并行加入大厅并准备（顺序驱动在容器负载下会拖到十分钟级）
+  await Promise.all(
+    pages.map((page, index) =>
+      joinLobbyViaUi(page, { nickname: `玩家${index + 2}`, roomCode }).then(() => readyViaUi(page)),
+    ),
+  );
 
   await setReady(roomCode, host.client);
   await startGame(roomCode, host.client);
@@ -34,13 +38,13 @@ test('12 浏览器上下文：全角色面板跟随操作覆盖', async ({ brows
   const startedAt = Date.now();
   const actions = new Map<string, number>();
   while (Date.now() - startedAt < 240_000) {
-    for (const page of pages) {
-      const action = await actFollowing(page).catch(() => null);
+    const results = await Promise.all(pages.map((page) => actFollowing(page).catch(() => null)));
+    for (const action of results) {
       if (action !== null) {
         actions.set(action, (actions.get(action) ?? 0) + 1);
       }
     }
-    await pages[0]!.waitForTimeout(1000);
+    await pages[0]!.waitForTimeout(500);
   }
 
   console.log('[ui-flow] 行动统计:', JSON.stringify(Object.fromEntries(actions)));

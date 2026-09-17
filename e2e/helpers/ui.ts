@@ -19,6 +19,20 @@ export async function readyViaUi(page: Page): Promise<void> {
   await page.getByRole('button', { name: '取消准备' }).waitFor({ timeout: 15_000 });
 }
 
+/** 入口页：昵称 + 房间码 → 观战（选择绑定目标）。 */
+export async function spectateViaUi(
+  page: Page,
+  options: { nickname: string; roomCode: string; bindLabel: string },
+): Promise<void> {
+  await page.goto(ENV.baseUrl);
+  await page.locator('input[placeholder*="字符"]').fill(options.nickname);
+  await page.locator('input[placeholder*="房间码"]').fill(options.roomCode);
+  await page.getByRole('button', { name: '观战（只看不玩）' }).click();
+  await page.getByText('选择观战目标').waitFor({ timeout: 15_000 });
+  const row = page.locator('li', { hasText: options.bindLabel }).first();
+  await row.getByRole('button', { name: '观看' }).click();
+}
+
 /** 加入语音并等待连接就绪。 */
 export async function joinVoiceViaUi(page: Page): Promise<void> {
   await page.getByRole('button', { name: '加入语音' }).click({ timeout: 30_000 });

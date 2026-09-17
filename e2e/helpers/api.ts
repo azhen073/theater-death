@@ -107,6 +107,40 @@ export async function command(
   return { status: response.status, json: response.json };
 }
 
+export interface Spectator {
+  readonly spectatorId: string;
+  readonly cookie: string;
+  readonly nickname: string;
+  readonly bindPlayerId: string;
+}
+
+/** 观战加入：绑定一名玩家（只读第二屏）。 */
+export async function watchRoom(
+  roomCode: string,
+  nickname: string,
+  bindPlayerId: string,
+): Promise<Spectator> {
+  const response = await api.post(`/api/rooms/${roomCode}/watch`, { nickname, bindPlayerId });
+  if (response.status !== 201) {
+    throw new Error(`观战失败 ${response.status}: ${JSON.stringify(response.json)}`);
+  }
+  return {
+    spectatorId: response.json.spectatorId as string,
+    cookie: response.cookie ?? '',
+    nickname,
+    bindPlayerId,
+  };
+}
+
+/** 观战入口公开名单。 */
+export async function roomMembers(roomCode: string): Promise<Record<string, unknown>> {
+  const response = await api.get(`/api/rooms/${roomCode}/members`);
+  if (response.status !== 200) {
+    throw new Error(`名单失败 ${response.status}: ${JSON.stringify(response.json)}`);
+  }
+  return response.json;
+}
+
 export async function chat(
   client: Client,
   channel: 'public' | 'faction',

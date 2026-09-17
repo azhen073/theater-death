@@ -28,8 +28,14 @@ async function visible(page: Page, pattern: RegExp): Promise<boolean> {
     .catch(() => false);
 }
 
+/**
+ * 点击必须快速失败：视图每 2.5s 轮询，按旧视图点按钮时目标可能已消失，
+ * 默认 30s 等待会把 240s 的主循环拖成十分钟级。
+ */
+const CLICK_TIMEOUT = 3000;
+
 async function clickFirst(page: Page, pattern: RegExp): Promise<void> {
-  await page.getByRole('button', { name: pattern }).first().click();
+  await page.getByRole('button', { name: pattern }).first().click({ timeout: CLICK_TIMEOUT });
 }
 
 /**
@@ -61,11 +67,11 @@ export async function actFollowing(page: Page): Promise<string | null> {
     if (await button.isDisabled()) {
       const chip = page.locator('.picker button.chip').first();
       if (await chip.isVisible().catch(() => false)) {
-        await chip.click();
+        await chip.click({ timeout: CLICK_TIMEOUT }).catch(() => undefined);
       }
     }
     if (!(await button.isDisabled().catch(() => true))) {
-      await button.click();
+      await button.click({ timeout: CLICK_TIMEOUT });
       return String(pattern);
     }
   }
