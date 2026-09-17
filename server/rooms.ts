@@ -20,6 +20,14 @@ export interface RoomMember {
   readonly joinedAt: number;
 }
 
+/** 观战者：绑定一名玩家的只读"第二屏"，不参与对局、不占玩家席位 */
+export interface RoomSpectator {
+  readonly spectatorId: string;
+  readonly nickname: string;
+  readonly bindPlayerId: string;
+  readonly joinedAt: number;
+}
+
 export interface ChatMessage extends StoredMessage {
   readonly channel: 'public' | 'faction';
 }
@@ -49,12 +57,22 @@ export type LeaveResult =
       readonly message: string;
     };
 
+export type WatchResult =
+  | { readonly ok: true; readonly room: Room; readonly spectator: RoomSpectator }
+  | {
+      readonly ok: false;
+      readonly status: number;
+      readonly code: string;
+      readonly message: string;
+    };
+
 export class Room {
   readonly code: string;
   readonly gameId: string;
   readonly hostPlayerId: string;
   readonly ruleset: RulesetConfig;
   readonly members: RoomMember[] = [];
+  readonly spectators: RoomSpectator[] = [];
   state: GameState | null = null;
   events: GameEvent[] = [];
   driver: GameDriver | null = null;
@@ -139,6 +157,46 @@ export class RoomRegistry {
     return { ok: true, room, member };
   }
 
+  /**
+   * 观战加入：绑定一名玩家（每个玩家最多一名观众），大厅/对局/终局均可加入。
+   * 观战者只读，不占玩家席位、不影响开局人数校验。
+   */
+  watchRoom(code: string, nickname: string, bindPlayerId: string): WatchResult {
+    const room = this.#roomsByCode.get(code);
+    if (room === undefined) {
+      return { ok: false, status: 404, code: 'room_not_found', message: '房间不存在' };
+    }
+    const target = room.members.find((item) => item.playerId === bindPlayerId);
+    if (target === undefined) {
+      return { ok: false, status: 404, code: 'player_not_found', message: '要绑定观战的玩家不在该房间' };
+    }
+    if (room.spectators.some((item) => item.bindPlayerId === bindPlayerId)) {
+      return {
+        ok: false,
+        status: 409,
+        code: 'player_already_watched',
+        message: '该玩家已有一名观众',
+      };
+    }
+    const spectator: RoomSpectator = {
+      spectatorId: `s_${randomBytes(8).toString('hex')}`,
+      nickname,
+      bindPlayerId,
+      joinedAt: this.#deps.clock.now(),
+    };
+    room.spectators.push(spectator);
+    return { ok: true, room, spectator };
+  }
+
+  removeSpectator(room: Room, spectatorId: string): boolean {
+    const index = room.spectators.findIndex((item) => item.spectatorId === spectatorId);
+    if (index === -1) {
+      return false;
+    }
+    room.spectators.splice(index, 1);
+    return true;
+  }
+
   leaveRoom(room: Room, playerId: string): LeaveResult {
     if (room.state !== null) {
       return { ok: false, status: 409, code: 'game_started', message: '对局已经开始，不能退出' };
@@ -153,6 +211,10 @@ export class RoomRegistry {
       return { ok: false, status: 404, code: 'not_a_member', message: '你不在这个房间里' };
     }
     room.members.splice(index, 1);
+    const spectatorIndex = room.spectators.findIndex((item) => item.bindPlayerId === playerId);
+    if (spectatorIndex !== -1) {
+      room.spectators.splice(spectatorIndex, 1);
+    }
     return { ok: true, dissolved: false };
   }
 

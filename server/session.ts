@@ -6,6 +6,8 @@ export interface SessionPayload {
   readonly gameId: string;
   readonly playerId: string;
   readonly issuedAt: number;
+  /** 缺省为普通玩家会话；spectator 时 playerId 为 spectatorId */
+  readonly kind?: 'spectator';
 }
 
 export function signSession(payload: SessionPayload, secret: string): string {
@@ -38,7 +40,15 @@ export function verifySession(token: string, secret: string): SessionPayload | n
     ) {
       return null;
     }
-    return { gameId: record.gameId, playerId: record.playerId, issuedAt: record.issuedAt };
+    if (record.kind !== undefined && record.kind !== 'spectator') {
+      return null;
+    }
+    return {
+      gameId: record.gameId,
+      playerId: record.playerId,
+      issuedAt: record.issuedAt,
+      ...(record.kind === 'spectator' ? { kind: 'spectator' as const } : {}),
+    };
   } catch {
     return null;
   }

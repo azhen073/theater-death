@@ -156,6 +156,16 @@ input {
   font-size: 12px;
 }
 
+.banner-watch {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #2b5f8a;
+  border-radius: 6px;
+  background: #16324a;
+  color: #9fd0ff;
+  font-size: 12px;
+}
+
 .notice {
   color: var(--ok);
   font-size: 12px;
@@ -231,6 +241,12 @@ input {
 .tag.role {
   background: #443a2b;
   color: var(--accent);
+}
+
+.tag.watch {
+  background: #16324a;
+  color: #9fd0ff;
+  margin-right: 6px;
 }
 
 .game {

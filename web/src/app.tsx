@@ -14,6 +14,7 @@ import type {
   ReviewView,
   ViewResponse,
   VoicePermission,
+  WatchCandidate,
 } from './types.ts';
 
 type Session =
@@ -175,8 +176,26 @@ export function App() {
     }
   }, []);
 
+  const leaveSpectate = useCallback(async () => {
+    try {
+      await api.leaveSpectate();
+    } catch {
+      // 房间已不存在等情况按已退出处理
+    }
+    setSession({ kind: 'entry' });
+    setMessage(null);
+    setPublicEvents([]);
+    setPersonalEvents([]);
+    setMessages([]);
+    setReview(null);
+    setVoicePermission(null);
+  }, []);
+
   const isGame = session.kind === 'game';
   const game = session.kind === 'game' ? session.data : null;
+  const lobbySpectating = session.kind === 'lobby' ? session.lobby.spectating : null;
+  const gameSpectating = game?.spectating ?? null;
+  const spectating = gameSpectating ?? lobbySpectating;
 
   return (
     <div className="shell">
@@ -190,6 +209,7 @@ export function App() {
         {session.kind === 'lobby' && <span className="phase">大厅 {session.lobby.roomCode}</span>}
         {game !== null && (
           <span className="me">
+            {gameSpectating !== null && <span className="tag watch">观战</span>}
             {game.view.self.seat}号 {game.view.self.nickname} · {ROLE_NAMES[game.view.self.roleId]} ·{' '}
             {FACTION_NAMES[ROLE_FACTIONS[game.view.self.roleId]]}
           </span>
@@ -213,7 +233,11 @@ export function App() {
         />
       )}
       {session.kind === 'lobby' && (
-        <LobbyScreen lobby={session.lobby} onChanged={() => void loadView('state')} />
+        <LobbyScreen
+          lobby={session.lobby}
+          onChanged={() => void loadView('state')}
+          onLeaveSpectate={() => void leaveSpectate()}
+        />
       )}
       {game !== null && (
         <GameScreen
@@ -225,6 +249,7 @@ export function App() {
           voicePermission={voicePermission}
           onCommand={sendCommand}
           onOpenReview={() => void openReview()}
+          onLeaveSpectate={() => void leaveSpectate()}
         />
       )}
       {review !== null && <ReviewScreen review={review} onClose={() => setReview(null)} />}
@@ -237,6 +262,10 @@ function EntryScreen({ onDone }: { onDone: () => void }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [watchRoster, setWatchRoster] = useState<{
+    roomCode: string;
+    members: WatchCandidate[];
+  } | null>(null);
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -253,6 +282,57 @@ function EntryScreen({ onDone }: { onDone: () => void }) {
 
   const trimmed = nickname.trim();
   const codeTrimmed = code.trim();
+
+  const openWatchRoster = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const roster = await api.roomMembers(codeTrimmed);
+      setWatchRoster({ roomCode: roster.roomCode, members: roster.members });
+    } catch (caught) {
+      setError(errorText(caught));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (watchRoster !== null) {
+    return (
+      <div className="card entry">
+        <h1>选择观战目标</h1>
+        <p className="muted">
+          房间 {watchRoster.roomCode}：观战为只读模式，视角跟随所选玩家，不会影响对局。
+        </p>
+        <ul className="members">
+          {watchRoster.members.map((member) => (
+            <li key={member.playerId}>
+              <span>
+                {member.seat === null ? member.nickname : `${member.seat}号 ${member.nickname}`}
+              </span>
+              {member.alive === false && <span className="tag">已出局</span>}
+              {member.watched ? (
+                <span className="tag">已有观众</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(() => api.watchRoom(watchRoster.roomCode, trimmed, member.playerId))
+                  }
+                >
+                  观看
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <button type="button" disabled={busy} onClick={() => setWatchRoster(null)}>
+          返回
+        </button>
+        {error !== null && <p className="error">{error}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="card entry">
@@ -289,14 +369,30 @@ function EntryScreen({ onDone }: { onDone: () => void }) {
           加入房间
         </button>
       </div>
+      <button
+        type="button"
+        disabled={busy || trimmed.length === 0 || codeTrimmed.length === 0}
+        onClick={() => void openWatchRoster()}
+      >
+        观战（只看不玩）
+      </button>
       {error !== null && <p className="error">{error}</p>}
     </div>
   );
 }
 
-function LobbyScreen({ lobby, onChanged }: { lobby: LobbyView; onChanged: () => void }) {
+function LobbyScreen({
+  lobby,
+  onChanged,
+  onLeaveSpectate,
+}: {
+  lobby: LobbyView;
+  onChanged: () => void;
+  onLeaveSpectate: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const spectating = lobby.spectating;
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -316,6 +412,11 @@ function LobbyScreen({ lobby, onChanged }: { lobby: LobbyView; onChanged: () => 
       <h2>
         大厅 <span className="code">{lobby.roomCode}</span>
       </h2>
+      {spectating !== null && (
+        <p className="banner-watch">
+          观战模式（只读）：视角跟随 {lobby.you.nickname}。对局开始后即可观看。
+        </p>
+      )}
       {lobby.rulesetMode === 'experimental' && (
         <p className="banner-experimental">
           实验模式：本局使用非默认板子配置，未经完整验证，仅供测试，不代表正式功能。
@@ -339,30 +440,50 @@ function LobbyScreen({ lobby, onChanged }: { lobby: LobbyView; onChanged: () => 
         ))}
       </ul>
       <div className="row">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void run(() => api.setReady(lobby.roomCode, !lobby.you.ready))}
-        >
-          {lobby.you.ready ? '取消准备' : '准备'}
-        </button>
-        {lobby.you.isHost && (
-          <button type="button" disabled={busy} onClick={() => void run(() => api.startGame(lobby.roomCode))}>
-            开始对局
-          </button>
-        )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            if (lobby.you.isHost && !window.confirm('确定解散房间？所有成员将回到入口页。')) {
-              return;
+        {spectating !== null ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                onLeaveSpectate();
+              })
             }
-            void run(() => api.leaveRoom(lobby.roomCode));
-          }}
-        >
-          {lobby.you.isHost ? '解散房间' : '退出房间'}
-        </button>
+          >
+            退出观战
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void run(() => api.setReady(lobby.roomCode, !lobby.you.ready))}
+            >
+              {lobby.you.ready ? '取消准备' : '准备'}
+            </button>
+            {lobby.you.isHost && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void run(() => api.startGame(lobby.roomCode))}
+              >
+                开始对局
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (lobby.you.isHost && !window.confirm('确定解散房间？所有成员将回到入口页。')) {
+                  return;
+                }
+                void run(() => api.leaveRoom(lobby.roomCode));
+              }}
+            >
+              {lobby.you.isHost ? '解散房间' : '退出房间'}
+            </button>
+          </>
+        )}
       </div>
       {error !== null && <p className="error">{error}</p>}
     </div>

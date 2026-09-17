@@ -13,6 +13,7 @@ import type { GameState } from '../engine/types.ts';
  * - night_silence：夜间（含晨间结算）全体静音
  * - vote_silence：投票期间全体禁麦
  * - not_your_turn：白天非发言时段或不是当前发言人
+ * - spectator：观战者，只可旁听
  * - game_not_started / game_ended：流程外
  */
 export type VoicePermissionReason =
@@ -21,6 +22,7 @@ export type VoicePermissionReason =
   | 'night_silence'
   | 'vote_silence'
   | 'not_your_turn'
+  | 'spectator'
   | 'game_not_started'
   | 'game_ended';
 
@@ -28,6 +30,9 @@ export interface VoicePermission {
   readonly canPublish: boolean;
   readonly reason: VoicePermissionReason;
 }
+
+/** 观战者固定许可：只听不说（不进入玩家动态授权策略） */
+export const SPECTATOR_PERMISSION: VoicePermission = { canPublish: false, reason: 'spectator' };
 
 function denied(reason: VoicePermissionReason): VoicePermission {
   return { canPublish: false, reason };

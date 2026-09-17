@@ -85,6 +85,19 @@ export function createBroadcaster(): Broadcaster {
           next(new Error('room_not_found'));
           return;
         }
+        if (session.kind === 'spectator') {
+          const spectator = room.spectators.find((item) => item.spectatorId === session.playerId);
+          if (spectator === undefined) {
+            next(new Error('not_member'));
+            return;
+          }
+          // 观众与绑定玩家共用个人频道：收到同一事件流；只读由 HTTP 命令层拒绝
+          socket.data.gameId = session.gameId;
+          socket.data.playerId = spectator.bindPlayerId;
+          socket.data.spectatorId = spectator.spectatorId;
+          next();
+          return;
+        }
         const member = room.members.find((item) => item.playerId === session.playerId);
         if (member === undefined) {
           next(new Error('not_member'));
@@ -98,10 +111,17 @@ export function createBroadcaster(): Broadcaster {
       io.on('connection', (socket) => {
         const gameId = socket.data.gameId as string;
         const playerId = socket.data.playerId as string;
+        const spectatorId = (socket.data.spectatorId as string | undefined) ?? null;
         socket.join(roomChannel(gameId));
         socket.join(playerChannel(gameId, playerId));
         const room = deps.registry.getByGameId(gameId);
-        socket.emit('hello', { gameId, playerId, roomCode: room?.code ?? null });
+        socket.emit('hello', {
+          gameId,
+          playerId,
+          roomCode: room?.code ?? null,
+          kind: spectatorId === null ? 'player' : 'spectator',
+          spectatorId,
+        });
       });
     },
 

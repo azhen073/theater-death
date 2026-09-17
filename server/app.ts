@@ -15,10 +15,16 @@ import type { GameState } from '../engine/types.ts';
 import type { RulesetConfig } from '../rulesets/types.ts';
 import { validateRuleset } from '../rulesets/validate.ts';
 import type { VoiceService } from '../voice/livekit.ts';
-import { voicePermission } from '../voice/policy.ts';
+import { voicePermission, SPECTATOR_PERMISSION } from '../voice/policy.ts';
 import { healthPayload } from './health.ts';
 import type { Broadcaster } from './realtime.ts';
-import type { CommandReceipt, Room, RoomMember, RoomRegistry } from './rooms.ts';
+import type {
+  CommandReceipt,
+  Room,
+  RoomMember,
+  RoomRegistry,
+  RoomSpectator,
+} from './rooms.ts';
 import { SESSION_COOKIE_NAME, signSession, verifySession, type SessionPayload } from './session.ts';
 
 export interface AppDeps {
@@ -87,6 +93,63 @@ export function createApp(deps: AppDeps): Express {
     }
     setSessionCookie(res, deps, result.room.gameId, result.member.playerId);
     res.status(201).json({ roomCode: result.room.code, playerId: result.member.playerId });
+  });
+
+  /**
+   * 观战加入：绑定一名玩家（只读第二屏）。大厅/对局/终局均可加入；
+   * 每个玩家最多一名观众；不占玩家席位。
+   */
+  app.post('/api/rooms/:code/watch', (req, res) => {
+    const nickname = readNickname(req.body);
+    if (nickname === null) {
+      fail(res, 400, 'invalid_nickname', '昵称需为 1-12 个字符');
+      return;
+    }
+    const bindPlayerId = readString((req.body as Record<string, unknown> | null)?.bindPlayerId, 1, 80);
+    if (bindPlayerId === null) {
+      fail(res, 400, 'invalid_bind_player', 'bindPlayerId 必填');
+      return;
+    }
+    const result = deps.registry.watchRoom(
+      String(req.params.code ?? '').toUpperCase(),
+      nickname,
+      bindPlayerId,
+    );
+    if (!result.ok) {
+      fail(res, result.status, result.code, result.message);
+      return;
+    }
+    setSessionCookie(res, deps, result.room.gameId, result.spectator.spectatorId, 'spectator');
+    res.status(201).json({
+      roomCode: result.room.code,
+      spectatorId: result.spectator.spectatorId,
+      bindPlayerId: result.spectator.bindPlayerId,
+    });
+  });
+
+  /** 观战入口的公开名单（昵称/座位/存活均为公开信息，不含任何身份） */
+  app.get('/api/rooms/:code/members', (req, res) => {
+    const room = deps.registry.getByCode(String(req.params.code ?? '').toUpperCase());
+    if (room === null) {
+      fail(res, 404, 'room_not_found', '房间不存在');
+      return;
+    }
+    res.json({
+      roomCode: room.code,
+      phase: room.state === null ? 'lobby' : 'started',
+      requiredPlayers: room.requiredPlayerCount(),
+      memberCount: room.members.length,
+      members: room.members.map((member) => {
+        const player = room.state?.players.find((item) => item.playerId === member.playerId);
+        return {
+          playerId: member.playerId,
+          nickname: member.nickname,
+          seat: player?.seat ?? null,
+          alive: player === undefined ? null : player.life !== 'dead',
+          watched: room.spectators.some((item) => item.bindPlayerId === member.playerId),
+        };
+      }),
+    });
   });
 
   app.post('/api/rooms/:code/ready', (req, res) => {
@@ -158,15 +221,40 @@ export function createApp(deps: AppDeps): Express {
     res.json({ left: true, dissolved: result.dissolved });
   });
 
-  app.get('/api/view', (req, res) => {
-    const context = resolveRoomMember(req, res, deps);
-    if (context === null) {
+  /** 观众退出观战（对局中也可退出，不影响对局） */
+  app.post('/api/spectate/leave', (req, res) => {
+    const session = requireSession(req, res, deps);
+    if (session === null) {
       return;
     }
-    const { room, member } = context;
+    if (session.kind !== 'spectator') {
+      fail(res, 403, 'not_spectator', '当前不是观战会话');
+      return;
+    }
+    const room = deps.registry.getByGameId(session.gameId);
+    if (room !== null) {
+      deps.registry.removeSpectator(room, session.playerId);
+    }
+    clearSessionCookie(res, deps);
+    res.json({ left: true });
+  });
+
+  app.get('/api/view', (req, res) => {
+    const viewer = resolveViewer(req, res, deps);
+    if (viewer === null) {
+      return;
+    }
+    const { room } = viewer;
+    const subjectId = viewerSubjectId(viewer);
+    const spectating = spectatingMark(viewer);
     const voiceEnabled = deps.voice !== null && deps.voice !== undefined;
     if (room.state === null) {
-      res.json(lobbyView(room, member, voiceEnabled));
+      const subject = room.members.find((item) => item.playerId === subjectId);
+      if (subject === undefined) {
+        fail(res, 403, 'not_member', '你不在该房间中');
+        return;
+      }
+      res.json({ ...lobbyView(room, subject, voiceEnabled), spectating, spectators: spectatorList(room) });
       return;
     }
     res.json({
@@ -174,26 +262,31 @@ export function createApp(deps: AppDeps): Express {
       rulesetMode: room.ruleset.mode,
       voice: {
         enabled: voiceEnabled,
-        permission: voicePermission(room.state, member.playerId),
+        permission:
+          viewer.kind === 'spectator'
+            ? SPECTATOR_PERMISSION
+            : voicePermission(room.state, subjectId),
       },
       view: buildPlayerView({
         state: room.state,
         events: room.events,
-        playerId: member.playerId,
+        playerId: subjectId,
       }),
-      proposal: room.driver?.proposalState(member.playerId) ?? null,
+      proposal: room.driver?.proposalState(subjectId) ?? null,
       hints: gameHints(room.state),
       windows: room.driver?.windows() ?? [],
       serverTime: deps.clock.now(),
+      spectating,
+      spectators: spectatorList(room),
     });
   });
 
   app.get('/api/review', (req, res) => {
-    const context = resolveRoomMember(req, res, deps);
-    if (context === null) {
+    const viewer = resolveViewer(req, res, deps);
+    if (viewer === null) {
       return;
     }
-    const { room } = context;
+    const { room } = viewer;
     if (room.state === null) {
       fail(res, 409, 'game_not_started', '对局尚未开始');
       return;
@@ -211,11 +304,15 @@ export function createApp(deps: AppDeps): Express {
   });
 
   app.post('/api/command', async (req, res) => {
-    const context = resolveRoomMember(req, res, deps);
-    if (context === null) {
+    const viewer = resolveViewer(req, res, deps);
+    if (viewer === null) {
       return;
     }
-    const { room, session } = context;
+    if (viewer.kind === 'spectator') {
+      fail(res, 403, 'spectator_readonly', '观战者只能观看，不能提交操作');
+      return;
+    }
+    const { room, session } = viewer;
     if (!commandLimiter(session.playerId, deps.clock.now())) {
       fail(res, 429, 'rate_limited', '操作过于频繁');
       return;
@@ -270,11 +367,15 @@ export function createApp(deps: AppDeps): Express {
   });
 
   app.post('/api/chat', async (req, res) => {
-    const context = resolveRoomMember(req, res, deps);
-    if (context === null) {
+    const viewer = resolveViewer(req, res, deps);
+    if (viewer === null) {
       return;
     }
-    const { room, session } = context;
+    if (viewer.kind === 'spectator') {
+      fail(res, 403, 'spectator_readonly', '观战者只能观看，不能发言');
+      return;
+    }
+    const { room, session } = viewer;
     if (!chatLimiter(session.playerId, deps.clock.now())) {
       fail(res, 429, 'rate_limited', '发言过于频繁');
       return;
@@ -345,11 +446,12 @@ export function createApp(deps: AppDeps): Express {
   });
 
   app.get('/api/chat', (req, res) => {
-    const context = resolveRoomMember(req, res, deps);
-    if (context === null) {
+    const viewer = resolveViewer(req, res, deps);
+    if (viewer === null) {
       return;
     }
-    const { room, session } = context;
+    const { room } = viewer;
+    const subjectId = viewerSubjectId(viewer);
     if (room.state === null) {
       fail(res, 409, 'game_not_started', '对局尚未开始');
       return;
@@ -367,13 +469,13 @@ export function createApp(deps: AppDeps): Express {
       (message) => message.channel === channel && message.id > since,
     );
     if (channel === 'faction') {
-      const membership = roomMembership(state, session.playerId);
+      const membership = roomMembership(state, subjectId);
       if (membership === null) {
         fail(res, 403, 'room_forbidden', '你不属于该阵营房');
         return;
       }
       messages = messages.filter((message) =>
-        canReadRoomMessage(state, session.playerId, message.eventSeq),
+        canReadRoomMessage(state, subjectId, message.eventSeq),
       );
     }
     res.json({
@@ -389,11 +491,11 @@ export function createApp(deps: AppDeps): Express {
   });
 
   app.post('/api/voice/token', async (req, res) => {
-    const context = resolveRoomMember(req, res, deps);
-    if (context === null) {
+    const viewer = resolveViewer(req, res, deps);
+    if (viewer === null) {
       return;
     }
-    const { room, session } = context;
+    const { room, session } = viewer;
     const voice = deps.voice ?? null;
     if (voice === null) {
       fail(res, 409, 'voice_disabled', '语音未启用（文字测试模式）');
@@ -411,6 +513,15 @@ export function createApp(deps: AppDeps): Express {
       fail(res, 429, 'rate_limited', '操作过于频繁');
       return;
     }
+    if (viewer.kind === 'spectator') {
+      // 观众只订阅不发布：token 本就不含发布权，也不进入玩家动态授权
+      const credentials = await voice.issueCredentials({
+        roomName: room.gameId,
+        playerId: viewer.spectator.spectatorId,
+      });
+      res.json({ ...credentials, permission: SPECTATOR_PERMISSION });
+      return;
+    }
     const permission = voicePermission(room.state, session.playerId);
     const credentials = await voice.issueCredentials({
       roomName: room.gameId,
@@ -420,11 +531,15 @@ export function createApp(deps: AppDeps): Express {
   });
 
   app.post('/api/voice/sync', async (req, res) => {
-    const context = resolveRoomMember(req, res, deps);
-    if (context === null) {
+    const viewer = resolveViewer(req, res, deps);
+    if (viewer === null) {
       return;
     }
-    const { room, session } = context;
+    if (viewer.kind === 'spectator') {
+      fail(res, 403, 'spectator_readonly', '观战者不需要同步发布权限');
+      return;
+    }
+    const { room, session } = viewer;
     const voice = deps.voice ?? null;
     if (voice === null) {
       fail(res, 409, 'voice_disabled', '语音未启用（文字测试模式）');
@@ -478,8 +593,17 @@ function fail(res: Response, status: number, code: string, message: string): voi
   res.status(status).json({ error: { code, message } });
 }
 
-function setSessionCookie(res: Response, deps: AppDeps, gameId: string, playerId: string): void {
-  const token = signSession({ gameId, playerId, issuedAt: deps.clock.now() }, deps.sessionSecret);
+function setSessionCookie(
+  res: Response,
+  deps: AppDeps,
+  gameId: string,
+  playerId: string,
+  kind?: 'spectator',
+): void {
+  const token = signSession(
+    { gameId, playerId, issuedAt: deps.clock.now(), ...(kind === 'spectator' ? { kind } : {}) },
+    deps.sessionSecret,
+  );
   res.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'strict',
@@ -528,6 +652,74 @@ function resolveRoomMember(
     return null;
   }
   return { room, session, member };
+}
+
+/** 会话解析：玩家或观战者（观战者以绑定玩家视角读取只读视图） */
+export type ViewerContext =
+  | { readonly kind: 'player'; readonly room: Room; readonly session: SessionPayload; readonly member: RoomMember }
+  | {
+      readonly kind: 'spectator';
+      readonly room: Room;
+      readonly session: SessionPayload;
+      readonly spectator: RoomSpectator;
+    };
+
+function resolveViewer(req: Request, res: Response, deps: AppDeps): ViewerContext | null {
+  const session = requireSession(req, res, deps);
+  if (session === null) {
+    return null;
+  }
+  const room = deps.registry.getByGameId(session.gameId);
+  if (room === null) {
+    fail(res, 404, 'room_not_found', '房间不存在或服务已重启');
+    return null;
+  }
+  if (session.kind === 'spectator') {
+    const spectator = room.spectators.find((item) => item.spectatorId === session.playerId);
+    if (spectator === undefined) {
+      fail(res, 403, 'not_member', '你不在该房间中');
+      return null;
+    }
+    return { kind: 'spectator', room, session, spectator };
+  }
+  const member = room.members.find((item) => item.playerId === session.playerId);
+  if (member === undefined) {
+    fail(res, 403, 'not_member', '你不在该房间中');
+    return null;
+  }
+  return { kind: 'player', room, session, member };
+}
+
+/** 观战者视角的读取主体（绑定玩家）；房间成员必然存在（加入时校验，玩家退出时清理） */
+function viewerSubjectId(viewer: ViewerContext): string {
+  return viewer.kind === 'player' ? viewer.member.playerId : viewer.spectator.bindPlayerId;
+}
+
+function spectatorList(room: Room): {
+  spectatorId: string;
+  nickname: string;
+  bindPlayerId: string;
+}[] {
+  return room.spectators.map((spectator) => ({
+    spectatorId: spectator.spectatorId,
+    nickname: spectator.nickname,
+    bindPlayerId: spectator.bindPlayerId,
+  }));
+}
+
+function spectatingMark(viewer: ViewerContext): {
+  spectatorId: string;
+  nickname: string;
+  bindPlayerId: string;
+} | null {
+  if (viewer.kind !== 'spectator') {
+    return null;
+  }
+  return {
+    spectatorId: viewer.spectator.spectatorId,
+    nickname: viewer.spectator.nickname,
+    bindPlayerId: viewer.spectator.bindPlayerId,
+  };
 }
 
 function lobbyView(

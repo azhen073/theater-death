@@ -7,6 +7,7 @@ import type {
   ViewResponse,
   VoicePermission,
   VoiceTokenResponse,
+  WatchCandidate,
 } from './types.ts';
 
 export class ApiError extends Error {
@@ -61,6 +62,26 @@ export const api = {
   },
   leaveRoom(code: string) {
     return request<{ left: boolean; dissolved: boolean }>('POST', `/api/rooms/${code}/leave`);
+  },
+  /** 观战入口：读取公开成员名单（选择绑定目标） */
+  roomMembers(code: string) {
+    return request<{
+      roomCode: string;
+      phase: 'lobby' | 'started';
+      requiredPlayers: number;
+      memberCount: number;
+      members: WatchCandidate[];
+    }>('GET', `/api/rooms/${code}/members`);
+  },
+  watchRoom(code: string, nickname: string, bindPlayerId: string) {
+    return request<{ roomCode: string; spectatorId: string; bindPlayerId: string }>(
+      'POST',
+      `/api/rooms/${code}/watch`,
+      { nickname, bindPlayerId },
+    );
+  },
+  leaveSpectate() {
+    return request<{ left: boolean }>('POST', '/api/spectate/leave');
   },
   startGame(code: string) {
     return request<{ started: boolean; dayNumber: number }>('POST', `/api/rooms/${code}/start`);

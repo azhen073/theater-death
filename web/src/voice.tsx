@@ -33,6 +33,8 @@ export function voiceReasonText(reason: VoicePermissionReason): string {
       return '投票期间全体禁麦';
     case 'not_your_turn':
       return '当前不是你的发言时间';
+    case 'spectator':
+      return '观战旁听：只听不说';
     case 'game_not_started':
       return '对局未开始';
     case 'game_ended':
@@ -85,6 +87,7 @@ class VoiceController {
   #room: Room | null = null;
   #retryCount = 0;
   #retryTimer: number | null = null;
+  #spectating = false;
   readonly #listeners = new Set<(state: VoiceUiState) => void>();
 
   subscribe(listener: (state: VoiceUiState) => void): () => void {
@@ -103,10 +106,11 @@ class VoiceController {
     }
   }
 
-  async join(): Promise<void> {
+  async join(spectating = false): Promise<void> {
     if (this.#room !== null || this.#state.connection === 'connecting') {
       return;
     }
+    this.#spectating = spectating;
     this.#set({ connection: 'connecting', error: null });
     try {
       const credentials = await api.voiceToken();
@@ -150,6 +154,10 @@ class VoiceController {
         });
       await room.connect(credentials.url, credentials.token);
       this.#set({ connection: 'connected', permission: credentials.permission });
+      if (this.#spectating) {
+        // 观众只订阅：不参与发布权同步，也不申请麦克风
+        return;
+      }
       const synced = await api.voiceSync();
       this.#set({ permission: synced.permission });
       await this.#refreshDevices();
@@ -163,6 +171,7 @@ class VoiceController {
   async leave(): Promise<void> {
     const room = this.#room;
     this.#teardown();
+    this.#spectating = false;
     this.#set({
       connection: 'idle',
       muted: false,
@@ -200,6 +209,9 @@ class VoiceController {
   }
 
   async #resync(): Promise<void> {
+    if (this.#spectating) {
+      return;
+    }
     try {
       const synced = await api.voiceSync();
       this.#set({ permission: synced.permission });
@@ -211,7 +223,7 @@ class VoiceController {
 
   async #applyPublish(): Promise<void> {
     const room = this.#room;
-    if (room === null) {
+    if (room === null || this.#spectating) {
       return;
     }
     const shouldPublish = this.#state.permission.canPublish && !this.#state.muted;
@@ -299,12 +311,17 @@ class VoiceController {
   }
 }
 
-export function VoicePanel(props: { enabled: boolean; permission: VoicePermission }) {
+export function VoicePanel(props: {
+  enabled: boolean;
+  permission: VoicePermission;
+  spectating?: boolean;
+}) {
   const controllerRef = useRef<VoiceController | null>(null);
   if (controllerRef.current === null) {
     controllerRef.current = new VoiceController();
   }
   const controller = controllerRef.current;
+  const spectating = props.spectating === true;
   const [state, setState] = useState<VoiceUiState>(() => controller.getState());
 
   useEffect(() => controller.subscribe(setState), [controller]);
@@ -339,22 +356,50 @@ export function VoicePanel(props: { enabled: boolean; permission: VoicePermissio
       <h3>语音</h3>
       {connection === 'idle' && (
         <>
-          <button type="button" onClick={() => void controller.join()}>
-            加入语音
+          <button type="button" onClick={() => void controller.join(spectating)}>
+            {spectating ? '旁听语音' : '加入语音'}
           </button>
-          <p className="muted">加入后可听所有发言；只有轮到你发言时才能开麦。</p>
+          <p className="muted">
+            {spectating
+              ? '观战旁听：只收听公共发言，不会开麦。'
+              : '加入后可听所有发言；只有轮到你发言时才能开麦。'}
+          </p>
         </>
       )}
-      {connection === 'connecting' && <p className="muted">正在连接语音…（浏览器会请求麦克风权限）</p>}
+      {connection === 'connecting' && (
+        <p className="muted">
+          {spectating ? '正在连接语音…' : '正在连接语音…（浏览器会请求麦克风权限）'}
+        </p>
+      )}
       {connection === 'error' && (
         <>
           <p className="error">语音连接失败：{error}（可继续使用文字）</p>
-          <button type="button" onClick={() => void controller.join()}>
+          <button type="button" onClick={() => void controller.join(spectating)}>
             重试
           </button>
         </>
       )}
-      {joined && (
+      {joined && spectating && (
+        <>
+          <p>
+            <span className={connection === 'reconnecting' ? 'conn warn' : 'conn on'}>
+              {connection === 'reconnecting' ? '语音重连中…' : '语音已连接'}
+            </span>
+          </p>
+          <p className="muted">观战旁听中：只听不说，不会开麦。</p>
+          {audioBlocked && (
+            <button type="button" onClick={() => void controller.enableAudio()}>
+              点击启用声音（浏览器阻止了自动播放）
+            </button>
+          )}
+          <div className="voice-controls">
+            <button type="button" onClick={() => void controller.leave()}>
+              离开语音
+            </button>
+          </div>
+        </>
+      )}
+      {joined && !spectating && (
         <>
           <p>
             <span className={connection === 'reconnecting' ? 'conn warn' : 'conn on'}>

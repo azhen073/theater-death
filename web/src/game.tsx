@@ -31,6 +31,7 @@ interface GameScreenProps {
   readonly voicePermission: VoicePermission | null;
   onCommand(action: string, extra?: Record<string, unknown>): Promise<CommandReceipt>;
   onOpenReview(): void;
+  onLeaveSpectate(): void;
 }
 
 export function GameScreen(props: GameScreenProps) {
@@ -60,6 +61,7 @@ export function GameScreen(props: GameScreenProps) {
   }, [view.seats]);
 
   const ended = view.phase === 'ended';
+  const spectating = data.spectating;
 
   return (
     <div className="game">
@@ -85,7 +87,7 @@ export function GameScreen(props: GameScreenProps) {
           </div>
         </section>
         <section className="card identity">
-          <h3>你的身份</h3>
+          <h3>{spectating === null ? '你的身份' : '绑定玩家的身份'}</h3>
           <p>
             {labels.seat(view.self.seat)} {view.self.nickname} · {ROLE_NAMES[view.self.roleId]} ·{' '}
             {lifeText(view.self.life)}
@@ -115,7 +117,7 @@ export function GameScreen(props: GameScreenProps) {
           <EventList events={publicEvents} labels={labels} />
         </section>
         <section className="card">
-          <h3>仅你可见</h3>
+          <h3>{spectating === null ? '仅你可见' : '仅绑定玩家可见'}</h3>
           <EventList events={personalEvents} labels={labels} personal />
         </section>
       </div>
@@ -133,30 +135,44 @@ export function GameScreen(props: GameScreenProps) {
             ))}
           </div>
         </section>
-        {ended ? (
+        {ended && (
           <section className="card">
             <h3>对局结束</h3>
             <button type="button" className="primary" onClick={props.onOpenReview}>
               查看复盘
             </button>
           </section>
-        ) : (
-          <>
-            <ActionPanel
-              data={data}
-              labels={labels}
-              personalEvents={personalEvents}
-              onCommand={props.onCommand}
-            />
-            <VoicePanel
-              enabled={data.voice.enabled}
-              permission={props.voicePermission ?? data.voice.permission}
-            />
-          </>
+        )}
+        {!ended && spectating === null && (
+          <ActionPanel
+            data={data}
+            labels={labels}
+            personalEvents={personalEvents}
+            onCommand={props.onCommand}
+          />
+        )}
+        {spectating !== null && (
+          <section className="card">
+            <h3>观战</h3>
+            <p className="muted">
+              只读观战：视角跟随 {labels.player(spectating.bindPlayerId)}，不能操作或发言。
+            </p>
+            <button type="button" onClick={props.onLeaveSpectate}>
+              退出观战
+            </button>
+          </section>
+        )}
+        {!ended && (
+          <VoicePanel
+            enabled={data.voice.enabled}
+            permission={props.voicePermission ?? data.voice.permission}
+            spectating={spectating !== null}
+          />
         )}
         <ChatPanel
           room={view.room}
-          canPostPublic={view.phase === 'day' && view.self.life === 'alive'}
+          canPostPublic={spectating === null && view.phase === 'day' && view.self.life === 'alive'}
+          readOnly={spectating !== null}
           messages={messages}
           labels={labels}
         />
@@ -653,11 +669,13 @@ function ChatPanel({
   canPostPublic,
   messages,
   labels,
+  readOnly = false,
 }: {
   room: FactionRoomView | null;
   canPostPublic: boolean;
   messages: readonly ChatMessage[];
   labels: EventLabels;
+  readOnly?: boolean;
 }) {
   const [tab, setTab] = useState<'public' | 'faction'>('public');
   const [text, setText] = useState('');
@@ -672,7 +690,11 @@ function ChatPanel({
   }, [hasRoom]);
 
   const visible = messages.filter((message) => message.channel === tab);
-  const canWrite = tab === 'public' ? canPostPublic : (room?.canWrite ?? false);
+  const canWrite = readOnly
+    ? false
+    : tab === 'public'
+      ? canPostPublic
+      : (room?.canWrite ?? false);
 
   const send = async () => {
     const trimmed = text.trim();
@@ -725,7 +747,7 @@ function ChatPanel({
         <input
           value={text}
           maxLength={500}
-          placeholder={canWrite ? '输入消息…' : '当前不可发言'}
+          placeholder={readOnly ? '观战只读' : canWrite ? '输入消息…' : '当前不可发言'}
           disabled={!canWrite || busy}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {

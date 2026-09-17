@@ -125,6 +125,7 @@ export type VoicePermissionReason =
   | 'night_silence'
   | 'vote_silence'
   | 'not_your_turn'
+  | 'spectator'
   | 'game_not_started'
   | 'game_ended';
 
@@ -154,6 +155,32 @@ export interface GameViewResponse {
   readonly hints: GameHints;
   readonly windows: readonly LiveWindow[];
   readonly serverTime: number;
+  /** 非空表示当前会话是观战者：只读，视角跟随 bindPlayerId */
+  readonly spectating: SpectatingMark | null;
+  readonly spectators: readonly SpectatorPublic[];
+}
+
+/** 观战标记（当前会话为观战者时非空） */
+export interface SpectatingMark {
+  readonly spectatorId: string;
+  readonly nickname: string;
+  readonly bindPlayerId: string;
+}
+
+/** 观战席名单（公开） */
+export interface SpectatorPublic {
+  readonly spectatorId: string;
+  readonly nickname: string;
+  readonly bindPlayerId: string;
+}
+
+/** 观战入口的公开候选玩家（昵称/座位/存活均为公开信息） */
+export interface WatchCandidate {
+  readonly playerId: string;
+  readonly nickname: string;
+  readonly seat: number | null;
+  readonly alive: boolean | null;
+  readonly watched: boolean;
 }
 
 export interface LobbyMember {
@@ -179,6 +206,9 @@ export interface LobbyView {
     readonly isHost: boolean;
   };
   readonly members: readonly LobbyMember[];
+  /** 非空表示当前会话是观战者：只读，视角跟随 bindPlayerId */
+  readonly spectating: SpectatingMark | null;
+  readonly spectators: readonly SpectatorPublic[];
 }
 
 export type ViewResponse = LobbyView | GameViewResponse;
