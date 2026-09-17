@@ -225,6 +225,18 @@ input {
   border-radius: 6px;
 }
 
+.members li button.small {
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.members li.spectator-row {
+  background: transparent;
+  padding: 0 8px 0 24px;
+  font-size: 12px;
+}
+
 .tag {
   font-size: 11px;
   padding: 1px 6px;

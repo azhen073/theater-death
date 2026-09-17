@@ -63,6 +63,17 @@ export const api = {
   leaveRoom(code: string) {
     return request<{ left: boolean; dissolved: boolean }>('POST', `/api/rooms/${code}/leave`);
   },
+  /** 房主移出成员（仅未开局）或观战者（不限阶段） */
+  kickMember(code: string, targetPlayerId: string) {
+    return request<{ kicked: boolean; kind: 'player' }>('POST', `/api/rooms/${code}/kick`, {
+      targetPlayerId,
+    });
+  },
+  kickSpectator(code: string, targetSpectatorId: string) {
+    return request<{ kicked: boolean; kind: 'spectator' }>('POST', `/api/rooms/${code}/kick`, {
+      targetSpectatorId,
+    });
+  },
   /** 观战入口：读取公开成员名单（选择绑定目标） */
   roomMembers(code: string) {
     return request<{

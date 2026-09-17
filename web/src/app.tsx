@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError, connectSocket } from './api.ts';
 import { FACTION_NAMES, phaseLabel, ROLE_FACTIONS, ROLE_NAMES } from './format.ts';
 import { GameScreen } from './game.tsx';
@@ -73,7 +73,10 @@ export function App() {
         setSession({ kind: 'lobby', lobby: response });
       }
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 404)) {
+      if (
+        error instanceof ApiError &&
+        (error.status === 401 || error.status === 404 || error.code === 'not_member')
+      ) {
         setSession({ kind: 'entry' });
         setMessage(error.message);
         return;
@@ -429,15 +432,59 @@ function LobbyScreen({
         把房间码发给同伴；满 {lobby.requiredPlayers} 人且全部准备后，由房主开始对局。
       </p>
       <ul className="members">
-        {lobby.members.map((member) => (
-          <li key={member.playerId}>
-            <span>{member.nickname}</span>
-            {member.isHost && <span className="tag">房主</span>}
-            <span className={member.ready ? 'tag ok' : 'tag'}>
-              {member.ready ? '已准备' : '未准备'}
-            </span>
-          </li>
-        ))}
+        {lobby.members.map((member) => {
+          const watchers = lobby.spectators.filter(
+            (item) => item.bindPlayerId === member.playerId,
+          );
+          const canKick =
+            spectating === null && lobby.you.isHost && member.playerId !== lobby.you.playerId;
+          return (
+            <Fragment key={member.playerId}>
+              <li>
+                <span>{member.nickname}</span>
+                {member.isHost && <span className="tag">房主</span>}
+                <span className={member.ready ? 'tag ok' : 'tag'}>
+                  {member.ready ? '已准备' : '未准备'}
+                </span>
+                {canKick && (
+                  <button
+                    type="button"
+                    className="small"
+                    disabled={busy}
+                    onClick={() => {
+                      if (!window.confirm(`确定将 ${member.nickname} 移出房间？`)) {
+                        return;
+                      }
+                      void run(() => api.kickMember(lobby.roomCode, member.playerId));
+                    }}
+                  >
+                    移出
+                  </button>
+                )}
+              </li>
+              {watchers.map((watcher) => (
+                <li className="spectator-row" key={watcher.spectatorId}>
+                  <span className="muted">观战：{watcher.nickname}</span>
+                  {canKick && (
+                    <button
+                      type="button"
+                      className="small"
+                      disabled={busy}
+                      onClick={() => {
+                        if (!window.confirm(`确定将观战者 ${watcher.nickname} 移出？`)) {
+                          return;
+                        }
+                        void run(() => api.kickSpectator(lobby.roomCode, watcher.spectatorId));
+                      }}
+                    >
+                      移出
+                    </button>
+                  )}
+                </li>
+              ))}
+            </Fragment>
+          );
+        })}
       </ul>
       <div className="row">
         {spectating !== null ? (

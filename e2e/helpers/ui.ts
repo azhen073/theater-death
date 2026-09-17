@@ -13,6 +13,15 @@ export async function joinLobbyViaUi(
   await page.getByRole('button', { name: '准备', exact: true }).waitFor({ timeout: 15_000 });
 }
 
+/** 入口页：昵称 → 创建房间，返回房间码。 */
+export async function createRoomViaUi(page: Page, nickname: string): Promise<string> {
+  await page.goto(ENV.baseUrl);
+  await page.locator('input[placeholder*="字符"]').fill(nickname);
+  await page.getByRole('button', { name: '创建房间' }).click();
+  await page.getByRole('button', { name: '准备', exact: true }).waitFor({ timeout: 15_000 });
+  return (await page.locator('.code').first().innerText()).trim();
+}
+
 /** 大厅：准备（并以「取消准备」出现确认）。 */
 export async function readyViaUi(page: Page): Promise<void> {
   await page.getByRole('button', { name: '准备', exact: true }).click();
