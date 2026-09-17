@@ -221,6 +221,51 @@ export function createApp(deps: AppDeps): Express {
     res.json({ left: true, dissolved: result.dissolved });
   });
 
+  /** 房主移出成员（仅未开局）或观战者（不限阶段）；被移出者会话由成员校验自然失效 */
+  app.post('/api/rooms/:code/kick', (req, res) => {
+    const context = resolveRoomMember(req, res, deps);
+    if (context === null) {
+      return;
+    }
+    const { room, member } = context;
+    if (room.code !== String(req.params.code ?? '').toUpperCase()) {
+      fail(res, 404, 'room_not_found', '房间码与会话不一致');
+      return;
+    }
+    if (member.playerId !== room.hostPlayerId) {
+      fail(res, 403, 'not_host', '只有房主可以移出成员');
+      return;
+    }
+    const body = (req.body ?? {}) as { targetPlayerId?: unknown; targetSpectatorId?: unknown };
+    const targetPlayerId = typeof body.targetPlayerId === 'string' ? body.targetPlayerId : null;
+    const targetSpectatorId =
+      typeof body.targetSpectatorId === 'string' ? body.targetSpectatorId : null;
+    if ((targetPlayerId === null) === (targetSpectatorId === null)) {
+      fail(res, 400, 'invalid_target', '需要且只能指定一名目标（玩家或观战者）');
+      return;
+    }
+    if (targetPlayerId !== null) {
+      const result = deps.registry.kickMember(room, targetPlayerId);
+      if (!result.ok) {
+        fail(res, result.status, result.code, result.message);
+        return;
+      }
+      res.json({ kicked: true, kind: 'player' });
+      return;
+    }
+    if (targetSpectatorId === null) {
+      fail(res, 400, 'invalid_target', '需要且只能指定一名目标（玩家或观战者）');
+      return;
+    }
+    const result = deps.registry.kickSpectator(room, targetSpectatorId);
+    if (!result.ok) {
+      fail(res, result.status, result.code, result.message);
+      return;
+    }
+    removeVoiceViewer(deps, room.gameId, targetSpectatorId);
+    res.json({ kicked: true, kind: 'spectator' });
+  });
+
   /** 观众退出观战（对局中也可退出，不影响对局） */
   app.post('/api/spectate/leave', (req, res) => {
     const session = requireSession(req, res, deps);
@@ -235,6 +280,7 @@ export function createApp(deps: AppDeps): Express {
     if (room !== null) {
       deps.registry.removeSpectator(room, session.playerId);
     }
+    removeVoiceViewer(deps, session.gameId, session.playerId);
     clearSessionCookie(res, deps);
     res.json({ left: true });
   });
@@ -251,7 +297,7 @@ export function createApp(deps: AppDeps): Express {
     if (room.state === null) {
       const subject = room.members.find((item) => item.playerId === subjectId);
       if (subject === undefined) {
-        fail(res, 403, 'not_member', '你不在该房间中');
+        fail(res, 403, 'not_member', '你已不在该房间中');
         return;
       }
       res.json({ ...lobbyView(room, subject, voiceEnabled), spectating, spectators: spectatorList(room) });
@@ -613,6 +659,17 @@ function setSessionCookie(
   });
 }
 
+/** 观战者离开观战（被移出或主动退出）时移除其媒体参与者；失败只记日志，不影响业务结果 */
+function removeVoiceViewer(deps: AppDeps, gameId: string, spectatorId: string): void {
+  const voice = deps.voice ?? null;
+  if (voice === null) {
+    return;
+  }
+  void voice.removeParticipant(gameId, spectatorId).catch((error: unknown) => {
+    console.warn(`[theater-death] 移除语音参与者失败：${String(error)}`);
+  });
+}
+
 function clearSessionCookie(res: Response, deps: AppDeps): void {
   res.clearCookie(SESSION_COOKIE_NAME, {
     httpOnly: true,
@@ -648,7 +705,7 @@ function resolveRoomMember(
   }
   const member = room.members.find((item) => item.playerId === session.playerId);
   if (member === undefined) {
-    fail(res, 403, 'not_member', '你不在该房间中');
+    fail(res, 403, 'not_member', '你已不在该房间中');
     return null;
   }
   return { room, session, member };
@@ -677,14 +734,14 @@ function resolveViewer(req: Request, res: Response, deps: AppDeps): ViewerContex
   if (session.kind === 'spectator') {
     const spectator = room.spectators.find((item) => item.spectatorId === session.playerId);
     if (spectator === undefined) {
-      fail(res, 403, 'not_member', '你不在该房间中');
+      fail(res, 403, 'not_member', '你已不在该房间中');
       return null;
     }
     return { kind: 'spectator', room, session, spectator };
   }
   const member = room.members.find((item) => item.playerId === session.playerId);
   if (member === undefined) {
-    fail(res, 403, 'not_member', '你不在该房间中');
+    fail(res, 403, 'not_member', '你已不在该房间中');
     return null;
   }
   return { kind: 'player', room, session, member };

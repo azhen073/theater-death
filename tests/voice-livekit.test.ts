@@ -47,6 +47,7 @@ describe('LiveKit VoiceAdapter', () => {
           updates.push({ identity, canPublish: options.permission?.canPublish ?? false });
           return {};
         },
+        removeParticipant: async () => undefined,
         deleteRoom: async () => undefined,
       },
     });
@@ -73,6 +74,7 @@ describe('LiveKit VoiceAdapter', () => {
         updateParticipant: async () => {
           throw new Error('不应被调用');
         },
+        removeParticipant: async () => undefined,
         deleteRoom: async () => undefined,
       },
     });
@@ -90,6 +92,7 @@ describe('LiveKit VoiceAdapter', () => {
       roomClient: {
         listParticipants: async () => [],
         updateParticipant: async () => ({}),
+        removeParticipant: async () => undefined,
         deleteRoom: async () => {
           throw new Error('404 not found');
         },
@@ -105,11 +108,65 @@ describe('LiveKit VoiceAdapter', () => {
       roomClient: {
         listParticipants: async () => [],
         updateParticipant: async () => ({}),
+        removeParticipant: async () => undefined,
         deleteRoom: async () => {
           throw new Error('connection refused');
         },
       },
     });
     await expect(failing.closeRoom('g_test')).rejects.toThrow('connection refused');
+  });
+
+  it('removeParticipant：调用媒体服务；参与者不存在时静默；其他错误照常抛出', async () => {
+    const calls: Array<{ room: string; identity: string }> = [];
+    const ok = createLiveKitVoiceService({
+      adminUrl: 'http://livekit:7880',
+      publicUrl: 'wss://voice.example.test',
+      apiKey: 'key123',
+      apiSecret: 'secret456',
+      roomClient: {
+        listParticipants: async () => [],
+        updateParticipant: async () => ({}),
+        removeParticipant: async (room, identity) => {
+          calls.push({ room, identity });
+          return {};
+        },
+        deleteRoom: async () => undefined,
+      },
+    });
+    await expect(ok.removeParticipant('g_test', 's_1')).resolves.toBeUndefined();
+    expect(calls).toEqual([{ room: 'g_test', identity: 's_1' }]);
+
+    const silent = createLiveKitVoiceService({
+      adminUrl: 'http://livekit:7880',
+      publicUrl: 'wss://voice.example.test',
+      apiKey: 'key123',
+      apiSecret: 'secret456',
+      roomClient: {
+        listParticipants: async () => [],
+        updateParticipant: async () => ({}),
+        removeParticipant: async () => {
+          throw Object.assign(new Error('participant not found'), { code: 'not_found' });
+        },
+        deleteRoom: async () => undefined,
+      },
+    });
+    await expect(silent.removeParticipant('g_test', 's_missing')).resolves.toBeUndefined();
+
+    const failing = createLiveKitVoiceService({
+      adminUrl: 'http://livekit:7880',
+      publicUrl: 'wss://voice.example.test',
+      apiKey: 'key123',
+      apiSecret: 'secret456',
+      roomClient: {
+        listParticipants: async () => [],
+        updateParticipant: async () => ({}),
+        removeParticipant: async () => {
+          throw new Error('connection refused');
+        },
+        deleteRoom: async () => undefined,
+      },
+    });
+    await expect(failing.removeParticipant('g_test', 's_1')).rejects.toThrow('connection refused');
   });
 });

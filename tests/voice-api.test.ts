@@ -14,6 +14,7 @@ function createFakeVoice() {
   const issued: Array<{ roomName: string; playerId: string }> = [];
   const syncs: Array<{ roomName: string; permissions: ReadonlyMap<string, boolean> }> = [];
   const closed: string[] = [];
+  const removed: Array<{ roomName: string; identity: string }> = [];
   const service: VoiceService = {
     async issueCredentials({ roomName, playerId }) {
       issued.push({ roomName, playerId });
@@ -25,8 +26,11 @@ function createFakeVoice() {
     async closeRoom(roomName) {
       closed.push(roomName);
     },
+    async removeParticipant(roomName, identity) {
+      removed.push({ roomName, identity });
+    },
   };
-  return { service, issued, syncs, closed };
+  return { service, issued, syncs, closed, removed };
 }
 
 function errorCode(response: { json: Record<string, unknown> }): unknown {

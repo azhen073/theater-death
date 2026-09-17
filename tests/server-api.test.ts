@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEATER_DEATH_13 } from '../rulesets/theater-death-13.ts';
+import type { VoiceService } from '../voice/livekit.ts';
 import {
   clientForRole,
   getJson,
@@ -7,8 +8,28 @@ import {
   setupLobby,
   setupStartedGame,
   startTestServer,
+  waitFor,
   type Client,
 } from './server-test-utils.ts';
+
+function createFakeVoice() {
+  const removed: Array<{ roomName: string; identity: string }> = [];
+  const service: VoiceService = {
+    async issueCredentials({ roomName, playerId }) {
+      return { url: 'wss://voice.test', token: `token-${playerId}`, roomName };
+    },
+    async syncRoom() {
+      return;
+    },
+    async closeRoom() {
+      return;
+    },
+    async removeParticipant(roomName, identity) {
+      removed.push({ roomName, identity });
+    },
+  };
+  return { service, removed };
+}
 
 describe('HTTP：房间与开局', () => {
   it('创建房间、加入与满员限制', async () => {
@@ -462,5 +483,204 @@ describe('HTTP：离开与解散房间', () => {
     const leave = await postJson(context, `/api/rooms/${roomCode}/leave`, {}, clients[0].cookie);
     expect(leave.status).toBe(409);
     expect((leave.json.error as Record<string, unknown>).code).toBe('game_started');
+  });
+});
+
+describe('HTTP：房主踢人', () => {
+  it('房主移出成员：席位释放、被移出者会话失效且可重新加入', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+    const target = lobby.clients[12];
+
+    const kicked = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      { targetPlayerId: target.playerId },
+      lobby.hostClient.cookie,
+    );
+    expect(kicked.status).toBe(200);
+    expect(kicked.json.kind).toBe('player');
+
+    const hostView = await getJson(context, '/api/view', lobby.hostClient.cookie);
+    expect((hostView.json.members as unknown[]).length).toBe(12);
+
+    const targetView = await getJson(context, '/api/view', target.cookie);
+    expect(targetView.status).toBe(403);
+    expect((targetView.json.error as Record<string, unknown>).code).toBe('not_member');
+
+    const rejoined = await postJson(context, `/api/rooms/${lobby.roomCode}/join`, {
+      nickname: '又回来了',
+    });
+    expect(rejoined.status).toBe(201);
+  });
+
+  it('非房主移出成员被拒绝', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+    const denied = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      { targetPlayerId: lobby.clients[12].playerId },
+      lobby.clients[1].cookie,
+    );
+    expect(denied.status).toBe(403);
+    expect((denied.json.error as Record<string, unknown>).code).toBe('not_host');
+  });
+
+  it('房主不能移出自己', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+    const denied = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      { targetPlayerId: lobby.hostClient.playerId },
+      lobby.hostClient.cookie,
+    );
+    expect(denied.status).toBe(409);
+    expect((denied.json.error as Record<string, unknown>).code).toBe('cannot_kick_self');
+  });
+
+  it('对局开始后不能移出成员', async () => {
+    const context = await startTestServer();
+    const { roomCode, clients, hostClient } = await setupStartedGame(context);
+    const denied = await postJson(
+      context,
+      `/api/rooms/${roomCode}/kick`,
+      { targetPlayerId: clients[12].playerId },
+      hostClient.cookie,
+    );
+    expect(denied.status).toBe(409);
+    expect((denied.json.error as Record<string, unknown>).code).toBe('game_started');
+  });
+
+  it('移出成员时其观战者连带被移除', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+    const target = lobby.clients[12];
+    const watched = await postJson(context, `/api/rooms/${lobby.roomCode}/watch`, {
+      nickname: '看客',
+      bindPlayerId: target.playerId,
+    });
+    expect(watched.status).toBe(201);
+    const spectatorCookie = watched.cookie ?? '';
+
+    const kicked = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      { targetPlayerId: target.playerId },
+      lobby.hostClient.cookie,
+    );
+    expect(kicked.status).toBe(200);
+
+    const spectatorView = await getJson(context, '/api/view', spectatorCookie);
+    expect(spectatorView.status).toBe(403);
+  });
+
+  it('房主可单独移出观战者（对局中也可）；被绑定玩家视图的观战名单清空', async () => {
+    const context = await startTestServer();
+    const { roomCode, clients, hostClient } = await setupStartedGame(context);
+    const watched = await postJson(context, `/api/rooms/${roomCode}/watch`, {
+      nickname: '局中看客',
+      bindPlayerId: clients[5].playerId,
+    });
+    expect(watched.status).toBe(201);
+    const spectatorCookie = watched.cookie ?? '';
+    const spectatorId = watched.json.spectatorId as string;
+
+    const denied = await postJson(
+      context,
+      `/api/rooms/${roomCode}/kick`,
+      { targetSpectatorId: spectatorId },
+      clients[1].cookie,
+    );
+    expect(denied.status).toBe(403);
+
+    const kicked = await postJson(
+      context,
+      `/api/rooms/${roomCode}/kick`,
+      { targetSpectatorId: spectatorId },
+      hostClient.cookie,
+    );
+    expect(kicked.status).toBe(200);
+    expect(kicked.json.kind).toBe('spectator');
+
+    const spectatorView = await getJson(context, '/api/view', spectatorCookie);
+    expect(spectatorView.status).toBe(403);
+
+    const playerView = await getJson(context, '/api/view', clients[5].cookie);
+    expect((playerView.json.spectators as unknown[]).length).toBe(0);
+  });
+
+  it('目标校验：不存在 404；两个都缺或都给 400', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+    const notFound = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      { targetPlayerId: 'p_missing' },
+      lobby.hostClient.cookie,
+    );
+    expect(notFound.status).toBe(404);
+
+    const neither = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      {},
+      lobby.hostClient.cookie,
+    );
+    expect(neither.status).toBe(400);
+
+    const both = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      { targetPlayerId: lobby.clients[1].playerId, targetSpectatorId: 's_missing' },
+      lobby.hostClient.cookie,
+    );
+    expect(both.status).toBe(400);
+  });
+});
+
+describe('HTTP：踢观战者与语音参与者清理', () => {
+  it('房主移出观战者时调用 removeParticipant（房间名 = gameId）', async () => {
+    const fakeVoice = createFakeVoice();
+    const context = await startTestServer({ voice: fakeVoice.service });
+    const lobby = await setupLobby(context);
+    const hostView = await getJson(context, '/api/view', lobby.hostClient.cookie);
+    const gameId = hostView.json.gameId as string;
+
+    const watched = await postJson(context, `/api/rooms/${lobby.roomCode}/watch`, {
+      nickname: '语音看客',
+      bindPlayerId: lobby.clients[1].playerId,
+    });
+    expect(watched.status).toBe(201);
+    const spectatorId = watched.json.spectatorId as string;
+
+    const kicked = await postJson(
+      context,
+      `/api/rooms/${lobby.roomCode}/kick`,
+      { targetSpectatorId: spectatorId },
+      lobby.hostClient.cookie,
+    );
+    expect(kicked.status).toBe(200);
+    await waitFor(() => fakeVoice.removed.length === 1);
+    expect(fakeVoice.removed).toEqual([{ roomName: gameId, identity: spectatorId }]);
+  });
+
+  it('观战者主动退出观战时同样移除媒体参与者', async () => {
+    const fakeVoice = createFakeVoice();
+    const context = await startTestServer({ voice: fakeVoice.service });
+    const lobby = await setupLobby(context);
+    const watched = await postJson(context, `/api/rooms/${lobby.roomCode}/watch`, {
+      nickname: '主动退出的看客',
+      bindPlayerId: lobby.clients[1].playerId,
+    });
+    expect(watched.status).toBe(201);
+    const spectatorId = watched.json.spectatorId as string;
+    const spectatorCookie = watched.cookie ?? '';
+
+    const left = await postJson(context, '/api/spectate/leave', {}, spectatorCookie);
+    expect(left.status).toBe(200);
+    await waitFor(() => fakeVoice.removed.length === 1);
+    expect(fakeVoice.removed[0]?.identity).toBe(spectatorId);
   });
 });

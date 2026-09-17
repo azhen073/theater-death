@@ -15,6 +15,7 @@ import {
 
 function createFakeVoice() {
   const issued: Array<{ roomName: string; playerId: string }> = [];
+  const removed: Array<{ roomName: string; identity: string }> = [];
   const service: VoiceService = {
     async issueCredentials({ roomName, playerId }) {
       issued.push({ roomName, playerId });
@@ -26,8 +27,11 @@ function createFakeVoice() {
     async closeRoom() {
       return;
     },
+    async removeParticipant(roomName, identity) {
+      removed.push({ roomName, identity });
+    },
   };
-  return { service, issued };
+  return { service, issued, removed };
 }
 
 function errorCode(response: { json: Record<string, unknown> }): unknown {

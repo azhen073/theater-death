@@ -17,6 +17,8 @@ export interface VoiceService {
   }): Promise<void>;
   /** 对局结束 / 房间销毁时关闭媒体房间 */
   closeRoom(roomName: string): Promise<void>;
+  /** 移除单个媒体参与者（观战者被移出/主动退出时）；不存在视为无事可做 */
+  removeParticipant(roomName: string, identity: string): Promise<void>;
 }
 
 type RoomClient = {
@@ -28,6 +30,7 @@ type RoomClient = {
       permission?: { canPublish?: boolean; canSubscribe?: boolean; canPublishData?: boolean };
     },
   ): Promise<unknown>;
+  removeParticipant(room: string, identity: string): Promise<unknown>;
   deleteRoom(room: string): Promise<void>;
 };
 
@@ -102,6 +105,16 @@ export function createLiveKitVoiceService(options: LiveKitVoiceOptions): VoiceSe
     async closeRoom(roomName) {
       try {
         await roomClient.deleteRoom(roomName);
+      } catch (error) {
+        if (!isNotFound(error)) {
+          throw error;
+        }
+      }
+    },
+
+    async removeParticipant(roomName, identity) {
+      try {
+        await roomClient.removeParticipant(roomName, identity);
       } catch (error) {
         if (!isNotFound(error)) {
           throw error;

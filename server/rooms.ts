@@ -57,6 +57,15 @@ export type LeaveResult =
       readonly message: string;
     };
 
+export type KickResult =
+  | { readonly ok: true }
+  | {
+      readonly ok: false;
+      readonly status: number;
+      readonly code: string;
+      readonly message: string;
+    };
+
 export type WatchResult =
   | { readonly ok: true; readonly room: Room; readonly spectator: RoomSpectator }
   | {
@@ -210,12 +219,50 @@ export class RoomRegistry {
     if (index === -1) {
       return { ok: false, status: 404, code: 'not_a_member', message: '你不在这个房间里' };
     }
-    room.members.splice(index, 1);
+    this.#removeMemberWithSpectator(room, playerId);
+    return { ok: true, dissolved: false };
+  }
+
+  /** 房主移出成员：仅未开局可用；被移出者释放席位、可重新加入（踢人 = 清位，不做拉黑） */
+  kickMember(room: Room, targetPlayerId: string): KickResult {
+    if (room.state !== null) {
+      return { ok: false, status: 409, code: 'game_started', message: '对局已经开始，不能移出成员' };
+    }
+    if (targetPlayerId === room.hostPlayerId) {
+      return {
+        ok: false,
+        status: 409,
+        code: 'cannot_kick_self',
+        message: '房主不能移出自己；如要结束请解散房间',
+      };
+    }
+    const index = room.members.findIndex((item) => item.playerId === targetPlayerId);
+    if (index === -1) {
+      return { ok: false, status: 404, code: 'not_a_member', message: '目标不在房间成员中' };
+    }
+    this.#removeMemberWithSpectator(room, targetPlayerId);
+    return { ok: true };
+  }
+
+  /** 房主移出观战者：不限阶段（观战不影响对局），其绑定的玩家不受影响 */
+  kickSpectator(room: Room, spectatorId: string): KickResult {
+    const index = room.spectators.findIndex((item) => item.spectatorId === spectatorId);
+    if (index === -1) {
+      return { ok: false, status: 404, code: 'not_a_spectator', message: '目标不在观战名单中' };
+    }
+    room.spectators.splice(index, 1);
+    return { ok: true };
+  }
+
+  #removeMemberWithSpectator(room: Room, playerId: string): void {
+    const index = room.members.findIndex((item) => item.playerId === playerId);
+    if (index !== -1) {
+      room.members.splice(index, 1);
+    }
     const spectatorIndex = room.spectators.findIndex((item) => item.bindPlayerId === playerId);
     if (spectatorIndex !== -1) {
       room.spectators.splice(spectatorIndex, 1);
     }
-    return { ok: true, dissolved: false };
   }
 
   startGame(room: Room): GameState {
