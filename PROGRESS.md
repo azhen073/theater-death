@@ -13,6 +13,7 @@
 | M4 语音与部署 | ✅ | **全部完成**：M4a 规则收尾 · M4b 语音（发布竞态修复 + 服务器实机双设备验收）· M4c 部署（服务器上线 + Tunnel + CI 镜像 + 退出/解散）· M4d E2E 验收（14/14，含容量；发现并修复白天驱动崩溃）· **M4e 收官报告**（`M4_ACCEPTANCE_REPORT.md`，§15 格式） |
 | 观战（v1.2 增补） | ✅ | 绑定玩家只读第二屏：入口选择目标、只读大厅/对局、语音旁听、终局复盘同权；194 单测 + E2E 16/16 |
 | 房主踢人（v1.3 增补） | ✅ | 大厅期移出成员（清位、可重进）、移出观战者（不限阶段、连带语音参与者移除）；204 单测 + E2E 18/18 |
+| 板子编辑器（v1.4 增补） | ✅ | 入口页「自定义板子…」：只改角色数量、实时校验（复用服务端校验器）、强制实验模式；204 单测 + E2E 09 增量通过 |
 
 ## 接续指引（compact 后先读这里）
 
@@ -294,6 +295,12 @@ theater_death/
 - **前端**：大厅成员行（房主、非自己）「移出」+ `window.confirm`；成员行下缩进列出观战者（数据已在 `lobby.spectators`），房主可单独移出；`loadView` 错误处理扩展——`not_member`（含 403）同样回入口页并显示服务器消息（原先只处理 401/404，被移出者会卡在旧界面）
 - **测试**：`tests/server-api.test.ts` 踢人 7 例 + 语音移除 2 例、`tests/voice-livekit.test.ts` removeParticipant 1 例；E2E `08-kick.spec.ts` 2 例（踢成员→对方回入口→重进；踢观战者）；**204 单测 + E2E 18/18**
 
+### 实验模式板子编辑器 ✅ 完成（2026-09-17，需求 v1.4 增补）
+
+- **产品模型（阿真拍板）**：入口页「自定义板子…」编辑器，**只改角色数量**（其余参数固定默认板）、不本地保存、每次重编；已建房的板子照旧落服务器数据库
+- **实现**：`web/src/board-editor.tsx`（分组 ± 调节、分组小计与总人数、实时校验、恢复默认、昵称内嵌）；创建时 mode 强制 experimental + version 'custom'；**直接复用 `rulesets/validate.ts` 与 `THEATER_DEATH_13`**（前端与服务器同一份校验逻辑；vite root 外引用 OK，dev 需 `server.fs.allow: ['..']`）；`api.createRoom` 加可选 ruleset；服务端零改动；神职/科研员/死神/丧亲者 UI 硬限 1
+- **测试**：E2E `09-board-editor.spec.ts` 1 例通过（默认 13→改 10→制造非法看错误与禁用→恢复→创建→大厅横幅与"满 10 人"）；单测 204 不变；**全量 E2E 未跑**（阿真新测试策略：默认增量，全量等指令）
+
 ## 提醒事项（踩坑记录）
 
 - `NODE_ENV=production` 会跳过 devDependencies → Dockerfile 用 `npm ci --include=dev`
@@ -323,6 +330,8 @@ theater_death/
 - **Playwright 点击必须带超时（观战任务教训，2026-09-17）**：E2E 快语速板下视图 2.5s 轮询，按旧视图点已消失的按钮时 `.click()` 默认等 30s；12 上下文用例每轮若命中数次，240s 主循环被拖成 13 分钟并超时。驱动点击统一 `{ timeout: 3000 }` + 外层 catch 跳过（`actFollowing`）
 - **观战（v1.2）设计要点**：观众是"绑定玩家的只读第二屏"（信任模型——可见绑定玩家全部信息）；1:1 双向绑定（每玩家最多一名观众）；所有写操作在 HTTP 层 403 `spectator_readonly`；观众计入 LiveKit 计量；同浏览器"玩+看"互斥（单会话 cookie，观战需无痕/另一设备）；换绑 = 退出观战重进
 - **踢人（v1.3）设计要点**：踢人 = 清位（被移出者释放席位、可立即重新加入，无黑名单/冷却——朋友局信任模型）；仅大厅期可移出成员，观战者不限阶段；被移除者的清理路径 = 无状态会话无法吊销 → membership 校验 403 `not_member` + 前端 `loadView` 回入口页（新增"被动移除/被动失效"场景必须走这条路径，不要只改服务端）
+- **测试策略（阿真要求，2026-09-17，翻车后反思）**：默认只跑**增量测试**（相关单测文件 + 相关 E2E spec）；**全量回归只在阿真明确要求时跑**，不要"顺手"跑全量——测试慢、阿真等待成本高；构建 app 镜像时 Docker 构建链内部跑全部单测属于构建必要部分；汇报如实写明跑了哪些、没跑哪些
+- **板子编辑器（v1.4）设计要点**：前端直接引根目录 `rulesets/*`（同一份校验器与默认板，不漂移）；vite `root: 'web'` 下需 `server.fs.allow: ['..']`（dev）；build 无限制；改板只改 `roles` 计数，其余沿用默认板；`mode` 恒为 experimental（大厅横幅自动出现）
 - **compose 的 sh 条件传参**：字符串形式 `command` 会被 split 成参数数组（不经 shell）→ 必须用数组形式 `command: ["exec ... $${VAR:+--node-ip $${VAR}}"]` + `entrypoint: ["/bin/sh","-c"]`；且 **`$${VAR:+...}` 读的是容器内环境变量**，compose 变量必须显式注入 `environment`（`LIVEKIT_NODE_IP: "${LIVEKIT_NODE_IP:-}"`）
 - LiveKit 1.9.7 无 `--rtc.use-external-ip` 类 CLI flag（只认配置文件）；`--node-ip ""` 空串报 `flag needs an argument`
 - **LiveKit 发布权限竞态（M4b 实机验收抓获 + 已修）**：服务端广播 `voice_permission`（Socket.IO，即时）与同步媒体权限（LiveKit admin API，异步）并行，前端在权限于媒体服务落地前调用 `setMicrophoneEnabled(true)` 会被拒（`insufficient permissions to publish`），且旧版把错误静默吞掉 → 表现为"连接正常但谁都没声音、云端 `tracks: []`"。修复：失败自动重试（≤8 次 × 800ms）+ 监听 `RoomEvent.ParticipantPermissionsChanged`（注意签名 `(prevPermissions, participant)`、属性是 `participant.permissions` 复数）触发重发
