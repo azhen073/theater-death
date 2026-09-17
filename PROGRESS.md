@@ -12,13 +12,14 @@
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
 | M4 语音与部署 | ✅ | **全部完成**：M4a 规则收尾 · M4b 语音（发布竞态修复 + 服务器实机双设备验收）· M4c 部署（服务器上线 + Tunnel + CI 镜像 + 退出/解散）· M4d E2E 验收（14/14，含容量；发现并修复白天驱动崩溃）· **M4e 收官报告**（`M4_ACCEPTANCE_REPORT.md`，§15 格式） |
 | 观战（v1.2 增补） | ✅ | 绑定玩家只读第二屏：入口选择目标、只读大厅/对局、语音旁听、终局复盘同权；194 单测 + E2E 16/16 |
+| 房主踢人（v1.3 增补） | ✅ | 大厅期移出成员（清位、可重进）、移出观战者（不限阶段、连带语音参与者移除）；204 单测 + E2E 18/18 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（v1.2：§07 旁观者小节 + 文末版本记录）。
-3. 进度断点：**M1–M4 + 观战全部完成**——**194 单测**全过、**E2E 16/16**（chromium 12 + webkit 4）、收官报告 `M4_ACCEPTANCE_REPORT.md`（§15）；服务器（`theater-death.azhen73.com` + LiveKit Cloud 语音）实机验收通过。**遗留动作（重要）**：服务器镜像需 `cd ~/theater-death && git pull && ./deploy/update.sh` 应用白天驱动崩溃修复（80cb92b 起）与观战功能；崩溃修复前的服务器版本不适合长时间对局。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（v1.3：§07 旁观者小节 + 文末版本记录）。
+3. 进度断点：**M1–M4 + 观战 + 房主踢人全部完成**——**204 单测**全过、**E2E 18/18**（chromium 14 + webkit 4）、收官报告 `M4_ACCEPTANCE_REPORT.md`（§15）；服务器（`theater-death.azhen73.com` + LiveKit Cloud 语音）实机验收通过。**遗留动作（重要）**：服务器镜像需 `cd ~/theater-death && git pull && ./deploy/update.sh` 应用白天驱动崩溃修复（80cb92b 起）、观战与踢人功能；崩溃修复前的服务器版本不适合长时间对局。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
@@ -285,6 +286,14 @@ theater_death/
 - **测试**：`tests/spectator.test.ts` 7 例（加入守卫/视图一致/只读/读取范围/人数与离开清理/入口名单/复盘/实时同流）；E2E `07-spectator.spec.ts` 2 例（大厅只读 + 对局中一致性/终局复盘，含 bot 快进）；**194 单测 + E2E 16/16**
 - **E2E 驱动修复（重要教训）**：12 上下文用例在容器负载下从 ~5 分钟漂移到 13 分钟——根因是 `actFollowing` 的 `.click()` 无超时（默认 30s），视图 2.5s 轮询下按钮消失即空等 30s；修复：点击统一 3s 超时快失败 + 初始化与主循环并发化（覆盖强度不变）
 
+### 房主踢人 ✅ 完成（2026-09-17，需求 v1.3 增补）
+
+- **产品模型（阿真拍板）**：踢人仅未开局大厅期（对局中角色/胜负不存在被移出场景）；被移出者**释放席位、可重新加入**（清位语义，不做拉黑/冷却）；房主**可单独移出观战者**且不限阶段（观战不影响对局）；房主不能移出自己（提示用解散）
+- **服务端**：`RoomRegistry.kickMember`（state 守卫 409 / 自我 409 cannot_kick_self / 目标 404 / 移除成员 + 连带其观众）与 `kickSpectator`（404 not_a_spectator）；成员移除与观众清理抽出共用私有方法（leaveRoom 复用）；`POST /api/rooms/:code/kick`（房主校验 403 not_host；body 恰好一个 targetPlayerId / targetSpectatorId，否则 400）；被动移除无需吊销会话（无状态 cookie + membership 校验兜底），`not_member` 文案统一“你已不在该房间中”
+- **语音清理**：`voice/livekit.ts` 新增 `removeParticipant`（幂等 404 静默，同 closeRoom 模式）；用于移出观战者与**观战者主动退出**（修复其媒体参与者不被回收、token 挂 30 分钟的问题）；大厅期无语音凭证，踢玩家无语音残留
+- **前端**：大厅成员行（房主、非自己）「移出」+ `window.confirm`；成员行下缩进列出观战者（数据已在 `lobby.spectators`），房主可单独移出；`loadView` 错误处理扩展——`not_member`（含 403）同样回入口页并显示服务器消息（原先只处理 401/404，被移出者会卡在旧界面）
+- **测试**：`tests/server-api.test.ts` 踢人 7 例 + 语音移除 2 例、`tests/voice-livekit.test.ts` removeParticipant 1 例；E2E `08-kick.spec.ts` 2 例（踢成员→对方回入口→重进；踢观战者）；**204 单测 + E2E 18/18**
+
 ## 提醒事项（踩坑记录）
 
 - `NODE_ENV=production` 会跳过 devDependencies → Dockerfile 用 `npm ci --include=dev`
@@ -313,6 +322,7 @@ theater_death/
 - **LiveKit `--node-ip` 不覆盖配置里的 `use_external_ip: true`**（实测显式 node-ip 仍被 STUN 结果覆盖）→ 本地（要 127.0.0.1）与公网（要 STUN）必须用两份配置：`livekit.yaml` / `livekit-public.yaml`，由 `.env` 的 `LIVEKIT_CONFIG_FILE` 选择
 - **Playwright 点击必须带超时（观战任务教训，2026-09-17）**：E2E 快语速板下视图 2.5s 轮询，按旧视图点已消失的按钮时 `.click()` 默认等 30s；12 上下文用例每轮若命中数次，240s 主循环被拖成 13 分钟并超时。驱动点击统一 `{ timeout: 3000 }` + 外层 catch 跳过（`actFollowing`）
 - **观战（v1.2）设计要点**：观众是"绑定玩家的只读第二屏"（信任模型——可见绑定玩家全部信息）；1:1 双向绑定（每玩家最多一名观众）；所有写操作在 HTTP 层 403 `spectator_readonly`；观众计入 LiveKit 计量；同浏览器"玩+看"互斥（单会话 cookie，观战需无痕/另一设备）；换绑 = 退出观战重进
+- **踢人（v1.3）设计要点**：踢人 = 清位（被移出者释放席位、可立即重新加入，无黑名单/冷却——朋友局信任模型）；仅大厅期可移出成员，观战者不限阶段；被移除者的清理路径 = 无状态会话无法吊销 → membership 校验 403 `not_member` + 前端 `loadView` 回入口页（新增"被动移除/被动失效"场景必须走这条路径，不要只改服务端）
 - **compose 的 sh 条件传参**：字符串形式 `command` 会被 split 成参数数组（不经 shell）→ 必须用数组形式 `command: ["exec ... $${VAR:+--node-ip $${VAR}}"]` + `entrypoint: ["/bin/sh","-c"]`；且 **`$${VAR:+...}` 读的是容器内环境变量**，compose 变量必须显式注入 `environment`（`LIVEKIT_NODE_IP: "${LIVEKIT_NODE_IP:-}"`）
 - LiveKit 1.9.7 无 `--rtc.use-external-ip` 类 CLI flag（只认配置文件）；`--node-ip ""` 空串报 `flag needs an argument`
 - **LiveKit 发布权限竞态（M4b 实机验收抓获 + 已修）**：服务端广播 `voice_permission`（Socket.IO，即时）与同步媒体权限（LiveKit admin API，异步）并行，前端在权限于媒体服务落地前调用 `setMicrophoneEnabled(true)` 会被拒（`insufficient permissions to publish`），且旧版把错误静默吞掉 → 表现为"连接正常但谁都没声音、云端 `tracks: []`"。修复：失败自动重试（≤8 次 × 800ms）+ 监听 `RoomEvent.ParticipantPermissionsChanged`（注意签名 `(prevPermissions, participant)`、属性是 `participant.permissions` 复数）触发重发

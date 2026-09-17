@@ -18,7 +18,7 @@
 - M3d 完成：网页前端（React + Vite，同镜像交付）；创建房间 → 13 人开局 → 昼夜循环 → 终局复盘的浏览器全流程实机验收通过。
 - M4a 完成：规则收尾（实验模式 API + 大厅横幅 + 落盘、T-50/T-17/T-36 测试补齐）；M4c 完成：部署与运行手册（install/start/stop/update 脚本、RUNBOOK）、大厅退出/解散功能、GitHub（公开）仓库 + Actions 构建发布 ghcr 镜像、服务器部署并经外网域名验证。
 - M4b 语音完成（LiveKit：R-43 许可策略、短期凭证与服务端权限同步、前端语音条、compose voice profile、RUNBOOK §7）；**服务器实机双设备验收通过**（修复发布权限竞态：失败自动重试 + 权限事件驱动，Playwright 虚拟麦克风复现验证）。
-- 194 个单测全过（镜像构建含服务端/前端类型检查与 vite build）；**M4d 完成**：容器化 Playwright E2E（chromium+webkit：全角色流程、语音组、越权、泄漏、恢复、容量）并修复白天驱动崩溃；**M4e 完成**：收官报告 `M4_ACCEPTANCE_REPORT.md`（§15 格式）；**观战（需求 v1.2 增补）完成**：绑定玩家只读第二屏（`tests/spectator.test.ts` 7 例 + E2E `07-spectator.spec.ts` 2 例），**E2E 16/16**。遗留动作：服务器更新镜像应用崩溃修复与观战（`git pull && ./deploy/update.sh`）。细化计划见 `PROGRESS.md`。
+- 204 个单测全过（镜像构建含服务端/前端类型检查与 vite build）；**M4d 完成**：容器化 Playwright E2E（chromium+webkit：全角色流程、语音组、越权、泄漏、恢复、容量）并修复白天驱动崩溃；**M4e 完成**：收官报告 `M4_ACCEPTANCE_REPORT.md`（§15 格式）；**观战（需求 v1.2 增补）完成**：绑定玩家只读第二屏（`tests/spectator.test.ts` 7 例 + E2E `07-spectator.spec.ts` 2 例）；**房主踢人（需求 v1.3 增补）完成**：大厅期移出成员/观战者（`tests/server-api.test.ts` 踢人 7 例 + E2E `08-kick.spec.ts` 2 例），**E2E 18/18**。遗留动作：服务器更新镜像应用崩溃修复、观战与踢人（`git pull && ./deploy/update.sh`）。细化计划见 `PROGRESS.md`。
 - 语音关键约束：服务器语音采用托管媒体 **LiveKit Cloud 免费层**（凭证只入服务器 `.env`，不入库；云链路与实机双设备验收均通过）；自托管保留给本机/局域网/有公网入站场景（需浏览器直连 UDP 7882/TCP 7881，反代与隧道只承载网页与信令）；两栖只换 `.env` 配置，代码同一套。
 - 关于夜间窗口"无事可做提前结束"的提案已讨论并否决：固定时长是防泄露设计（需求明文），不要重新引入。
 - 构建/测试命令：`docker compose -f deploy/docker-compose.yml build`（构建即跑全部测试）。
