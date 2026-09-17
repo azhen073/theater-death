@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
+import type { RulesetConfig } from '../../rulesets/types.ts';
 import type {
   ChatMessage,
   CommandReceipt,
@@ -49,8 +50,11 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
 }
 
 export const api = {
-  createRoom(nickname: string) {
-    return request<{ roomCode: string; playerId: string }>('POST', '/api/rooms', { nickname });
+  createRoom(nickname: string, ruleset?: RulesetConfig) {
+    return request<{ roomCode: string; playerId: string }>('POST', '/api/rooms', {
+      nickname,
+      ...(ruleset === undefined ? {} : { ruleset }),
+    });
   },
   joinRoom(code: string, nickname: string) {
     return request<{ roomCode: string; playerId: string }>('POST', `/api/rooms/${code}/join`, {

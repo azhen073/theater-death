@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError, connectSocket } from './api.ts';
+import { BoardEditor } from './board-editor.tsx';
 import { FACTION_NAMES, phaseLabel, ROLE_FACTIONS, ROLE_NAMES } from './format.ts';
 import { GameScreen } from './game.tsx';
 import { ReviewScreen } from './review.tsx';
@@ -269,6 +270,7 @@ function EntryScreen({ onDone }: { onDone: () => void }) {
     roomCode: string;
     members: WatchCandidate[];
   } | null>(null);
+  const [boardEditor, setBoardEditor] = useState(false);
 
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -337,6 +339,20 @@ function EntryScreen({ onDone }: { onDone: () => void }) {
     );
   }
 
+  if (boardEditor) {
+    return (
+      <BoardEditor
+        initialNickname={trimmed}
+        busy={busy}
+        error={error}
+        onCancel={() => setBoardEditor(false)}
+        onCreate={(editorNickname, editorRuleset) =>
+          void run(() => api.createRoom(editorNickname, editorRuleset))
+        }
+      />
+    );
+  }
+
   return (
     <div className="card entry">
       <h1>剧院死神</h1>
@@ -378,6 +394,9 @@ function EntryScreen({ onDone }: { onDone: () => void }) {
         onClick={() => void openWatchRoster()}
       >
         观战（只看不玩）
+      </button>
+      <button type="button" disabled={busy} onClick={() => setBoardEditor(true)}>
+        自定义板子…
       </button>
       {error !== null && <p className="error">{error}</p>}
     </div>

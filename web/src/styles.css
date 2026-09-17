@@ -237,6 +237,74 @@ input {
   font-size: 12px;
 }
 
+.board-editor .board-roles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.board-editor .board-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.board-editor .board-group-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.board-editor .board-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.board-editor .board-role {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--panel-2);
+  border-radius: 6px;
+}
+
+.board-editor .board-counter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.board-editor .board-counter button {
+  width: 30px;
+  padding: 2px 0;
+  text-align: center;
+}
+
+.board-editor .board-count {
+  min-width: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.board-editor .board-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
 .tag {
   font-size: 11px;
   padding: 1px 6px;
