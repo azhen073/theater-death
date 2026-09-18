@@ -206,11 +206,17 @@ export class RoomRegistry {
     return true;
   }
 
+  /**
+   * 离开房间。大厅：普通成员释放席位、房主解散整房。
+   * 终局后：任何人（含房主）都只释放自己的席位，房主先走不会夺走其他人的复盘；
+   * 移除后房间空了才销毁（避免终局房间常驻内存）。对局进行中一律拒绝。
+   */
   leaveRoom(room: Room, playerId: string): LeaveResult {
-    if (room.state !== null) {
+    const ended = room.state !== null && room.state.phase === 'ended';
+    if (room.state !== null && !ended) {
       return { ok: false, status: 409, code: 'game_started', message: '对局已经开始，不能退出' };
     }
-    if (playerId === room.hostPlayerId) {
+    if (!ended && playerId === room.hostPlayerId) {
       this.#roomsByCode.delete(room.code);
       this.#roomsByGameId.delete(room.gameId);
       return { ok: true, dissolved: true };
@@ -220,6 +226,11 @@ export class RoomRegistry {
       return { ok: false, status: 404, code: 'not_a_member', message: '你不在这个房间里' };
     }
     this.#removeMemberWithSpectator(room, playerId);
+    if (ended && room.members.length === 0) {
+      this.#roomsByCode.delete(room.code);
+      this.#roomsByGameId.delete(room.gameId);
+      return { ok: true, dissolved: true };
+    }
     return { ok: true, dissolved: false };
   }
 

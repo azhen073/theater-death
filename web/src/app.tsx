@@ -201,6 +201,26 @@ export function App() {
   const gameSpectating = game?.spectating ?? null;
   const spectating = gameSpectating ?? lobbySpectating;
 
+  /** 终局后退出房间：释放席位并回到入口页（服务端会清会话 cookie） */
+  const leaveRoom = useCallback(async () => {
+    const code = game?.roomCode ?? null;
+    if (code === null) {
+      return;
+    }
+    try {
+      await api.leaveRoom(code);
+    } catch {
+      // 房间已解散/已不存在等情况按已退出处理
+    }
+    setSession({ kind: 'entry' });
+    setMessage(null);
+    setPublicEvents([]);
+    setPersonalEvents([]);
+    setMessages([]);
+    setReview(null);
+    setVoicePermission(null);
+  }, [game?.roomCode]);
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -254,6 +274,7 @@ export function App() {
           onCommand={sendCommand}
           onOpenReview={() => void openReview()}
           onLeaveSpectate={() => void leaveSpectate()}
+          onLeaveRoom={() => void leaveRoom()}
         />
       )}
       {review !== null && <ReviewScreen review={review} onClose={() => setReview(null)} />}
