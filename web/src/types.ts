@@ -149,6 +149,8 @@ export interface VoiceTokenResponse {
 export interface GameViewResponse {
   readonly phase: GamePhase;
   readonly rulesetMode: RulesetMode;
+  /** 房间码（终局退出等操作需要） */
+  readonly roomCode: string;
   readonly voice: VoiceView;
   readonly view: PlayerView;
   readonly proposal: ProposalView | null;

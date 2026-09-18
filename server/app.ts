@@ -306,6 +306,7 @@ export function createApp(deps: AppDeps): Express {
     res.json({
       phase: room.state.phase,
       rulesetMode: room.ruleset.mode,
+      roomCode: room.code,
       voice: {
         enabled: voiceEnabled,
         permission:
