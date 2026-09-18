@@ -206,7 +206,7 @@ theater_death/
 
 ## 测试状态
 
-187 passed / 17 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
+207 passed / 18 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与 LiveKit 适配（凭证内容/sync/close）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
@@ -300,6 +300,16 @@ theater_death/
 - **产品模型（阿真拍板）**：入口页「自定义板子…」编辑器，**只改角色数量**（其余参数固定默认板）、不本地保存、每次重编；已建房的板子照旧落服务器数据库
 - **实现**：`web/src/board-editor.tsx`（分组 ± 调节、分组小计与总人数、实时校验、恢复默认、昵称内嵌）；创建时 mode 强制 experimental + version 'custom'；**直接复用 `rulesets/validate.ts` 与 `THEATER_DEATH_13`**（前端与服务器同一份校验逻辑；vite root 外引用 OK，dev 需 `server.fs.allow: ['..']`）；`api.createRoom` 加可选 ruleset；服务端零改动；神职/科研员/死神/丧亲者 UI 硬限 1
 - **测试**：E2E `09-board-editor.spec.ts` 1 例通过（默认 13→改 10→制造非法看错误与禁用→恢复→创建→大厅横幅与"满 10 人"）；单测 204 不变；**全量 E2E 未跑**（阿真新测试策略：默认增量，全量等指令）
+
+### 终局退出 ✅ 完成（2026-09-18，需求 v1.5 增补）
+
+- **产品模型（阿真拍板）**：只放开**终局后**退出；对局进行中（夜/晨/昼）仍 409 `game_started`——13 人板的胜负、失技阈值、遗言与票权都绑定 13 个席位，中途退出无规则依据
+- **终局语义**：任何人（含房主）退出都只**释放自己的席位**；房主退出**不解散**（其他成员照旧查看复盘）；**最后一名成员退出时房间销毁**（双索引删除，顺带缓解终局房间常驻内存）；退出即清会话 cookie，且房间已开局不能重新加入 → 等于放弃该局复盘访问（界面确认弹窗明示）
+- **服务端**：`server/rooms.ts::leaveRoom` 守卫改为“非终局才拒绝”（`state !== null && state.phase !== 'ended'`）；终局分支走“移除成员（连带其观众）+ 空房销毁”；大厅语义（房主=解散）不变。`server/app.ts` `/api/view` 对局形态新增 `roomCode`（前端调 leave 需要；大厅形态本来就有）
+- **前端**：`web/src/game.tsx` 终局卡片改为「查看复盘 / 退出房间」两按钮（观战者不显示后者，走既有「退出观战」）；`web/src/app.tsx` 新增 `leaveRoom` 回调（镜像 `leaveSpectate`：调 `api.leaveRoom(roomCode)` → 清 session/事件/聊天/复盘/语音 → 回入口页）
+- **测试**：`tests/server-api.test.ts` +3 例（终局后成员退出且他人复盘保留 / 房主退出不解散 / 最后一人退出销毁房间），该文件 24→27 例；E2E `10-end-exit.spec.ts` 2 例（对局中退出被拒 409；终局退出回入口页 + 他人复盘保留，含 13 机器人快进）
+- **真实运行（2026-09-18）**：容器内 `docker compose -f deploy/docker-compose.yml build` exit 0（typecheck + typecheck:web + 18 文件 207 例全过 + vite build，镜像 sha256 `ff8ec7dc…`）；增量 E2E 只跑 `specs/10-end-exit.spec.ts` → **2 passed (3.2m)**；其余用例未跑（按测试策略）
+- **E2E 用例口径提醒**：静态清点为 17 个 `test()`（chromium 全跑 17 + webkit 匹配 04/05 各 2 = **21 次运行**）；`AGENTS.md` 此前记的「18/18」与静态清点差 1，未跑全量故未定论，需要时以一次全量运行核对
 
 ## 提醒事项（踩坑记录）
 
