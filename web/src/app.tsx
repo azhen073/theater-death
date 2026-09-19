@@ -15,6 +15,7 @@ import type {
   ReviewView,
   ViewResponse,
   VoicePermission,
+  VoicePermissionPush,
   WatchCandidate,
 } from './types.ts';
 
@@ -57,6 +58,7 @@ export function App() {
   const [review, setReview] = useState<ReviewView | null>(null);
   const [connected, setConnected] = useState(false);
   const [voicePermission, setVoicePermission] = useState<VoicePermission | null>(null);
+  const [voicePush, setVoicePush] = useState<VoicePermissionPush | null>(null);
   const serverOffset = useRef(0);
 
   const loadView = useCallback(async (mode: 'state' | 'all') => {
@@ -139,8 +141,9 @@ export function App() {
       onChatMessage: (incoming) => {
         setMessages((previous) => mergeMessages(previous, [incoming]));
       },
-      onVoicePermission: (permission) => {
-        setVoicePermission(permission);
+      onVoicePermission: (push) => {
+        setVoicePermission(push.permission);
+        setVoicePush(push);
       },
     });
     return () => {
@@ -193,6 +196,7 @@ export function App() {
     setMessages([]);
     setReview(null);
     setVoicePermission(null);
+    setVoicePush(null);
   }, []);
 
   const isGame = session.kind === 'game';
@@ -219,6 +223,7 @@ export function App() {
     setMessages([]);
     setReview(null);
     setVoicePermission(null);
+    setVoicePush(null);
   }, [game?.roomCode]);
 
   return (
@@ -271,6 +276,7 @@ export function App() {
           messages={messages}
           serverOffset={serverOffset.current}
           voicePermission={voicePermission}
+          voicePush={voicePush}
           onCommand={sendCommand}
           onOpenReview={() => void openReview()}
           onLeaveSpectate={() => void leaveSpectate()}

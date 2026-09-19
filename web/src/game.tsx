@@ -19,6 +19,7 @@ import type {
   LifeState,
   SeatPublicView,
   VoicePermission,
+  VoicePermissionPush,
 } from './types.ts';
 import { VoicePanel } from './voice.tsx';
 
@@ -29,6 +30,7 @@ interface GameScreenProps {
   readonly messages: readonly ChatMessage[];
   readonly serverOffset: number;
   readonly voicePermission: VoicePermission | null;
+  readonly voicePush: VoicePermissionPush | null;
   onCommand(action: string, extra?: Record<string, unknown>): Promise<CommandReceipt>;
   onOpenReview(): void;
   onLeaveSpectate(): void;
@@ -185,6 +187,7 @@ export function GameScreen(props: GameScreenProps) {
           <VoicePanel
             enabled={data.voice.enabled}
             permission={props.voicePermission ?? data.voice.permission}
+            push={props.voicePush}
             spectating={spectating !== null}
           />
         )}

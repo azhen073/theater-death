@@ -1,7 +1,14 @@
-import { Room, RoomEvent, Track, type RemoteTrack } from 'livekit-client';
+import AgoraRTC, {
+  type IAgoraRTCClient,
+  type IMicrophoneAudioTrack,
+} from 'agora-rtc-sdk-ng';
 import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api.ts';
-import type { VoicePermission, VoicePermissionReason } from './types.ts';
+import type {
+  VoicePermission,
+  VoicePermissionPush,
+  VoicePermissionReason,
+} from './types.ts';
 
 type ConnectionState = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
@@ -68,9 +75,15 @@ function describeMediaError(error: unknown): string {
   return `麦克风启用失败：${errorText(error)}`;
 }
 
+function isPermissionRace(error: unknown): boolean {
+  const text = errorText(error);
+  return /permission|not.?authorized|denied|forbidden/i.test(text);
+}
+
 /**
- * 语音连接控制器：凭证由服务端签发（短期、无发布权），
- * 发布权完全由服务端按 R-43 动态授予（LiveKit 服务端权限），本地静音只是叠加状态。
+ * 语音连接控制器（声网）：加入凭证由服务端签发（订阅角色，无发布权），
+ * 发布权完全由服务端按 R-43 通过短期 token 动态授予；
+ * 前端 renewToken 即时生效，token 到期由声网侧自动收回，本地静音只是叠加状态。
  */
 class VoiceController {
   #state: VoiceUiState = {
@@ -84,7 +97,8 @@ class VoiceController {
     publishError: null,
     publishing: false,
   };
-  #room: Room | null = null;
+  #client: IAgoraRTCClient | null = null;
+  #micTrack: IMicrophoneAudioTrack | null = null;
   #retryCount = 0;
   #retryTimer: number | null = null;
   #spectating = false;
@@ -107,52 +121,42 @@ class VoiceController {
   }
 
   async join(spectating = false): Promise<void> {
-    if (this.#room !== null || this.#state.connection === 'connecting') {
+    if (this.#client !== null || this.#state.connection === 'connecting') {
       return;
     }
     this.#spectating = spectating;
     this.#set({ connection: 'connecting', error: null });
     try {
       const credentials = await api.voiceToken();
-      const room = new Room({ adaptiveStream: false, dynacast: false });
-      this.#room = room;
-      room
-        .on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-          if (track.kind === Track.Kind.Audio) {
-            const element = track.attach();
-            element.dataset.voice = 'remote';
-            document.body.appendChild(element);
-            void element.play().catch(() => this.#set({ audioBlocked: true }));
+      AgoraRTC.onAutoplayFailed = () => this.#set({ audioBlocked: true });
+      // 纯音频场景：codec 为视频编解码器参数（必填），音频固定 opus，无需指定
+      const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+      this.#client = client;
+      client.on('user-published', (user, mediaType) => {
+        void (async () => {
+          if (mediaType === 'audio') {
+            await client.subscribe(user, mediaType);
+            user.audioTrack?.play();
           }
-        })
-        .on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
-          for (const element of track.detach()) {
-            element.remove();
-          }
-        })
-        .on(RoomEvent.AudioPlaybackStatusChanged, () => {
-          this.#set({ audioBlocked: !room.canPlaybackAudio });
-        })
-        .on(RoomEvent.ParticipantPermissionsChanged, (_prevPermissions, participant) => {
-          // 服务端把发布权同步到媒体服务有延迟；权限事件到达时重试开麦
-          if (
-            room.localParticipant.identity === participant.identity &&
-            participant.permissions?.canPublish === true
-          ) {
-            this.#clearRetry();
-            void this.#applyPublish();
-          }
-        })
-        .on(RoomEvent.Reconnecting, () => this.#set({ connection: 'reconnecting' }))
-        .on(RoomEvent.Reconnected, () => {
+        })().catch(() => undefined);
+      });
+      client.on('user-unpublished', (user, mediaType) => {
+        if (mediaType === 'audio') {
+          user.audioTrack?.stop();
+        }
+      });
+      client.on('connection-state-change', (current) => {
+        if (current === 'RECONNECTING') {
+          this.#set({ connection: 'reconnecting' });
+        } else if (current === 'CONNECTED') {
           this.#set({ connection: 'connected' });
           void this.#resync();
-        })
-        .on(RoomEvent.Disconnected, () => {
+        } else if (current === 'DISCONNECTED') {
           this.#teardown();
           this.#set({ connection: 'idle' });
-        });
-      await room.connect(credentials.url, credentials.token);
+        }
+      });
+      await client.join(credentials.appId, credentials.channel, credentials.token, credentials.uid);
       this.#set({ connection: 'connected', permission: credentials.permission });
       if (this.#spectating) {
         // 观众只订阅：不参与发布权同步，也不申请麦克风
@@ -160,6 +164,7 @@ class VoiceController {
       }
       const synced = await api.voiceSync();
       this.#set({ permission: synced.permission });
+      await this.#renew(synced.token);
       await this.#refreshDevices();
       await this.#applyPublish();
     } catch (error) {
@@ -169,7 +174,7 @@ class VoiceController {
   }
 
   async leave(): Promise<void> {
-    const room = this.#room;
+    const client = this.#client;
     this.#teardown();
     this.#spectating = false;
     this.#set({
@@ -180,14 +185,26 @@ class VoiceController {
       publishError: null,
       publishing: false,
     });
-    if (room !== null) {
-      await room.disconnect().catch(() => undefined);
+    if (client !== null) {
+      await client.leave().catch(() => undefined);
     }
   }
 
   setPermission(permission: VoicePermission): void {
     this.#set({ permission });
     void this.#applyPublish();
+  }
+
+  /** 服务端推送带 token 时：renewToken 即时获得/收回发布权，再同步发布状态 */
+  async applyPush(push: VoicePermissionPush | null): Promise<void> {
+    if (push === null) {
+      return;
+    }
+    this.#set({ permission: push.permission });
+    if (push.token !== undefined) {
+      await this.#renew(push.token);
+    }
+    await this.#applyPublish();
   }
 
   async toggleMute(): Promise<void> {
@@ -197,14 +214,26 @@ class VoiceController {
 
   async switchDevice(deviceId: string): Promise<void> {
     this.#set({ activeDeviceId: deviceId });
-    const room = this.#room;
-    if (room === null) {
+    const track = this.#micTrack;
+    if (track === null) {
       return;
     }
     try {
-      await room.switchActiveDevice('audioinput', deviceId);
+      await track.setDevice(deviceId);
     } catch {
       // 切换失败保留原设备
+    }
+  }
+
+  async #renew(token: string): Promise<void> {
+    const client = this.#client;
+    if (client === null) {
+      return;
+    }
+    try {
+      await client.renewToken(token);
+    } catch {
+      // renewToken 失败：等待下一次推送或 token 到期兜底
     }
   }
 
@@ -215,6 +244,7 @@ class VoiceController {
     try {
       const synced = await api.voiceSync();
       this.#set({ permission: synced.permission });
+      await this.#renew(synced.token);
       await this.#applyPublish();
     } catch {
       // 重连后同步失败：等待下一次服务端推送
@@ -222,31 +252,46 @@ class VoiceController {
   }
 
   async #applyPublish(): Promise<void> {
-    const room = this.#room;
-    if (room === null || this.#spectating) {
+    const client = this.#client;
+    if (client === null || this.#spectating) {
       return;
     }
     const shouldPublish = this.#state.permission.canPublish && !this.#state.muted;
     if (!shouldPublish) {
       this.#clearRetry();
-      try {
-        await room.localParticipant.setMicrophoneEnabled(false);
-      } catch {
-        // 关闭失败不影响状态
+      if (this.#micTrack !== null) {
+        const track = this.#micTrack;
+        this.#micTrack = null;
+        try {
+          await client.unpublish([track]);
+        } catch {
+          // 取消发布失败不影响状态
+        }
+        track.stop();
+        track.close();
       }
       this.#set({ publishError: null, publishing: false });
       return;
     }
     this.#set({ publishing: true });
     try {
-      await room.localParticipant.setMicrophoneEnabled(true);
+      // 通信模式下角色切换失败不影响发布（真正的权限判定在 publish 时的 token 校验）
+      await client.setClientRole('host').catch(() => undefined);
+      if (this.#micTrack === null) {
+        const deviceId = this.#state.activeDeviceId;
+        this.#micTrack = await AgoraRTC.createMicrophoneAudioTrack({
+          AEC: true,
+          ANS: true,
+          AGC: true,
+          ...(deviceId === null ? {} : { microphoneId: deviceId }),
+        });
+      }
+      await client.publish([this.#micTrack]);
       this.#clearRetry();
       this.#set({ publishError: null, publishing: false });
     } catch (error) {
-      const text = errorText(error);
-      const permissionRace = /insufficient permissions/i.test(text);
-      if (permissionRace && this.#retryCount < 8) {
-        // 权限尚未在媒体服务生效：显示进行中并自动重试
+      if (isPermissionRace(error) && this.#retryCount < 8) {
+        // 发布权尚未在声网侧生效：显示进行中并自动重试
         this.#retryCount += 1;
         this.#set({ publishing: true, publishError: null });
         this.#retryTimer = window.setTimeout(() => {
@@ -269,16 +314,14 @@ class VoiceController {
 
   /** 浏览器阻止自动播放时由用户点击调用（必须在用户手势中执行） */
   async enableAudio(): Promise<void> {
-    const room = this.#room;
-    if (room === null) {
+    const client = this.#client;
+    if (client === null) {
       return;
     }
-    try {
-      await room.startAudio();
-    } catch {
-      // 仍失败则保持提示
+    for (const user of client.remoteUsers) {
+      user.audioTrack?.play();
     }
-    this.#set({ audioBlocked: !room.canPlaybackAudio });
+    this.#set({ audioBlocked: false });
   }
 
   /** 用户点击「重试麦克风」时重新尝试发布（权限弹窗需要用户手势） */
@@ -288,7 +331,7 @@ class VoiceController {
 
   async #refreshDevices(): Promise<void> {
     try {
-      const devices = await Room.getLocalDevices('audioinput');
+      const devices = await AgoraRTC.getMicrophones();
       this.#set({
         devices,
         activeDeviceId: this.#state.activeDeviceId ?? devices[0]?.deviceId ?? null,
@@ -300,13 +343,16 @@ class VoiceController {
 
   #teardown(): void {
     this.#clearRetry();
-    const room = this.#room;
-    this.#room = null;
-    for (const element of Array.from(document.querySelectorAll('audio[data-voice="remote"]'))) {
-      element.remove();
+    const client = this.#client;
+    this.#client = null;
+    const track = this.#micTrack;
+    this.#micTrack = null;
+    if (track !== null) {
+      track.stop();
+      track.close();
     }
-    if (room !== null) {
-      room.removeAllListeners();
+    if (client !== null) {
+      client.removeAllListeners();
     }
   }
 }
@@ -314,6 +360,7 @@ class VoiceController {
 export function VoicePanel(props: {
   enabled: boolean;
   permission: VoicePermission;
+  push: VoicePermissionPush | null;
   spectating?: boolean;
 }) {
   const controllerRef = useRef<VoiceController | null>(null);
@@ -332,6 +379,10 @@ export function VoicePanel(props: {
       reason: props.permission.reason,
     });
   }, [controller, props.permission.canPublish, props.permission.reason]);
+
+  useEffect(() => {
+    void controller.applyPush(props.push);
+  }, [controller, props.push]);
 
   useEffect(() => {
     return () => {
