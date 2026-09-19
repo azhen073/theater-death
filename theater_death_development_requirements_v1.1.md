@@ -1,8 +1,8 @@
 # 《剧院死神》在线法官 · 开发需求文档
 
-版本：v1.9 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更），见文末版本记录）  
+版本：v1.10 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更）；v1.10 变更：房间解散任意阶段生效 + 遗弃房间 24 小时回收，见文末版本记录）  
 适用读者：给 Codex 与项目维护者  
-整理日期：2026-09-16 · 增补记录 2026-09-17 起 · 最近整理 2026-09-19（v1.9）
+整理日期：2026-09-16 · 增补记录 2026-09-17 起 · 最近整理 2026-09-20（v1.10）
 
 > **交付目标**  
 > 实现一套服务端裁定的在线游戏，默认 13 人、9 种身份；支持可验证的板子配置、文字交流、公共语音控制、刷新恢复、日志与终局复盘。同一套代码支持玩家电脑托管和第三方服务器托管。
@@ -732,3 +732,14 @@ https://docs.docker.com/get-started/
 - **规则正文**：R-54 正文（`theater_death_rulebook_v1.1.md` 与 `docs/rules-v2-full.md`）由"正式模式仅提供默认 13 人命名预设"同步为"提供 1.1 与 2.0 两个命名预设"，与 v1.7 的扩展一致（原表述未随之更新）。
 - **保留不动**：`M4_ACCEPTANCE_REPORT.md` 为 2026-09-16 收官时点快照（187 单测 / E2E 14/14 / 媒体为 LiveKit Cloud），仅加"历史快照"抬头注记，正文数据不改。
 - **测试**：本次为纯文档整理 + 脚本/配置引用清理，**未运行任何测试**（符合测试策略：纯文档 / 只读研究不必跑测试）；`deploy/frontend-local.ps1 -Voice on` 需在装有 Docker 的机器上实测确认。
+
+### v1.10（2026-09-20）· 房间解散任意阶段生效 + 遗弃房间 24 小时回收（贡献提案 kiahir，用户（阿真）确认）
+
+- **v2 解散改为任意阶段立即生效**：`server/v2/governance.ts::dissolve` 去掉 `phase !== 'lobby'` → 409 `lobby_required` 的限制，仅保留「必须是房主」（非房主 403 `not_host`）。`dispose()` 增加幂等守卫，并在处置**未产生胜负**的对局时按 `aborted` 记入审计（与空房到期同一口径，`finishMatch` 自身幂等）；已终局的保持 `completed`。权限快照 `capabilities.room.dissolve` 只取决于是否房主，不再出现 `lobby_required`。
+- **v2 房主离开语义**：房主在**大厅 / 复盘**退出即解散整房（响应 `{left:true, dissolved:true, seatRetained:false}`）；房主在**对局进行中**退出仍是「暂离」（席位与计时保留，房主由其他在线正式成员继任，响应 `dissolved:false`）。非房主一律按普通离开。实现为新增 `RoomGovernance.leave`，HTTP `/leave` 改走它；`RoomDirectory.leave` 保留为底层原语（不处理房主解散语义，避免测试脚手架与领域层混淆）。
+- **v2 全员离线回收（原 F1）**：新增 `OFFLINE_ROOM_TTL_MS = 24 小时`（`server/v2/empty-rooms.ts`）与 `StableRoom.allOfflineSince`。有正式成员但**全员离线**满 24 小时即回收房间（未终局按 aborted 记账）；只要一人回到在线即取消计时；观众不能延长。此前「离线与已死的正式成员都算非空」叠加「解散需要在线房主」，使被遗弃房间既无法解散也不会被回收，可占满 100 房上限并让新建房间返回 `503 room_capacity`（现由本策略兜底）。
+- **v1 无活动回收（原 F2）**：v1 没有在线状态（无状态 cookie + 内存房间），因此采用「房间无活动」口径——`Room.lastActivityAt`（任何房间 HTTP 请求经 `resolveRoomMember`/`resolveViewer` 刷新，实时握手在 `server/realtime.ts` 刷新）与 `RoomRegistry.sweepInactive(now, ttl)`；`server/legacy-index.ts` 每 60 秒扫描一次，超过 `INACTIVE_ROOM_TTL_MS = 24 小时` 无活动即销毁（成员下次请求得到 404 → 前端回入口页）。v2 稳定房间（`queueOwner` 非空）不在 v1 扫描范围内；`disposeRoom` 现在同时释放 `room.driver` 引用。
+- **前端文案与交互**：`web-v2` 的 `roomExitPresentation` 按新语义改写退出说明（房主大厅/复盘退出=解散，对局中=暂离）；`lobby.tsx` 解散确认弹窗按阶段给出更强提示（对局中「立即终止本局并按中止记录」）；`review/page.tsx` 处理 `dissolved` 响应并提示「房间已解散」。解散入口沿用既有 `caps.dissolve.allowed` 门控（对局中的入口在「房间管理」内，复盘页同）。
+- **测试**：`tests/room-governance.test.ts`（任意阶段解散 + 非房主拒绝 + 房主离开的三阶段语义）、`tests/empty-rooms.test.ts` 与 `tests/v2-maintenance.test.ts`（离线 TTL 前保留 / 满期回收 / 审计保持 completed）、`tests/server-api.test.ts` 新增 3 例（HTTP 请求刷新活动时间、实时握手算活动、对局中回收释放驱动）、`tests/room-operation-api.test.ts`（复盘阶段房主最后离开=解散并重放原回执）。全量：84 文件 525 例。
+- **未做（需另行安排）**：`tests/fixtures/contract-2.1/*.json` 仍记录旧的 `dissolve.reason='lobby_required'` 取值，需用 `EXPORT_CONTRACT_FIXTURES` 重新导出才会与新行为一致（夹具当前只做 schema 校验，不影响测试通过）。
+- **两入口差异（有意保留）**：v1 的对局中 `/leave` 仍 409 拒绝（v1 无「暂离」概念），v2 的对局中离开是暂离；v1 的复盘（`phase='ended'`）里房主退出仍只释放自己席位，而 v2 复盘里房主退出即解散。如需把这两条也统一，属后续独立变更。

@@ -1149,7 +1149,7 @@
         }
       ],
       "post": {
-        "summary": "房主主动解散大厅",
+        "summary": "房主主动解散房间（任意阶段；对局中按 aborted 记账）",
         "requestBody": {
           "required": true,
           "content": {
