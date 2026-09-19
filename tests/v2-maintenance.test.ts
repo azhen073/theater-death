@@ -5,7 +5,7 @@ import { AccountStore } from '../server/v2/account-store.ts';
 import { createV2App } from '../server/v2/app.ts';
 import { createFakeClock, type FakeClock } from '../server/clock.ts';
 import { createLogStore, type LogStore } from '../server/log-store.ts';
-import { EMPTY_ROOM_TTL_MS } from '../server/v2/empty-rooms.ts';
+import { EMPTY_ROOM_TTL_MS, OFFLINE_ROOM_TTL_MS } from '../server/v2/empty-rooms.ts';
 import type { VoiceCredentials, VoiceService } from '../voice/agora.ts';
 
 type User = { userId: string; cookie: string; sessionId: string };
@@ -117,14 +117,17 @@ function connect(h: Harness, user: User, roomId: string): { socket: Socket; cont
 }
 
 describe('v2 maintenance lifecycle', () => {
-  it('keeps offline formal membership and a constructed ended match after the 24-hour boundary', async () => {
+  it('retains offline formal membership below the offline TTL, then reclaims the room while keeping the completed audit', async () => {
     const h = await makeHarness(); const room = await startFullRoom(h); const stable = h.app.directory.byId.get(room.roomId)!;
     for (const user of h.users.slice(0, 13)) h.accounts.logout(user.sessionId);
     await h.app.maintenance.sweep();
     expect(stable.formalMembers()).toHaveLength(13); expect(stable.formalMembers().every((member) => member.sessionId === null && member.presence === 'offline')).toBe(true);
     stable.runtime!.state = { ...stable.runtime!.state!, phase: 'ended', win: { winner: 'human', dayNumber: 1, reason: 'test' } };
-    stable.recordCompletion(); h.clock.elapse(24 * 3600_000); await h.app.maintenance.sweep();
+    stable.recordCompletion(); h.clock.elapse(OFFLINE_ROOM_TTL_MS - 1); await h.app.maintenance.sweep();
     expect(h.app.directory.byId.has(room.roomId)).toBe(true); expect(stable.runtime!.state!.win).toBeTruthy(); expect(h.logs.listMatches(room.roomId).at(-1)?.status).toBe('completed');
+    h.clock.elapse(1); await h.app.maintenance.sweep();
+    expect(h.app.directory.byId.has(room.roomId)).toBe(false); expect(stable.dissolved).toBe(true);
+    expect(h.logs.listMatches(room.roomId).at(-1)?.status).toBe('completed');
   });
 
   it('expires natural seven-day sessions with HTTP 401, session_expired socket control, and media revocation while retaining formal seats', async () => {

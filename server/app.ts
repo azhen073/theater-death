@@ -720,6 +720,7 @@ function resolveRoomMember(
     fail(res, 404, 'room_not_found', '房间不存在或服务已重启');
     return null;
   }
+  room.lastActivityAt = deps.clock.now();
   const member = room.members.find((item) => item.playerId === session.playerId);
   if (member === undefined) {
     fail(res, 403, 'not_member', '你已不在该房间中');
@@ -748,6 +749,7 @@ function resolveViewer(req: Request, res: Response, deps: AppDeps): ViewerContex
     fail(res, 404, 'room_not_found', '房间不存在或服务已重启');
     return null;
   }
+  room.lastActivityAt = deps.clock.now();
   if (session.kind === 'spectator') {
     const spectator = room.spectators.find((item) => item.spectatorId === session.playerId);
     if (spectator === undefined) {

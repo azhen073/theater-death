@@ -3,7 +3,7 @@ import { THEATER_DEATH_13_V2 } from '../rulesets/theater-death-13-v2.ts';
 import { createFakeClock } from '../server/clock.ts';
 import { createLogStore } from '../server/log-store.ts';
 import { RoomRegistry } from '../server/rooms.ts';
-import { EmptyRooms, EMPTY_ROOM_TTL_MS } from '../server/v2/empty-rooms.ts';
+import { EmptyRooms, EMPTY_ROOM_TTL_MS, OFFLINE_ROOM_TTL_MS } from '../server/v2/empty-rooms.ts';
 import { RoomGovernance } from '../server/v2/governance.ts';
 import { MemberPresence } from '../server/v2/presence.ts';
 import { RoomDirectory } from '../server/v2/room-directory.ts';
@@ -54,17 +54,22 @@ async function fullMatch(directory: RoomDirectory, accounts: AccountStore, prefi
 }
 
 describe('v2 empty room policy', () => {
-  it('does not treat offline formal members as empty, even after long idle periods', async () => {
+  it('treats all-offline formal members as non-empty, then reclaims the room after the offline TTL', async () => {
     const { clock, accounts, directory, empty } = setup();
     const host = account(accounts, 'empty_formal');
     const room = await directory.create(host.session, THEATER_DEATH_13_V2);
     empty.observe(room);
     expect(room.emptyDeadline).toBeNull();
-    room.runtime = null;
-    clock.elapse(24 * 3600_000 + 1);
+    expect(room.allOfflineSince).toBe(1_000);
+    clock.elapse(OFFLINE_ROOM_TTL_MS - 1);
     await empty.sweep();
     expect(directory.byCode.has(room.code)).toBe(true);
     expect(room.formalMembers()).toHaveLength(1);
+    clock.elapse(1); clock.flush(); await Promise.resolve();
+    await directory.transaction(() => room.enqueue(() => undefined));
+    expect(directory.byCode.has(room.code)).toBe(false);
+    expect(room.dissolved).toBe(true);
+    empty.close();
   });
 
   it('starts one five-minute deadline; spectators do not extend it and beforeMutation expires delayed timers', async () => {
@@ -142,7 +147,7 @@ describe('v2 empty room policy', () => {
     expect(directory.byCode.has(room.code)).toBe(true);
   });
 
-  it('keeps a dead formal member and a reviewed match for at least 24 hours', async () => {
+  it('keeps a reviewed match with all-offline formal members below the offline TTL, then reclaims it', async () => {
     const { clock, accounts, directory, empty } = setup();
     const { room, players } = await fullMatch(directory, accounts, 'empty_retention');
     const dead = players[1]!;
@@ -153,10 +158,15 @@ describe('v2 empty room policy', () => {
       players: room.runtime!.state!.players.map((player) => player.playerId === deadPlayerId ? { ...player, life: 'dead' as const } : player),
       win: { winner: 'human', dayNumber: 1, reason: 'test' },
     };
-    clock.elapse(24 * 3600_000 + 1);
+    clock.elapse(OFFLINE_ROOM_TTL_MS - 1);
     await empty.sweep();
     expect(directory.byCode.has(room.code)).toBe(true);
     expect(room.formalMembers()).toHaveLength(13);
+    expect(room.runtime!.state?.win).toBeDefined();
+    clock.elapse(1); clock.flush(); await Promise.resolve();
+    await directory.transaction(() => room.enqueue(() => undefined));
+    expect(directory.byCode.has(room.code)).toBe(false);
+    expect(room.dissolved).toBe(true);
     expect(room.runtime!.state?.win).toBeDefined();
   });
 

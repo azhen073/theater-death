@@ -9,7 +9,7 @@ import { createApp } from './app.ts';
 import { systemClock } from './clock.ts';
 import { createLogStore } from './log-store.ts';
 import { createBroadcaster } from './realtime.ts';
-import { RoomRegistry } from './rooms.ts';
+import { RoomRegistry, INACTIVE_ROOM_TTL_MS } from './rooms.ts';
 
 const port = Number(process.env.PORT ?? 3000);
 const dataDir = process.env.DATA_DIR ?? './data';
@@ -67,8 +67,16 @@ const app = createApp({
   webRoot: join(dirname(fileURLToPath(import.meta.url)), '..', 'web', 'dist'),
 });
 
+// 回收被遗弃的 v1 房间：24 小时无任何房间请求或实时握手即销毁（房间是内存态，进程重启同样清空）。
+setInterval(() => {
+  const reclaimed = registry.sweepInactive(systemClock.now(), INACTIVE_ROOM_TTL_MS);
+  if (reclaimed.length > 0) {
+    console.warn(`[theater-death] 已回收无活动房间 ${reclaimed.length} 个`);
+  }
+}, 60_000).unref();
+
 const server = createServer(app);
-broadcaster.attach(server, { registry, sessionSecret });
+broadcaster.attach(server, { registry, sessionSecret, clock: systemClock });
 server.listen(port, () => {
   console.log(`theater-death legacy (v1) listening on port ${port}`);
 });

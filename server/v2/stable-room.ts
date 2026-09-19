@@ -60,6 +60,8 @@ export class StableRoom {
   chatReceipts = new ChatReceipts();
   readonly submissions = new Map<string, Map<string, SubmissionDTO>>();
   emptyDeadline: number | null = null;
+  /** 全员离线起点（有正式成员但无人在线时记录）；任一人回到在线即清空。 */
+  allOfflineSince: number | null = null;
   dissolved = false;
   nextJoinOrder = 1;
   readonly deps: StableRoomDeps;

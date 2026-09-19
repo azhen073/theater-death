@@ -46,16 +46,39 @@ export class RoomGovernance {
       this.directory.removeMember(room, target, 'kicked');
     });
   }
+  /** 房主主动解散：任意阶段都可用（对局进行中同样立即终止整局）。 */
   dissolve(room: StableRoom, session: AccountSession): Promise<void> {
     return this.directory.mutate(room, () => {
       this.host(room, session);
-      if (room.phase !== 'lobby') throw new ApiError(409, 'lobby_required');
       this.dispose(room);
+    });
+  }
+  /**
+   * 房主主动退出：大厅与复盘阶段直接解散整房；
+   * 对局进行中仍是「暂离」（保留席位与计时），交由调用方按普通离开处理。
+   * 非房主一律按普通离开处理。
+   */
+  leave(room: StableRoom, session: AccountSession): Promise<{ left: true; dissolved: boolean; seatRetained: boolean }> {
+    return this.directory.mutate(room, () => {
+      const member = this.directory.member(room, session);
+      const host = member.kind === 'formal' && room.hostMemberId === member.memberId;
+      if (host && room.phase !== 'playing') {
+        this.dispose(room);
+        return { left: true as const, dissolved: true, seatRetained: false };
+      }
+      this.directory.removeMember(room, member, 'left');
+      return { left: true as const, dissolved: false, seatRetained: room.participants.has(session.userId) };
     });
   }
   /** Caller already holds membership/room queues; game audit is retained. */
   dispose(room: StableRoom): void {
+    if (room.dissolved) return;
     room.dissolved = true;
+    // 未产生胜负的对局按中止记账（与空房到期同一口径）；已终局的保持 completed。
+    if (room.runtime) {
+      room.recordCompletion();
+      if (!room.runtime.state?.win) this.directory.deps.logStore.finishMatch(room.runtime.gameId, 'aborted', this.directory.deps.clock.now());
+    }
     this.directory.deps.control(room, null, 'dissolved');
     room.access?.close();
     if (room.gameId) this.directory.deps.registry.disposeRoom(room.gameId);

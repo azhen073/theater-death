@@ -155,6 +155,10 @@ export class RoomDirectory {
     room.members.delete(member.userId);
     if (this.current.get(member.userId) === room.roomId) this.current.delete(member.userId);
   }
+  /**
+   * 底层「离开成员」原语：只移除成员，**不**处理房主解散语义。
+   * 房主离开即解散由 RoomGovernance.leave 承担，HTTP 层一律走它。
+   */
   leave(room: StableRoom, session: AccountSession): Promise<{ left: true; seatRetained: boolean }> {
     return this.mutate(room, () => {
       const member = this.member(room, session);

@@ -33,8 +33,9 @@ export function ReviewPage({ view, catalog, online, active = true, refresh, rema
     return () => { active = false; controller.abort(); };
   }, [scope, retry]);
   const finish = useIntent<{ roomId: string }>(scope, async () => { setConfirm(false); setReview(null); await refresh(); }, () => { void refresh(); });
-  const leave = useIntent<{ left: true; seatRetained: boolean }>(scope, result => {
-    setLeaveConfirm(false); setReview(null); onExit(roomExitMessage(view, result.seatRetained));
+  const leave = useIntent<{ left: true; seatRetained: boolean; dissolved?: boolean }>(scope, result => {
+    setLeaveConfirm(false); setReview(null);
+    onExit(result.dissolved === true ? '房间已解散。' : roomExitMessage(view, result.seatRetained));
   }, failure => {
     if (failure instanceof ApiFailure && failure.code === 'unauthorized') onExpired();
     else if (failure instanceof ApiFailure && failure.code === 'room_not_found') onExit('房间已关闭，已返回首页。');

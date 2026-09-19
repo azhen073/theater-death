@@ -56,7 +56,7 @@ export async function startTestServer(
   const server: Server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   if (broadcaster !== null) {
-    broadcaster.attach(server, { registry, sessionSecret: TEST_SESSION_SECRET });
+    broadcaster.attach(server, { registry, sessionSecret: TEST_SESSION_SECRET, clock });
   }
   const address = server.address() as AddressInfo;
   const context: TestContext = {

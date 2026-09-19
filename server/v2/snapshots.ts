@@ -67,7 +67,7 @@ export class RoomSnapshots {
       ready: permission(formalReason ?? (!lobby ? 'lobby_required' : null)),
       start: permission(hostReason ?? (!lobby ? 'lobby_required' : count !== room.requiredPlayers() ? 'room_not_full' : room.formalMembers().some((m) => !m.ready) ? 'not_ready' : null)),
       promote: permission(formal ? 'already_formal' : !lobby ? 'lobby_required' : count >= room.requiredPlayers() ? 'room_full' : null),
-      leave: permission(null), transferHost: permission(hostReason), dissolve: permission(hostReason ?? (!lobby ? 'lobby_required' : null)),
+      leave: permission(null), transferHost: permission(hostReason), dissolve: permission(hostReason),
       endReview: permission(hostReason ?? (room.phase !== 'review' ? 'review_required' : null)),
       kickFormal: permission(hostReason ?? (!lobby ? 'lobby_required' : null)), kickSpectator: permission(hostReason),
       inviteSecondScreen: permission(formalReason ?? (lobby ? 'game_not_started' : screenPresent ? 'second_screen_unavailable' : null)),

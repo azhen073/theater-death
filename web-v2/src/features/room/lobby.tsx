@@ -64,7 +64,7 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
     </div></footer>
     {active && rules && <RulesBook catalog={catalog} onClose={() => setRules(false)}/>}
     {active && confirmation && confirmationValid && <Modal title={confirmation.action === 'kick' ? '移出成员？' : confirmation.action === 'transfer-host' ? '转移房主？' : confirmation.action === 'dissolve' ? '解散房间？' : exit.title} onClose={() => setConfirmation(null)} dismissible={!operation.busy}>
-      <p>{confirmation.action === 'kick' ? `将 ${confirmation.name} 移出当前房间。这不是封禁，对方仍可重新加入。` : confirmation.action === 'transfer-host' ? `将房主管理权交给 ${confirmation.name}，准备状态保持不变。` : confirmation.action === 'dissolve' ? '所有成员将退出，房间码立即失效。' : exit.description}</p>
+      <p>{confirmation.action === 'kick' ? `将 ${confirmation.name} 移出当前房间。这不是封禁，对方仍可重新加入。` : confirmation.action === 'transfer-host' ? `将房主管理权交给 ${confirmation.name}，准备状态保持不变。` : confirmation.action === 'dissolve' ? (view.room.phase === 'playing' ? '房间正在对局中：解散将立即终止本局（按中止记录），所有成员退出，房间码立即失效。' : view.room.phase === 'review' ? '复盘将立即关闭，所有成员退出，房间码立即失效。' : '所有成员将退出，房间码立即失效。') : exit.description}</p>
       <div className="button-row"><button className="button" disabled={operation.busy} onClick={() => setConfirmation(null)}>取消</button><button className="button button--primary" disabled={locked || !confirmationValid} onClick={confirm}>{operation.busy ? '正在确认…' : '确认操作'}</button></div>
     </Modal>}
   </>;

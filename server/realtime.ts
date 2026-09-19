@@ -19,6 +19,8 @@ export interface PushEvent {
 export interface BroadcasterDeps {
   readonly registry: RoomRegistry;
   readonly sessionSecret: string;
+  /** v1 房间活动时间戳用；缺省回退 Date.now()（测试与 v2 实时层无需注入）。 */
+  readonly clock?: { now(): number };
 }
 
 export interface Broadcaster {
@@ -115,6 +117,8 @@ export function createBroadcaster(): Broadcaster {
         socket.join(roomChannel(gameId));
         socket.join(playerChannel(gameId, playerId));
         const room = deps.registry.getByGameId(gameId);
+        // 实时握手也算房间活动，避免「只连着 socket 不轮询」的房间被判为遗弃。
+        if (room !== null) room.lastActivityAt = (deps.clock ?? { now: () => Date.now() }).now();
         socket.emit('hello', {
           gameId,
           playerId,

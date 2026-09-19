@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { THEATER_DEATH_13 } from '../rulesets/theater-death-13.ts';
-import type { Room } from '../server/rooms.ts';
+import { INACTIVE_ROOM_TTL_MS, type Room } from '../server/rooms.ts';
 import type { VoiceService } from '../voice/agora.ts';
 import {
   clientForRole,
+  connectClient,
   getJson,
   postJson,
   setupLobby,
@@ -553,6 +554,60 @@ describe('HTTP：离开与解散房间', () => {
 
     const gone = await getJson(context, '/api/view', clients[0].cookie);
     expect(gone.status).toBe(404);
+  });
+});
+
+describe('HTTP：无活动房间回收（v1 无在线状态）', () => {
+  it('房间请求刷新活动时间；未满 24 小时保留，满 24 小时回收后成员请求 404', async () => {
+    const context = await startTestServer();
+    const lobby = await setupLobby(context);
+    const room = context.registry.getByCode(lobby.roomCode) as Room;
+    expect(room.lastActivityAt).toBe(context.clock.now());
+
+    context.clock.elapse(60_000);
+    const view = await getJson(context, '/api/view', lobby.clients[0].cookie);
+    expect(view.status).toBe(200);
+    expect(room.lastActivityAt).toBe(context.clock.now());
+
+    context.clock.elapse(INACTIVE_ROOM_TTL_MS - 1);
+    expect(context.registry.sweepInactive(context.clock.now(), INACTIVE_ROOM_TTL_MS)).toHaveLength(0);
+    expect(context.registry.getByCode(lobby.roomCode)).not.toBeNull();
+
+    context.clock.elapse(1);
+    expect(context.registry.sweepInactive(context.clock.now(), INACTIVE_ROOM_TTL_MS)).toHaveLength(1);
+    expect(context.registry.getByCode(lobby.roomCode)).toBeNull();
+    expect(context.registry.getByGameId(room.gameId)).toBeNull();
+    expect(room.driver).toBeNull();
+
+    const afterReclaim = await getJson(context, '/api/view', lobby.clients[0].cookie);
+    expect(afterReclaim.status).toBe(404);
+  });
+
+  it('实时握手也算房间活动，避免只连着 socket 的房间被误回收', async () => {
+    const context = await startTestServer({ realtime: true });
+    const lobby = await setupLobby(context);
+    const room = context.registry.getByCode(lobby.roomCode) as Room;
+
+    context.clock.elapse(INACTIVE_ROOM_TTL_MS - 1_000);
+    const socket = await connectClient(context, lobby.clients[0].cookie);
+    await waitFor(() => socket.hellos.length > 0);
+    expect(room.lastActivityAt).toBe(context.clock.now());
+
+    socket.socket.disconnect();
+    context.clock.elapse(2_000);
+    expect(context.registry.sweepInactive(context.clock.now(), INACTIVE_ROOM_TTL_MS)).toHaveLength(0);
+    expect(context.registry.getByCode(lobby.roomCode)).not.toBeNull();
+  });
+
+  it('对局中回收会释放驱动定时器，房间不再可读', async () => {
+    const context = await startTestServer();
+    const { roomCode, clients, room } = await setupStartedGame(context);
+    context.clock.elapse(INACTIVE_ROOM_TTL_MS);
+    expect(context.registry.sweepInactive(context.clock.now(), INACTIVE_ROOM_TTL_MS)).toHaveLength(1);
+    expect(context.registry.getByCode(roomCode)).toBeNull();
+    expect(room.driver).toBeNull();
+    const after = await getJson(context, '/api/view', clients[0].cookie);
+    expect(after.status).toBe(404);
   });
 });
 

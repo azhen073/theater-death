@@ -243,7 +243,8 @@ export function createV2App(deps: V2Deps) {
     res.json(entry(room, member));
   });
   router.post('/rooms/:code/promote', async (req, res) => { const s = intent(req); const room = roomFor(req); res.json(entry(room, await directory.promote(room, s))); });
-  router.post('/rooms/:code/leave', async (req, res) => { const s = intent(req); res.json(await directory.leave(roomFor(req), s)); });
+  // 房主在大厅/复盘退出即解散整房；对局进行中房主退出仍是「暂离」（RoomGovernance.leave）。
+  router.post('/rooms/:code/leave', async (req, res) => { const s = intent(req); res.json(await governance.leave(roomFor(req), s)); });
   router.post('/rooms/:code/ready', async (req, res) => res.json(await mutate(req, (room, s) => {
     const member = directory.member(room, s);
     if (member.kind !== 'formal') throw new ApiError(403, 'seat_control_required');
