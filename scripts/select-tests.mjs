@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 const selection = new Set();
 const mappings = [
-  [/^docs\/openapi-v2\.1\.json$|^tests\/(fixtures\/contract-2\.1\/|contract-schema-utils\.ts$)/, ['contract-openapi']],
+  [/^docs\/openapi-v\d+\.\d+\.json$|^tests\/(fixtures\/contract-2\.1\/|contract-schema-utils\.ts$)/, ['contract-openapi']],
   [/^docs\/examples\/contract-client\.ts$/, ['contract-client-example']],
   [/^docs\/rules-v2-full\.md$|^contracts\/catalog\.ts$/, ['client-catalog', 'contract-openapi']],
   [/^tests\/contract-http-utils\.ts$/, ['client-catalog', 'chat-receipts-api', 'room-operation-api', 'contract-http-lifecycle', 'command-receipts-api', 'contract-knowledge-api', 'v2-api', 'contract-openapi', 'contract-client-example', 'contract-release-flow']],

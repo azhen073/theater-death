@@ -13,7 +13,7 @@ function selected(...paths: string[]): string[] {
 
 describe('incremental test selector', () => {
   it('maps OpenAPI, client example, and full rules documents to their reviewed suites', () => {
-    expect(selected('docs/openapi-v2.1.json')).toEqual(['tests/contract-openapi.test.ts']);
+    expect(selected('docs/openapi-v2.2.json')).toEqual(['tests/contract-openapi.test.ts']);
     expect(selected('docs/examples/contract-client.ts')).toEqual(['tests/contract-client-example.test.ts']);
     expect(selected('docs/rules-v2-full.md')).toEqual(['tests/client-catalog.test.ts', 'tests/contract-openapi.test.ts']);
   });
@@ -32,7 +32,7 @@ describe('incremental test selector', () => {
   });
 
   it('deduplicates multiple mappings and selects runtime dependencies for package changes', () => {
-    expect(selected('docs/openapi-v2.1.json', 'docs/openapi-v2.1.json', 'contracts/catalog.ts')).toEqual([
+    expect(selected('docs/openapi-v2.2.json', 'docs/openapi-v2.2.json', 'contracts/catalog.ts')).toEqual([
       'tests/contract-openapi.test.ts', 'tests/client-catalog.test.ts',
     ]);
     expect(selected('package.json')).toEqual(['tests/runtime-dependencies.test.ts', 'tests/smoke.test.ts']);
