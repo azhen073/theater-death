@@ -16,7 +16,7 @@
 | 板子编辑器（v1.4 增补） | ✅ | 入口页「自定义板子…」：只改角色数量、实时校验（复用服务端校验器）、强制实验模式；204 单测 + E2E 09 增量通过 |
 | 终局退出（v1.5 增补） | ✅ | 仅终局后可退出：释放席位、房主不解散、空房销毁；对局中仍 409；`tests/server-api.test.ts` +3 例 + E2E `10-end-exit.spec.ts` 2 例 |
 | 文档一致性整理（v1.9） | ✅ | 全仓库 24 个 md 逐项核对：清理 LiveKit 残留（脚本 / compose / 文档）、修正版本号与单测计数、修复失效链接、同步 R-54 正文；**无玩法变更** |
-| 解散与遗弃回收（v2.0.1-beta） | ✅ | 解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房主继任）；遗弃房间 **24 小时回收**（v2 全员离线 / v1 房间无活动）；`tests/room-governance`、`empty-rooms`、`v2-maintenance`、`server-api`(+3)、`room-operation-api` 相应更新；新增 E2E `specs/11-dissolve.spec.ts`（v1 解散）与 `specs-v2/02-rooms.spec.ts` 的「房主大厅退出=解散」；`empty-rooms` 增加 `forget` 兜底用例；全量 84 文件 526 例 |
+| 解散与遗弃回收（v2.0.1-beta） | ✅ | 解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房主继任）；**大厅房主操作只保留「解散房间」**；遗弃房间 **24 小时回收**（v2 全员离线 / v1 房间无活动）；`tests/room-governance`、`empty-rooms`、`v2-maintenance`、`server-api`(+3)、`room-operation-api` 相应更新；新增 E2E `specs/11-dissolve.spec.ts`（v1 解散）与 `specs-v2/02-rooms.spec.ts` 的「房主大厅退出=解散」；`empty-rooms` 增加 `forget` 兜底用例、`frontend-v2-room-model` 增加 `hostExitDissolves` 用例；全量 84 文件 527 例 |
 | 语音媒体服务（声网替换） | ✅ | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；**2026-09-19 真实云联调与 E2E 语音 3 例全过**；服务器更新待执行（见接续指引） |
 | PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
 
@@ -231,7 +231,7 @@ theater_death/
 
 ## 测试状态
 
-526 passed / 84 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `build:web` / `build:web:v2`）。
+527 passed / 84 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `build:web` / `build:web:v2`）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
