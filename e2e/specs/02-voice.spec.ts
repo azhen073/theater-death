@@ -1,32 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { setReady, setupLobby, startGame } from '../helpers/api.ts';
-import {
-  createAdmin,
-  listParticipants,
-  waitFor,
-  waitForAudioTrack,
-  waitForCanPublish,
-} from '../helpers/cloud.ts';
+import { fetchUserStatus, waitForChannelUser } from '../helpers/cloud.ts';
 import { joinLobbyViaUi, joinVoiceViaUi, readyViaUi } from '../helpers/ui.ts';
 import { VOICE_BOARD } from '../helpers/board.ts';
 
-/** 摘取浏览器玩家在媒体服务上的身份（非脚本玩家）。 */
-async function browserIdentity(
-  admin: ReturnType<typeof createAdmin>,
-  gameId: string,
-  scriptIds: Set<string>,
-): Promise<string> {
-  const participant = await waitFor(
-    async () => {
-      const participants = await listParticipants(admin, gameId);
-      return participants.find((item) => !scriptIds.has(item.identity)) ?? false;
-    },
-    { label: '浏览器玩家出现在媒体房', timeoutMs: 30_000, intervalMs: 1000 },
-  );
-  return participant.identity;
-}
-
-test('发言轮开麦：自动重试后音频轨发布成功，发言结束权限收回', async ({ browser }) => {
+/**
+ * 声网模式下没有"媒体侧发流状态/发布权限"的查询接口（权限编码在 token 中，仅能由 SDK 行为体现），
+ * 因此语音用例的断言来自：① 频道在线状态（声网 REST）；② 界面许可文案与错误提示。
+ */
+test('发言轮开麦：授权后进入可发言状态且无麦克风错误，发言结束权限收回', async ({ browser }) => {
   test.setTimeout(300_000);
 
   const lobby = await setupLobby({ ruleset: VOICE_BOARD, prefix: '脚本', size: 12 });
@@ -42,9 +24,7 @@ test('发言轮开麦：自动重试后音频轨发布成功，发言结束权�
   await page.locator('.window').first().waitFor({ timeout: 20_000 });
   await joinVoiceViaUi(page);
 
-  const admin = createAdmin();
-  const scriptIds = new Set(lobby.clients.map((client) => client.playerId));
-  const identity = await browserIdentity(admin, lobby.gameId, scriptIds);
+  const uid = await waitForChannelUser(lobby.gameId);
 
   // 竞选报名（等待报名窗口出现）
   const signup = page.getByRole('button', { name: '报名竞选天理' });
@@ -57,19 +37,22 @@ test('发言轮开麦：自动重试后音频轨发布成功，发言结束权�
   const endSpeech = page.getByRole('button', { name: '结束发言' });
   await endSpeech.waitFor({ timeout: 60_000 });
 
-  // 核心断言：发布权已生效 + 自动重试把音频轨发出去（修复前此处 tracks 为空）
-  const participant = await waitForAudioTrack(admin, lobby.gameId, identity, { timeoutMs: 25_000 });
-  expect(participant.tracks.some((track) => track.type === 0)).toBe(true);
+  // 核心断言：发布授权生效后界面进入可发言状态，且未卡在"正在启用麦克风"或错误
+  await expect(page.getByText(/轮到你发言/).first()).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByText('正在启用麦克风…')).toBeHidden({ timeout: 25_000 });
+  await expect(page.getByText(/麦克风启用失败/)).toHaveCount(0);
+  const online = await fetchUserStatus(lobby.gameId, uid);
+  expect(online.inChannel).toBe(true);
 
-  // 结束发言 → 权限收回
+  // 结束发言 → 权限收回（界面回到禁麦提示）
   await endSpeech.click();
-  await waitForCanPublish(admin, lobby.gameId, identity, false, { timeoutMs: 30_000 });
+  await expect(page.getByText('当前不是你的发言时间').first()).toBeVisible({ timeout: 30_000 });
 
   await page.screenshot({ path: 'results/artifacts/voice-speech.png' });
   await context.close();
 });
 
-test('夜间全体禁麦：无发布权时无法开麦（媒体侧无音轨）', async ({ browser }) => {
+test('夜间全体禁麦：界面提示静音、无麦克风错误且保持频道连接', async ({ browser }) => {
   test.setTimeout(240_000);
 
   const lobby = await setupLobby({ ruleset: VOICE_BOARD, prefix: '脚本', size: 12 });
@@ -85,27 +68,14 @@ test('夜间全体禁麦：无发布权时无法开麦（媒体侧无音轨）',
   await page.locator('.window').first().waitFor({ timeout: 20_000 });
   await joinVoiceViaUi(page);
 
-  const admin = createAdmin();
-  const scriptIds = new Set(lobby.clients.map((client) => client.playerId));
-  const identity = await browserIdentity(admin, lobby.gameId, scriptIds);
+  const uid = await waitForChannelUser(lobby.gameId);
 
-  // 夜间没有任何发布权
-  const participant = await waitForCanPublish(admin, lobby.gameId, identity, false, {
-    timeoutMs: 20_000,
-  });
-  expect(participant.canPublish).toBe(false);
-
-  // 界面应提示「夜间全体静音」；等待窗口跑完仍无音轨
+  // 夜间没有任何发布权：界面应提示「夜间全体静音」，且没有麦克风错误
   await expect(page.getByText('夜间全体静音').first()).toBeVisible({ timeout: 15_000 });
-  await page.waitForTimeout(8_000);
-  const after = await waitFor(
-    async () => {
-      const participants = await listParticipants(admin, lobby.gameId);
-      return participants.find((item) => item.identity === identity) ?? false;
-    },
-    { label: '浏览器玩家仍在媒体房', timeoutMs: 10_000 },
-  );
-  expect(after.tracks.some((track) => track.type === 0)).toBe(false);
+  await expect(page.getByText(/麦克风启用失败/)).toHaveCount(0);
+  await page.waitForTimeout(5_000);
+  const status = await fetchUserStatus(lobby.gameId, uid);
+  expect(status.inChannel).toBe(true);
 
   await context.close();
 });
