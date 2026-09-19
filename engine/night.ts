@@ -45,6 +45,7 @@ export function startNight(state: GameState): { state: GameState; events: GameEv
   });
 
   const night: NightContext = {
+    ...(state.ruleset.version === '2.0' ? { eligibleAtStart: state.players.filter((p) => p.life !== 'dead').map((p) => p.playerId) } : {}),
     nightNumber: state.dayNumber,
     guardSelections: [],
     attacks: [],

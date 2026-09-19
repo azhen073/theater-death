@@ -1,6 +1,6 @@
 # 《剧院死神》在线法官 · 开发需求文档
 
-版本：v1.5 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网，见文末版本记录）  
+版本：v1.5 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设，见文末版本记录）  
 适用读者：给 Codex 与项目维护者  
 整理日期：2026-09-16 · 增补记录 2026-09-17
 
@@ -699,4 +699,11 @@ https://docs.docker.com/get-started/
 - 动因：服务器使用 LiveKit Cloud 期间，中国大陆网络每次连接语音需十几秒（UDP 媒体探测被阻后等待超时回退中继）；媒体延迟可用但连接体验差，且跨境链路受运营商 QoS 影响不稳定。
 - 变更：媒体服务由 LiveKit（自托管 / Cloud 双栖）替换为**声网 Agora 免费层**；R-43 的玩法语义与许可时段不变，实现改为「连麦鉴权 + 短期 token」——加入凭证为订阅角色（可听不可发）；轮到发言时服务端在状态推进时下发**发布凭证**（默认 TTL 10 分钟，覆盖最长 90 秒窗口），前端 `renewToken` 即时生效；收回时下发订阅凭证即时降权，发布权限到期由声网侧自动兜底。踢人（观战者）与终局关房改走声网频道管理 REST（`kicking-rule`：一次性踢出、可立即重进，与“踢人不拉黑”语义一致）。
 - 实现：`voice/agora.ts`（新增，替换 `voice/livekit.ts`）、`server/rooms.ts`（权限变化时签发 token 并随 `voice_permission` 推送）、`server/app.ts`（`/api/voice/token`、`/api/voice/sync` 改为 uid 体系；观战者 uid 从 1000 起稳定分配）、`server/realtime.ts`（推送载荷 `{ permission, token? }`）、`web/src/voice.tsx`（`agora-rtc-sdk-ng` 重写）、依赖与部署配置（compose 移除 livekit 服务；`.env` 改为 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE`；控制台须开启「连麦鉴权」）。
-- 测试：单测 `tests/voice-agora.test.ts` 6 例（token 格式与 TTL、REST 踢人/关房与鉴权头）替换原 LiveKit 适配测试；`voice-api` / `spectator` / `server-api` 适配新接口；E2E 语音断言降级为“频道在线（声网 REST）+ 界面文案 + 无麦克风错误”（声网不提供发流/权限状态查询）。联调与 E2E 实测待阿真声网凭据（App ID / App Certificate + 控制台开启「连麦鉴权」）后进行。
+- 测试：单测 `tests/voice-agora.test.ts` 6 例（token 格式与 TTL、REST 踢人/关房与鉴权头）替换原 LiveKit 适配测试；`voice-api` / `spectator` / `server-api` 适配新接口；E2E 语音断言降级为“频道在线（声网 REST）+ 界面文案 + 无麦克风错误”（声网不提供发流/权限状态查询）。已于 2026-09-19 完成声网凭据配置与真实云联调（E2E 语音 3 例全过：加入频道、发言授权/收回、夜间禁麦）。
+
+### v1.7（2026-09-19）· 天理夜死移交时机对齐 + 规则 2.0 命名预设（玩法变更；贡献提案 syhneversigh，用户（阿真）确认）
+
+- **天理夜间死亡移交时机**：由“统一在白天流程末尾（票型公示后）固定步办理”改为“晨间公告（及首夜遗言，若同日在先）后立即办理，办结后回到发言轮起”；白天出局的移交不变（遗言后、结算前）。实现对齐 R-46 与 T-40 字面（两者原文即“晨间公告后 / 遗言后”），原“固定步”实现约定取消。
+- **规则 2.0 命名预设（`THEATER_DEATH_13_V2`）**：新增可选命名预设，正式模式允许默认 1.1 与 2.0 两个命名预设（R-54 相应扩展）；差异点：V2-01 结算后立即判胜负（成立即终局，跳过遗言与移交）；V2-02 首日竞选先于晨间公告（首夜存活名单 `eligibleAtStart` 判定公告前白天权限）；V2-03 发言 120 秒 + 15 秒不开麦准备窗口（`START_SPEECH` 提前开始）；V2-04 提案兜底最后合法草稿（含空刀，覆盖 R-47“从未达成视为空行动”）。默认 1.1 预设行为不变；完整增补见 `docs/rules-v2.md`。
+- 实现：`engine/day.ts`（移交时机、v2 立即终局与公告前竞选）、`engine/proposal.ts`（`resolvedProposal`）、`engine/night.ts`（`eligibleAtStart`）、`engine/types.ts`、`rulesets/theater-death-13-v2.ts`（新增）、`rulesets/validate.ts`、`server/day-driver.ts`（准备窗口、截止即拒、代际守卫）、`server/night-driver.ts`（`strictWindows`、v2 首日流程）、`server/commands.ts` / `server/windows.ts` / `server/queued-clock.ts`、`visibility/review.ts`（`messageId` 透传）。
+- 测试：`engine-day`（T-40 新预期）、`day-driver`、`night-driver`（`ProposalView.effective`）、`deadline-queue`（4 例）、`window-instances`（3 例）；本次按测试策略增量运行 18 文件 193 例全过 + 类型检查（容器内构建链全量兜底）。

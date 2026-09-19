@@ -20,6 +20,7 @@ export interface ReviewTimelineEntry {
 
 export interface ReviewChatEntry {
   readonly id: number;
+  readonly messageId?: string;
   readonly senderId: string;
   readonly senderSeat: number | null;
   readonly text: string;
@@ -49,6 +50,7 @@ export function buildReviewView(input: {
   readonly events: readonly GameEvent[];
   readonly messages: readonly {
     readonly id: number;
+    readonly messageId?: string;
     readonly channel: string;
     readonly senderId: string;
     readonly text: string;
@@ -82,6 +84,7 @@ export function buildReviewView(input: {
   for (const message of input.messages) {
     const entry: ReviewChatEntry = {
       id: message.id,
+      ...(message.messageId === undefined ? {} : { messageId: message.messageId }),
       senderId: message.senderId,
       senderSeat: seatById.get(message.senderId) ?? null,
       text: message.text,

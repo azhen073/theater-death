@@ -79,3 +79,10 @@ function assertActiveMember(activeMemberIds: readonly string[], actorId: string)
     throw new Error(`成员 ${actorId} 当前没有行动资格`);
   }
 }
+
+/** Version 2: unanimity takes precedence; without any unanimity, use the last legal submitted draft. */
+export function resolvedProposal(state: ProposalState, activeMemberIds: readonly string[], latestFallback: boolean): ProposalVersion | null {
+  const locked = lockedVersion(state, activeMemberIds);
+  if (locked !== null || !latestFallback || activeMemberIds.length === 0) return locked;
+  return state.versions.findLast((v) => activeMemberIds.includes(v.authorId)) ?? null;
+}

@@ -35,8 +35,11 @@ import type { DayContext, ElectionState, GameState } from '../engine/types.ts';
 import type { Clock, ClockHandle } from './clock.ts';
 import type { GameCommand } from './commands.ts';
 import type { LiveWindow, ProposalView, SubmitResult } from './night-driver.ts';
+import { windowIssue } from './windows.ts';
+import { resolveMorning } from '../engine/morning.ts';
 
 export type DayWindowId =
+  | 'speech_prepare'
   | 'last_words'
   | 'election_signup'
   | 'election_speech'
@@ -65,6 +68,7 @@ export interface DayDriver {
 type Phase = 'idle' | DayWindowId | 'done';
 
 export function createDayDriver(options: {
+  readonly strictWindows?: boolean;
   readonly clock: Clock;
   readonly onStep: (result: DayStepResult) => void;
   readonly onComplete?: (state: GameState) => void;
@@ -74,6 +78,12 @@ export function createDayDriver(options: {
   let state: GameState | null = null;
   let phase: Phase = 'idle';
   let closesAt = 0;
+  let generation = 0;
+  let preparedKind: 'election_speech' | 'speech_round' | null = null;
+  function liveWindows(): LiveWindow[] {
+    if (!state || phase === 'idle' || phase === 'done') return [];
+    return [{ id: phase, closesAt, ...(options.strictWindows ? { type: phase, instanceId: `${state.gameId}:day:${state.dayNumber}:${generation}` } : {}) }];
+  }
   const handles: ClockHandle[] = [];
 
   function accepted(): SubmitResult {
@@ -124,19 +134,52 @@ export function createDayDriver(options: {
       clock.cancel(handle);
     }
     phase = id;
+    generation += 1;
     closesAt = clock.now() + seconds * 1000;
-    handles.push(clock.schedule(seconds * 1000, callback));
+    const scheduledGeneration = generation;
+    handles.push(clock.schedule(seconds * 1000, () => { if (generation === scheduledGeneration && phase !== 'done') callback(); }));
   }
 
   function eligibleVoterCount(game: GameState): number {
     return game.players.filter(
-      (player) => player.life !== 'dead' && voteEligibility(game, player.playerId) === 'ok',
+      (player) => voteEligibility(game, player.playerId) === 'ok',
     ).length;
   }
 
+  function beginPreparedSpeech(): void {
+    if (phase !== 'speech_prepare' || preparedKind === null) return;
+    const kind = preparedKind;
+    preparedKind = null;
+    step({ state: { ...current(), day: { ...day(), speechPreparing: false } }, events: [] });
+    scheduleWindow(kind, timers().speech, kind === 'election_speech' ? advanceElection : timeoutSpeech);
+  }
+
+  function openSpeech(kind: 'election_speech' | 'speech_round'): void {
+    if (current().ruleset.version !== '2.0') {
+      scheduleWindow(kind, timers().speech, kind === 'election_speech' ? advanceElection : timeoutSpeech);
+      return;
+    }
+    preparedKind = kind;
+    step({ state: { ...current(), day: { ...day(), speechPreparing: true } }, events: [] });
+    scheduleWindow('speech_prepare', timers().speechPrepare ?? 15, beginPreparedSpeech);
+  }
+
   function openNext(): void {
+    if (current().win !== null || current().phase === 'ended') {
+      for (const handle of handles.splice(0)) clock.cancel(handle);
+      phase = 'done';
+      onComplete?.(current());
+      return;
+    }
     const context = day();
     switch (context.step) {
+      case 'morning_announcement': {
+        const announced = resolveMorning({ ...current(), phase: 'morning', day: null, preAnnouncementElection: false, firstDayElectionDone: true });
+        step(announced);
+        if (announced.state.win === null) step(beginDay(announced.state));
+        openNext();
+        return;
+      }
       case 'first_night_last_words':
       case 'elimination_last_words':
         scheduleWindow('last_words', timers().lastWords, timeoutLastWords);
@@ -174,9 +217,7 @@ export function createDayDriver(options: {
       return;
     }
     if (election.phase === 'speech') {
-      scheduleWindow('election_speech', timers().speech, () => {
-        advanceElection();
-      });
+      openSpeech('election_speech');
       return;
     }
     if (election.phase === 'vote' || election.phase === 'revote') {
@@ -193,7 +234,7 @@ export function createDayDriver(options: {
 
   function openSpeechRoundWindow(context: DayContext): void {
     if (context.speechRound === null) {
-      scheduleWindow('speech_order', timers().ability, () => {
+      scheduleWindow('speech_order', timers().speechOrder ?? timers().ability, () => {
         if (phase !== 'speech_order') {
           return;
         }
@@ -201,9 +242,7 @@ export function createDayDriver(options: {
       });
       return;
     }
-    scheduleWindow('speech_round', timers().speech, () => {
-      timeoutSpeech();
-    });
+    openSpeech('speech_round');
   }
 
   function openVoteWindow(context: DayContext): void {
@@ -279,6 +318,7 @@ export function createDayDriver(options: {
     if (phase !== expected) {
       return rejected('window_not_open', '当前不在该行动窗口');
     }
+    if (clock.now() >= closesAt) return rejected('window_closed', closedMessage);
     const game = current();
     if (game.win !== null) {
       return rejected('game_ended', '对局已经结束');
@@ -287,6 +327,10 @@ export function createDayDriver(options: {
   }
 
   function submit(command: GameCommand): SubmitResult {
+    if (options.strictWindows) {
+      const issue = windowIssue(command, liveWindows(), clock.now());
+      if (issue) return issue;
+    }
     if (state === null || phase === 'idle') {
       return rejected('day_not_started', '白天流程尚未开始');
     }
@@ -294,6 +338,14 @@ export function createDayDriver(options: {
       return rejected('day_finished', '白天流程已结束');
     }
     switch (command.type) {
+      case 'START_SPEECH': {
+        const issue = requireWindow('speech_prepare', '准备时间已截止');
+        if (issue) return issue;
+        const speaker = preparedKind === 'election_speech' ? currentElectionSpeaker(current()) : currentSpeechRoundSpeaker(current());
+        if (speaker !== command.playerId) return rejected('not_current_speaker', '只有当前发言者可开始');
+        beginPreparedSpeech();
+        return accepted();
+      }
       case 'END_LAST_WORDS':
         return submitEndLastWords(command.playerId);
       case 'REGISTER_CANDIDACY':
@@ -347,14 +399,16 @@ export function createDayDriver(options: {
 
   function submitWithdrawCandidacy(playerId: string): SubmitResult {
     const game = current();
-    if (phase !== 'election_signup' && phase !== 'election_speech') {
+    if (phase !== 'election_signup' && phase !== 'election_speech' && !(phase === 'speech_prepare' && preparedKind === 'election_speech')) {
       return rejected('window_not_open', '当前不在竞选报名或发言窗口');
     }
+    if (clock.now() >= closesAt) return rejected('window_closed', '竞选窗口已截止');
     const issue = withdrawCandidacyIssue(game, playerId);
     if (issue !== null) {
       return rejectedIssue(issue);
     }
-    const wasSpeaker = phase === 'election_speech' && currentElectionSpeaker(game) === playerId;
+    const speaking = phase === 'election_speech' || (phase === 'speech_prepare' && preparedKind === 'election_speech');
+    const wasSpeaker = speaking && currentElectionSpeaker(game) === playerId;
     const withdrawal = withdrawCandidacy(game, playerId);
     const after = withdrawal.state;
     const election = after.day?.election;
@@ -363,7 +417,7 @@ export function createDayDriver(options: {
         ? 0
         : election.speechOrder.filter((candidateId) => !election.withdrawn.includes(candidateId))
             .length;
-    if (phase === 'election_speech' && (wasSpeaker || remaining === 0)) {
+    if (speaking && (wasSpeaker || remaining === 0)) {
       apply(advanceElectionSpeech(after));
       return accepted();
     }
@@ -512,7 +566,7 @@ export function createDayDriver(options: {
       if (state === null || phase === 'idle' || phase === 'done') {
         return [];
       }
-      return [{ id: phase, closesAt }];
+      return liveWindows();
     },
     proposalState(_playerId) {
       return null;
@@ -528,6 +582,7 @@ export function createDayDriver(options: {
         clock.cancel(handle);
       }
       handles.length = 0;
+      phase = 'done';
     },
   };
 }

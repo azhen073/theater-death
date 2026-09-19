@@ -1,5 +1,6 @@
 import { DEITY_ROLE_IDS } from './roles.ts';
 import { THEATER_DEATH_13 } from './theater-death-13.ts';
+import { THEATER_DEATH_13_V2 } from './theater-death-13-v2.ts';
 import { ROLE_IDS, type RoleId } from './types.ts';
 
 export interface ValidationIssue {
@@ -104,6 +105,7 @@ export function validateRuleset(input: unknown): ValidationResult {
         add('invalid_timer', `时限 "${key}" 必须为正数，收到 ${String(timers[key])}`);
       }
     }
+    for (const key of ['speechPrepare', 'speechOrder']) if (timers[key] !== undefined && !isPositiveNumber(timers[key])) add('invalid_timer', `时限 ${key} 必须为正数`);
   }
 
   const sheriff = input.sheriff;
@@ -145,7 +147,7 @@ export function validateRuleset(input: unknown): ValidationResult {
   }
 
   const policies: ReadonlyArray<readonly [unknown, readonly unknown[], string]> = [
-    [input.teamConfirm, ['unanimous_by_revision'], 'teamConfirm'],
+    [input.teamConfirm, ['unanimous_by_revision', 'unanimous_or_latest'], 'teamConfirm'],
     [input.duplicateTargetPolicy, ['allow', 'forbid'], 'duplicateTargetPolicy'],
     [input.attackOrder, ['seat_asc_then_source_priority'], 'attackOrder'],
     [input.stageTriggerSnapshot, ['death_event', 'final_state'], 'stageTriggerSnapshot'],
@@ -173,7 +175,7 @@ export function validateRuleset(input: unknown): ValidationResult {
     }
   }
 
-  if (input.mode === 'formal' && !deepEqual(input, THEATER_DEATH_13)) {
+  if (input.mode === 'formal' && !deepEqual(input, input.version === '2.0' ? THEATER_DEATH_13_V2 : THEATER_DEATH_13)) {
     add(
       'formal_preset_mismatch',
       '正式模式仅允许默认 13 人命名预设（R-54）；变体配置请使用实验模式并在大厅醒目提示',
