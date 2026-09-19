@@ -8,7 +8,7 @@ import { createFakeClock, type FakeClock } from '../server/clock.ts';
 import { createLogStore, type LogStore } from '../server/log-store.ts';
 import { createBroadcaster, type Broadcaster } from '../server/realtime.ts';
 import { RoomRegistry, type Room } from '../server/rooms.ts';
-import type { VoiceService } from '../voice/livekit.ts';
+import type { VoiceService } from '../voice/agora.ts';
 
 export const TEST_SESSION_SECRET = 'test-secret';
 

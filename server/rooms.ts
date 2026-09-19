@@ -3,8 +3,8 @@ import type { GameEvent } from '../engine/events.ts';
 import { createGame } from '../engine/setup.ts';
 import type { GameState } from '../engine/types.ts';
 import { ROLE_IDS, type RulesetConfig } from '../rulesets/types.ts';
-import { voicePermission } from '../voice/policy.ts';
-import type { VoiceService } from '../voice/livekit.ts';
+import { voicePermission, type VoicePermissionPush } from '../voice/policy.ts';
+import type { VoiceService } from '../voice/agora.ts';
 import type { Clock } from './clock.ts';
 import { createDayDriver, type DayDriver } from './day-driver.ts';
 import type { LogStore, StoredMessage } from './log-store.ts';
@@ -26,6 +26,8 @@ export interface RoomSpectator {
   readonly nickname: string;
   readonly bindPlayerId: string;
   readonly joinedAt: number;
+  /** 声网 uid（1000 起），用于签发语音凭证与移出语音 */
+  readonly uid: number;
 }
 
 export interface ChatMessage extends StoredMessage {
@@ -89,6 +91,8 @@ export class Room {
   nextMessageId = 1;
   readonly receipts = new Map<string, CommandReceipt>();
   voiceClosed = false;
+  /** 当前持有发布授权（已下发发布凭证）的玩家，用于识别权限变化 */
+  readonly voiceGranted = new Set<string>();
   #queue: Promise<unknown> = Promise.resolve();
 
   constructor(code: string, gameId: string, host: RoomMember, ruleset: RulesetConfig) {
@@ -192,9 +196,20 @@ export class RoomRegistry {
       nickname,
       bindPlayerId,
       joinedAt: this.#deps.clock.now(),
+      uid: this.#nextSpectatorUid(room),
     };
     room.spectators.push(spectator);
     return { ok: true, room, spectator };
+  }
+
+  /** 观战者 uid 从 1000 起顺序分配（与玩家座位号 1-13 区隔，稳定用于签发凭证与移出语音） */
+  #nextSpectatorUid(room: Room): number {
+    const used = new Set(room.spectators.map((item) => item.uid));
+    let uid = 1000;
+    while (used.has(uid)) {
+      uid += 1;
+    }
+    return uid;
   }
 
   removeSpectator(room: Room, spectatorId: string): boolean {
@@ -303,37 +318,55 @@ export class RoomRegistry {
     this.#afterStep(room);
   }
 
-  /** 每次状态推进后：广播每人自己的语音许可，并把发布权同步到媒体服务（失败只记日志） */
+  /**
+   * 每次状态推进后：广播每人自己的语音许可。
+   * 声网模式下发布权编码在短期 token 中：获得发言权时附带发布凭证、
+   * 失去时附带订阅凭证（前端 renewToken 即时降权），token 到期自动兜底收回。
+   */
   #afterStep(room: Room): void {
     const state = room.state;
     if (state === null) {
       return;
     }
-    const permissions = new Map(
-      state.players.map((player) => [player.playerId, voicePermission(state, player.playerId)]),
-    );
-    this.#deps.broadcaster?.emitVoicePermission(room.gameId, permissions);
-
     const voice = this.#deps.voice ?? null;
-    if (voice === null) {
-      return;
-    }
+
     if (state.win !== null) {
-      if (!room.voiceClosed) {
+      if (voice !== null && !room.voiceClosed) {
         room.voiceClosed = true;
         void voice.closeRoom(room.gameId).catch((error: unknown) => {
           console.warn(`[theater-death] 关闭语音房间失败：${String(error)}`);
         });
       }
+      room.voiceGranted.clear();
+      const finalPushes = new Map<string, VoicePermissionPush>();
+      for (const player of state.players) {
+        finalPushes.set(player.playerId, {
+          permission: voicePermission(state, player.playerId),
+        });
+      }
+      this.#deps.broadcaster?.emitVoicePermission(room.gameId, finalPushes);
       return;
     }
-    const canPublish = new Map<string, boolean>();
-    for (const [playerId, permission] of permissions) {
-      canPublish.set(playerId, permission.canPublish);
+
+    const pushes = new Map<string, VoicePermissionPush>();
+    for (const player of state.players) {
+      const permission = voicePermission(state, player.playerId);
+      const granted = room.voiceGranted.has(player.playerId);
+      if (voice === null || permission.canPublish === granted) {
+        pushes.set(player.playerId, { permission });
+        continue;
+      }
+      const token = permission.canPublish
+        ? voice.issuePublishGrant({ roomName: room.gameId, uid: player.seat }).token
+        : voice.issueSubscriberGrant({ roomName: room.gameId, uid: player.seat }).token;
+      if (permission.canPublish) {
+        room.voiceGranted.add(player.playerId);
+      } else {
+        room.voiceGranted.delete(player.playerId);
+      }
+      pushes.set(player.playerId, { permission, token });
     }
-    void voice.syncRoom({ roomName: room.gameId, permissions: canPublish }).catch((error: unknown) => {
-      console.warn(`[theater-death] 同步语音许可失败：${String(error)}`);
-    });
+    this.#deps.broadcaster?.emitVoicePermission(room.gameId, pushes);
   }
 
   #startNight(room: Room, state: GameState): void {

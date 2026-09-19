@@ -31,6 +31,12 @@ export interface VoicePermission {
   readonly reason: VoicePermissionReason;
 }
 
+/** 推送给单个玩家的语音许可载荷：权限发生变化时附带新 token（获得=发布凭证，失去=订阅凭证） */
+export interface VoicePermissionPush {
+  readonly permission: VoicePermission;
+  readonly token?: string;
+}
+
 /** 观战者固定许可：只听不说（不进入玩家动态授权策略） */
 export const SPECTATOR_PERMISSION: VoicePermission = { canPublish: false, reason: 'spectator' };
 

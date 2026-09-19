@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { THEATER_DEATH_13 } from '../rulesets/theater-death-13.ts';
 import type { Room } from '../server/rooms.ts';
-import type { VoiceService } from '../voice/livekit.ts';
+import type { VoiceService } from '../voice/agora.ts';
 import {
   clientForRole,
   getJson,
@@ -14,19 +14,22 @@ import {
 } from './server-test-utils.ts';
 
 function createFakeVoice() {
-  const removed: Array<{ roomName: string; identity: string }> = [];
+  const removed: Array<{ roomName: string; uid: number }> = [];
   const service: VoiceService = {
-    async issueCredentials({ roomName, playerId }) {
-      return { url: 'wss://voice.test', token: `token-${playerId}`, roomName };
+    issueCredentials({ roomName, uid }) {
+      return { appId: 'appid-test', channel: roomName, uid, token: `sub-${uid}` };
     },
-    async syncRoom() {
-      return;
+    issuePublishGrant({ roomName, uid }) {
+      return { token: `pub-${roomName}-${uid}`, expiresAt: Date.now() + 600_000 };
+    },
+    issueSubscriberGrant({ roomName, uid }) {
+      return { token: `sub-${roomName}-${uid}` };
     },
     async closeRoom() {
       return;
     },
-    async removeParticipant(roomName, identity) {
-      removed.push({ roomName, identity });
+    async removeParticipant(roomName, uid) {
+      removed.push({ roomName, uid });
     },
   };
   return { service, removed };
@@ -730,7 +733,7 @@ describe('HTTP：踢观战者与语音参与者清理', () => {
     );
     expect(kicked.status).toBe(200);
     await waitFor(() => fakeVoice.removed.length === 1);
-    expect(fakeVoice.removed).toEqual([{ roomName: gameId, identity: spectatorId }]);
+    expect(fakeVoice.removed).toEqual([{ roomName: gameId, uid: 1000 }]);
   });
 
   it('观战者主动退出观战时同样移除媒体参与者', async () => {
@@ -748,6 +751,6 @@ describe('HTTP：踢观战者与语音参与者清理', () => {
     const left = await postJson(context, '/api/spectate/leave', {}, spectatorCookie);
     expect(left.status).toBe(200);
     await waitFor(() => fakeVoice.removed.length === 1);
-    expect(fakeVoice.removed[0]?.identity).toBe(spectatorId);
+    expect(fakeVoice.removed[0]?.uid).toBe(1000);
   });
 });

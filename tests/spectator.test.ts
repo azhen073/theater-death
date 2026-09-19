@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { VoiceService } from '../voice/livekit.ts';
+import type { VoiceService } from '../voice/agora.ts';
 import {
   clientForRole,
   connectClient,
@@ -14,21 +14,24 @@ import {
 } from './server-test-utils.ts';
 
 function createFakeVoice() {
-  const issued: Array<{ roomName: string; playerId: string }> = [];
-  const removed: Array<{ roomName: string; identity: string }> = [];
+  const issued: Array<{ roomName: string; uid: number }> = [];
+  const removed: Array<{ roomName: string; uid: number }> = [];
   const service: VoiceService = {
-    async issueCredentials({ roomName, playerId }) {
-      issued.push({ roomName, playerId });
-      return { url: 'wss://voice.test', token: `token-${playerId}`, roomName };
+    issueCredentials({ roomName, uid }) {
+      issued.push({ roomName, uid });
+      return { appId: 'appid-test', channel: roomName, uid, token: `sub-${uid}` };
     },
-    async syncRoom() {
-      return;
+    issuePublishGrant({ roomName, uid }) {
+      return { token: `pub-${roomName}-${uid}`, expiresAt: Date.now() + 600_000 };
+    },
+    issueSubscriberGrant({ roomName, uid }) {
+      return { token: `sub-${roomName}-${uid}` };
     },
     async closeRoom() {
       return;
     },
-    async removeParticipant(roomName, identity) {
-      removed.push({ roomName, identity });
+    async removeParticipant(roomName, uid) {
+      removed.push({ roomName, uid });
     },
   };
   return { service, issued, removed };
@@ -163,8 +166,7 @@ describe('观战（绑定玩家的只读第二屏）', () => {
     const spectatorToken = await postJson(context, '/api/voice/token', {}, cookie);
     expect(spectatorToken.status).toBe(200);
     expect(spectatorToken.json.permission).toEqual({ canPublish: false, reason: 'spectator' });
-    const issued = fake.issued.at(-1);
-    expect(issued?.playerId.startsWith('s_')).toBe(true);
+    expect(fake.issued.at(-1)?.uid).toBe(1000);
   });
 
   it('观众读取范围 = 绑定玩家：公屏放行、阵营房按绑定玩家的成员资格', async () => {
