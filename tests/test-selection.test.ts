@@ -41,6 +41,17 @@ describe('incremental test selector', () => {
     expect(frontend).toContain('tests/frontend-v2-voice-session.test.ts');
   });
 
+  it('maps remaining entry, admin, and infra files to their reviewed suites', () => {
+    expect(selected('server/v2/frontend-app.ts')).toEqual(['tests/frontend-v2-static.test.ts']);
+    expect(selected('server/v2/admin-router.ts')).toEqual(['tests/admin-api.test.ts']);
+    expect(selected('tests/admin-test-helper.ts')).toEqual(['tests/admin-api.test.ts']);
+    expect(selected('tests/frontend-v2-acceptance-server.ts')).toEqual(['tests/smoke.test.ts']);
+    expect(selected('tests/frontend-v2-game-harness.tsx')).toEqual(['tests/smoke.test.ts']);
+    expect(selected('tests/deploy-frontend-local.tests.ps1')).toEqual(['tests/smoke.test.ts']);
+    expect(selected('vite.config.ts')).toEqual(['tests/smoke.test.ts']);
+    expect(selected('vite.v2.config.ts')).toEqual(['tests/smoke.test.ts']);
+  });
+
   it('deduplicates multiple mappings and selects runtime dependencies for package changes', () => {
     expect(selected('docs/openapi-v2.2.json', 'docs/openapi-v2.2.json', 'contracts/catalog.ts')).toEqual([
       'tests/contract-openapi.test.ts', 'tests/client-catalog.test.ts',
