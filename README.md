@@ -3,7 +3,7 @@
 13 人 9 身份的社交推理游戏**在线法官**：服务端持有真实状态并做全部裁决，纯规则引擎 + Socket.IO 实时推送 + 网页前端；支持「玩家电脑 / 第三方服务器」两种托管（同一 Docker 镜像）。
 
 - 玩法权威：`theater_death_rulebook_v1.1.md`（1.1 默认预设，含 S3 裁定与追加记录）；规则 2.0 命名预设见 `docs/rules-v2-full.md`
-- 工程规格：`theater_death_development_requirements_v1.1.md`（当前 v1.10）
+- 工程规格：`theater_death_development_requirements_v1.1.md`（当前 v2.0.1-beta）
 - 进度与交接：`PROGRESS.md`
 
 ## 快速开始（Docker）
@@ -58,7 +58,7 @@ gh pr create
 ## 致谢
 
 - **syhneversigh**：贡献账号体系（数字 UID）、v2 稳定房间模型与租约、新版前端（web-v2）、契约 2.x 与验收测试等（PR #3，已按采用/调整说明整合进 `main`）
-- **kiahir**：贡献终局退出（需求 v1.5）、全仓库文档一致性核对（需求 v1.9）、房间解散任意阶段生效与遗弃房间 24 小时回收（需求 v1.10）
+- **kiahir**：贡献终局退出（需求 v1.5）、全仓库文档一致性核对（需求 v1.9）、房间解散任意阶段生效与遗弃房间 24 小时回收（需求 v2.0.1-beta）
 
 ## 目录结构
 

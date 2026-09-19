@@ -16,7 +16,7 @@
 | 板子编辑器（v1.4 增补） | ✅ | 入口页「自定义板子…」：只改角色数量、实时校验（复用服务端校验器）、强制实验模式；204 单测 + E2E 09 增量通过 |
 | 终局退出（v1.5 增补） | ✅ | 仅终局后可退出：释放席位、房主不解散、空房销毁；对局中仍 409；`tests/server-api.test.ts` +3 例 + E2E `10-end-exit.spec.ts` 2 例 |
 | 文档一致性整理（v1.9） | ✅ | 全仓库 24 个 md 逐项核对：清理 LiveKit 残留（脚本 / compose / 文档）、修正版本号与单测计数、修复失效链接、同步 R-54 正文；**无玩法变更** |
-| 解散与遗弃回收（v1.10） | ✅ | 解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房主继任）；遗弃房间 **24 小时回收**（v2 全员离线 / v1 房间无活动）；`tests/room-governance`、`empty-rooms`、`v2-maintenance`、`server-api`(+3)、`room-operation-api` 相应更新，全量 84 文件 525 例 |
+| 解散与遗弃回收（v2.0.1-beta） | ✅ | 解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房主继任）；遗弃房间 **24 小时回收**（v2 全员离线 / v1 房间无活动）；`tests/room-governance`、`empty-rooms`、`v2-maintenance`、`server-api`(+3)、`room-operation-api` 相应更新，全量 84 文件 525 例 |
 | 语音媒体服务（声网替换） | ✅ | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；**2026-09-19 真实云联调与 E2E 语音 3 例全过**；服务器更新待执行（见接续指引） |
 | PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
 
@@ -24,7 +24,7 @@
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v1.10：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v1.10 解散与遗弃回收，见文末版本记录）。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.1-beta：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收，见文末版本记录）。
 3. 进度断点（2026-09-19 深夜）：**PR#3 选定移植进行中**（外部贡献 syhneversigh，阿真确认照抄 A/B/D 三部分）。
    - **A 组已推送 `4688b49`**：公开知识泄露修复（`visibility/knowledge.ts` 先红后绿 9 例——修夜间名单在晨间公告前可从公开接口读到的泄露）、`engine/targets.ts`、`server/capabilities.ts`、`server/windows.ts` + `queued-clock.ts`、`server/log-store.ts`（迁移守卫 + 预备表列）、`GameCommand.windowInstanceId` / `START_SPEECH`、`LiveWindow.instanceId` / `type`。
    - **B 组（本批）**：天理夜死移交时机对齐 R-46/T-40 字面（晨间公告后立即办，不再等白天末尾）+ 规则 2.0 命名预设 `THEATER_DEATH_13_V2`（V2-01 立即终局 / V2-02 公告前竞选 / V2-03 发言 120 秒 + 15 秒准备窗口 / V2-04 提案兜底）；`engine/*`、`rulesets/*`、`day-driver` / `night-driver`、`clock` 照抄；版本记录已更新（规则书 Q-09 + 需求 v1.7 + `docs/rules-v2.md`）；增量 18 文件 193 例全过。
