@@ -1,6 +1,6 @@
 # 《剧院死神》在线法官 · 开发需求文档
 
-版本：v1.4 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器，见文末版本记录）  
+版本：v1.5 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网，见文末版本记录）  
 适用读者：给 Codex 与项目维护者  
 整理日期：2026-09-16 · 增补记录 2026-09-17
 
@@ -693,3 +693,10 @@ https://docs.docker.com/get-started/
 - 终局语义：任何人（含房主）点「退出房间」都只**释放自己的席位**；房主退出**不解散**（其他成员照旧查看复盘）；**最后一名成员退出时房间销毁**（顺带解决终局房间常驻内存）。退出即清会话 cookie；房间已开局不能重新加入，等于放弃该局复盘访问——界面确认弹窗明示。
 - 实现：`server/rooms.ts::leaveRoom`（守卫改为“非终局才拒绝”；终局分支 = 移除成员 + 连带观众 + 空房销毁双索引）、`server/app.ts`（`/api/view` 对局形态新增 `roomCode`）、`web/src/game.tsx`（终局卡片「查看复盘 / 退出房间」，观战者不显示后者）、`web/src/app.tsx`（`leaveRoom` 回调：清本地状态回入口页）。
 - 测试：`tests/server-api.test.ts` 终局退出 3 例（成员退出且他人复盘保留 / 房主退出不解散 / 最后一人退出销毁房间），该文件 24→27 例；E2E `10-end-exit.spec.ts` 2 例（对局中退出被拒 409 / 终局退出回入口页且他人复盘保留）。单测总数 207；本次按测试策略只增量运行 `tests/server-api.test.ts`（容器内构建链全量跑）与 `specs/10-end-exit.spec.ts`（2/2 通过）。
+
+### v1.6（2026-09-19）· 语音媒体服务替换为声网（实现约定变更）
+
+- 动因：服务器使用 LiveKit Cloud 期间，中国大陆网络每次连接语音需十几秒（UDP 媒体探测被阻后等待超时回退中继）；媒体延迟可用但连接体验差，且跨境链路受运营商 QoS 影响不稳定。
+- 变更：媒体服务由 LiveKit（自托管 / Cloud 双栖）替换为**声网 Agora 免费层**；R-43 的玩法语义与许可时段不变，实现改为「连麦鉴权 + 短期 token」——加入凭证为订阅角色（可听不可发）；轮到发言时服务端在状态推进时下发**发布凭证**（默认 TTL 10 分钟，覆盖最长 90 秒窗口），前端 `renewToken` 即时生效；收回时下发订阅凭证即时降权，发布权限到期由声网侧自动兜底。踢人（观战者）与终局关房改走声网频道管理 REST（`kicking-rule`：一次性踢出、可立即重进，与“踢人不拉黑”语义一致）。
+- 实现：`voice/agora.ts`（新增，替换 `voice/livekit.ts`）、`server/rooms.ts`（权限变化时签发 token 并随 `voice_permission` 推送）、`server/app.ts`（`/api/voice/token`、`/api/voice/sync` 改为 uid 体系；观战者 uid 从 1000 起稳定分配）、`server/realtime.ts`（推送载荷 `{ permission, token? }`）、`web/src/voice.tsx`（`agora-rtc-sdk-ng` 重写）、依赖与部署配置（compose 移除 livekit 服务；`.env` 改为 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE`；控制台须开启「连麦鉴权」）。
+- 测试：单测 `tests/voice-agora.test.ts` 6 例（token 格式与 TTL、REST 踢人/关房与鉴权头）替换原 LiveKit 适配测试；`voice-api` / `spectator` / `server-api` 适配新接口；E2E 语音断言降级为“频道在线（声网 REST）+ 界面文案 + 无麦克风错误”（声网不提供发流/权限状态查询）。联调与 E2E 实测待阿真声网凭据（App ID / App Certificate + 控制台开启「连麦鉴权」）后进行。

@@ -16,28 +16,12 @@ services:
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
       VOICE_ENABLED: ${VOICE_ENABLED:-false}
-      VOICE_SERVICE_URL: ${VOICE_SERVICE_URL:-}
-      VOICE_ADMIN_URL: ${VOICE_ADMIN_URL:-}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      AGORA_APP_ID: ${AGORA_APP_ID:-}
+      AGORA_APP_CERTIFICATE: ${AGORA_APP_CERTIFICATE:-}
+      AGORA_CUSTOMER_KEY: ${AGORA_CUSTOMER_KEY:-}
+      AGORA_CUSTOMER_SECRET: ${AGORA_CUSTOMER_SECRET:-}
     volumes:
       - ../data:/app/data
-
-  livekit:
-    image: livekit/livekit-server:v1.9.7
-    profiles: ["voice", "e2e"]
-    restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - "exec /livekit-server --config /etc/livekit.yaml $${LIVEKIT_NODE_IP:+--node-ip $${LIVEKIT_NODE_IP}}"
-    environment:
-      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecret-change-me}"
-      LIVEKIT_NODE_IP: "${LIVEKIT_NODE_IP:-}"
-    volumes:
-      - "./${LIVEKIT_CONFIG_FILE:-livekit.yaml}:/etc/livekit.yaml:ro"
-    ports:
-      - "7881:7881"
-      - "7882:7882/udp"
 
   e2e:
     build:
@@ -45,18 +29,17 @@ services:
       dockerfile: deploy/Dockerfile.e2e
     profiles: ["e2e"]
     # 与 app 共享网络命名空间：浏览器经 http://localhost:3000 访问（localhost 天然是安全上下文，
-    # 免去非 localhost 的 HTTP 被 Chromium 强制升级 HTTPS 的问题），livekit 仍经服务名解析。
+    # 免去非 localhost 的 HTTP 被 Chromium 强制升级 HTTPS 的问题）。
     network_mode: service:app
     depends_on:
       app:
         condition: service_started
-      livekit:
-        condition: service_started
     environment:
       E2E_BASE_URL: http://localhost:3000
-      E2E_LIVEKIT_WS_URL: ws://livekit:7880
-      E2E_LIVEKIT_ADMIN_URL: http://livekit:7880
-      E2E_LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
-      E2E_LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-devsecret-change-me}
+      E2E_AGORA_APP_ID: ${AGORA_APP_ID:-}
+      E2E_AGORA_APP_CERTIFICATE: ${AGORA_APP_CERTIFICATE:-}
+      E2E_AGORA_CUSTOMER_KEY: ${AGORA_CUSTOMER_KEY:-}
+      E2E_AGORA_CUSTOMER_SECRET: ${AGORA_CUSTOMER_SECRET:-}
+      E2E_AGORA_REST_BASE_URL: ${AGORA_REST_BASE_URL:-https://api.sd-rtn.com}
     volumes:
       - ../e2e-results:/e2e/results

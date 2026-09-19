@@ -19,7 +19,7 @@
 - M4a 完成：规则收尾（实验模式 API + 大厅横幅 + 落盘、T-50/T-17/T-36 测试补齐）；M4c 完成：部署与运行手册（install/start/stop/update 脚本、RUNBOOK）、大厅退出/解散功能、GitHub（公开）仓库 + Actions 构建发布 ghcr 镜像、服务器部署并经外网域名验证。
 - M4b 语音完成（LiveKit：R-43 许可策略、短期凭证与服务端权限同步、前端语音条、compose voice profile、RUNBOOK §7）；**服务器实机双设备验收通过**（修复发布权限竞态：失败自动重试 + 权限事件驱动，Playwright 虚拟麦克风复现验证）。
 - 207 个单测全过（镜像构建含服务端/前端类型检查与 vite build）；**M4d 完成**：容器化 Playwright E2E（chromium+webkit：全角色流程、语音组、越权、泄漏、恢复、容量）并修复白天驱动崩溃；**M4e 完成**：收官报告 `M4_ACCEPTANCE_REPORT.md`（§15 格式）；**观战（需求 v1.2 增补）完成**：绑定玩家只读第二屏（`tests/spectator.test.ts` 7 例 + E2E `07-spectator.spec.ts` 2 例）；**房主踢人（需求 v1.3 增补）完成**：大厅期移出成员/观战者（`tests/server-api.test.ts` 踢人 7 例 + E2E `08-kick.spec.ts` 2 例）；**终局退出（需求 v1.5 增补）完成**：仅终局后可退出（释放席位、房主不解散、空房销毁；对局中仍 409，`tests/server-api.test.ts` +3 例 + E2E `10-end-exit.spec.ts` 2 例）。E2E 累计 21 例（chromium 17 + webkit 4，静态清点；最近一次全量运行是 v1.2 时的 16/16，此后按测试策略改为增量）。遗留动作：服务器更新镜像应用崩溃修复、观战、踢人与终局退出（`git pull && ./deploy/update.sh`）。细化计划见 `PROGRESS.md`。
-- 语音关键约束：服务器语音采用托管媒体 **LiveKit Cloud 免费层**（凭证只入服务器 `.env`，不入库；云链路与实机双设备验收均通过）；自托管保留给本机/局域网/有公网入站场景（需浏览器直连 UDP 7882/TCP 7881，反代与隧道只承载网页与信令）；两栖只换 `.env` 配置，代码同一套。
+- 语音关键约束（2026-09-19 起）：服务器语音采用 **声网 Agora 免费层**（App ID / App Certificate 只入 `.env`，不入库；项目须在控制台**开启「连麦鉴权」**发布权限控制才生效）；R-43 发布权通过短期 token 实现——加入 = 订阅角色（可听不可发），发言 = 服务端下发发布凭证（TTL 10 分钟）+ 前端 `renewToken` 即时生效，收回 = 订阅凭证即时降权 + TTL 到期兜底；踢人/关房走频道管理 REST（一次性踢出，可立即重进）。上一代 LiveKit 实现已移除（`deploy/livekit*.yaml` 残留待清理）。
 - 关于夜间窗口"无事可做提前结束"的提案已讨论并否决：固定时长是防泄露设计（需求明文），不要重新引入。
 - 构建/测试命令：`docker compose -f deploy/docker-compose.yml build`（构建即跑全部测试）。
 

@@ -1,6 +1,6 @@
 # theater_death 进度与交接
 
-更新时间：2026-09-17 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-09-19 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
 
@@ -14,13 +14,14 @@
 | 观战（v1.2 增补） | ✅ | 绑定玩家只读第二屏：入口选择目标、只读大厅/对局、语音旁听、终局复盘同权；194 单测 + E2E 16/16 |
 | 房主踢人（v1.3 增补） | ✅ | 大厅期移出成员（清位、可重进）、移出观战者（不限阶段、连带语音参与者移除）；204 单测 + E2E 18/18 |
 | 板子编辑器（v1.4 增补） | ✅ | 入口页「自定义板子…」：只改角色数量、实时校验（复用服务端校验器）、强制实验模式；204 单测 + E2E 09 增量通过 |
+| 语音媒体服务（声网替换） | 🚧 | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；代码/单测/部署配置已完成，**待阿真凭据联调 + E2E 实测** |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
    工程规格查 `theater_death_development_requirements_v1.1.md`（v1.3：§07 旁观者小节 + 文末版本记录）。
-3. 进度断点：**M1–M4 + 观战 + 房主踢人全部完成**——**204 单测**全过、**E2E 18/18**（chromium 14 + webkit 4）、收官报告 `M4_ACCEPTANCE_REPORT.md`（§15）；服务器（`theater-death.azhen73.com` + LiveKit Cloud 语音）实机验收通过。**遗留动作（重要）**：服务器镜像需 `cd ~/theater-death && git pull && ./deploy/update.sh` 应用白天驱动崩溃修复（80cb92b 起）、观战与踢人功能；崩溃修复前的服务器版本不适合长时间对局。
+3. 进度断点（2026-09-19）：**语音媒体服务正在从 LiveKit 替换为声网**——代码/单测/部署配置已改完（`voice/agora.ts`、前端 `agora-rtc-sdk-ng`、compose 去 livekit 服务），**待阿真声网凭据**（App ID / App Certificate + 项目开启「连麦鉴权」）后联调与 E2E 实测；livekit 残留文件（`deploy/livekit.yaml`、`deploy/livekit-public.yaml`）待清理。此前里程碑：M1–M4 + 观战 + 踢人 + 板子编辑器 + 终局退出（PR#2）全部完成。**遗留动作（重要）**：服务器镜像需 `cd ~/theater-death && git pull && ./deploy/update.sh`（应用白天驱动崩溃修复、观战、踢人、板子编辑器、终局退出与本次声网语音；服务器 `.env` 同步改为 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE`）。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
@@ -185,16 +186,16 @@ theater_death/
 ├─ .github/workflows/release.yml   CI：构建（含测试）并发布 ghcr 镜像
 ├─ deploy/  Dockerfile（node:24.15.0-bookworm-slim 锁定）· docker-compose.yml（image 指向 ghcr）
 │           · install/start/stop/update × {ps1,sh} · RUNBOOK.md（运行手册）
-│           · livekit.yaml / livekit-public.yaml（自托管媒体配置：本地 / 公网）
+│           · （livekit.yaml / livekit-public.yaml 为旧自托管配置，待删除）
 ├─ engine/  index · types · events · emit · random · setup · proposal · night · victory · morning · stage · day
 ├─ rulesets/ index · types · roles · theater-death-13 · validate
 ├─ visibility/  index · context · deliver · rooms · chat · errors · projection · review
 ├─ server/  index.ts（express + Socket.IO 装配启动）· health.ts · app · session · rooms · log-store
 │           · realtime · clock · commands · night-driver · day-driver
-├─ voice/   policy（R-43 许可策略，纯函数）· livekit（VoiceAdapter：凭证/权限同步/关房）
+├─ voice/   policy（R-43 许可策略，纯函数）· agora（声网适配：订阅/发布/降权 token 签发、踢人/关房 REST）
 ├─ tests/   17 个文件共 187 用例（见"测试状态"）：smoke · rulesets · engine-setup · engine-proposal
 │           · engine-night · engine-morning · engine-info · engine-day · visibility · night-driver
-│           · server-api · realtime · day-driver · review · voice-policy · voice-livekit
+│           · server-api · realtime · day-driver · review · voice-policy · voice-agora
 │           · voice-api（+ server-test-utils 工具）
 ├─ e2e/      Playwright 端到端验收：specs/（01 冒烟·02 语音·03 越权·04 全流程·05 恢复·06 泄漏）
 │           · helpers/（api·bot·cloud·driver·ui·board·env）· capacity.mjs · package.json（配套镜像 deploy/Dockerfile.e2e 与 compose e2e profile）
@@ -206,8 +207,8 @@ theater_death/
 
 ## 测试状态
 
-207 passed / 18 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
-已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与 LiveKit 适配（凭证内容/sync/close）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
+208 passed / 18 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
+已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
 真实运行验证记录：
@@ -333,6 +334,7 @@ theater_death/
 - **Windows 提交的 `.sh` 会丢可执行位**（100644）→ `git update-index --chmod=+x deploy/xxx.sh`（install/start/stop/update 均已补；以后新脚本一律补）
 - **CI flaky 教训**：跨连接的时序断言要 `waitFor` **双方条件都满足**，不能等完 A 同步断言 B；"不该收到"的反向断言留 ~200ms 缓冲（本地快掩盖、CI 高负载暴露）；tests/realtime.test.ts 已按此修
 - **ghcr 包默认私有**：GITHUB_TOKEN 推送的容器包需改公开（网页 Settings → Change visibility）；gh CLI 令牌缺 packages scope 时无法用 API 改
+- **以下 LiveKit 条目（至"浏览器端语音复现方法"）为 M4b 阶段历史记录；2026-09-19 起语音已替换为声网**
 - **LiveKit 部署要点**（M4b）：浏览器必须直连媒体端口（7881/TCP、7882/UDP），HTTP 反代/隧道只能承载网页与信令；NAT 后服务器用托管媒体（Cloud `VOICE_SERVICE_URL=wss://xxx.livekit.cloud`，`VOICE_ADMIN_URL` 留空自动同值）；自托管镜像锁定 `livekit/livekit-server:v1.9.7`；`rtc.udp_port` 单端口复用简化端口暴露（config 里不要同时设 port_range）；Docker Desktop 下启动有 UDP buffer 警告（非致命）
 - **compose `COMPOSE_PROFILES` 可来自 `--env-file`**：`.env` 里 `COMPOSE_PROFILES=voice` 即让所有 compose 命令（pull/up/stop）自动包含 livekit 服务，无需改脚本；未启用语音时不写该行则只有 app 服务
 - LiveKit 凭证 JWT 用 `nbf`（非 `iat`）表示签发时间；`AccessToken.toJwt()` 为异步；`updateParticipant` 的 permission 是整体覆盖，切权限时必须带全 canPublish/canSubscribe/canPublishData
@@ -346,4 +348,11 @@ theater_death/
 - LiveKit 1.9.7 无 `--rtc.use-external-ip` 类 CLI flag（只认配置文件）；`--node-ip ""` 空串报 `flag needs an argument`
 - **LiveKit 发布权限竞态（M4b 实机验收抓获 + 已修）**：服务端广播 `voice_permission`（Socket.IO，即时）与同步媒体权限（LiveKit admin API，异步）并行，前端在权限于媒体服务落地前调用 `setMicrophoneEnabled(true)` 会被拒（`insufficient permissions to publish`），且旧版把错误静默吞掉 → 表现为"连接正常但谁都没声音、云端 `tracks: []`"。修复：失败自动重试（≤8 次 × 800ms）+ 监听 `RoomEvent.ParticipantPermissionsChanged`（注意签名 `(prevPermissions, participant)`、属性是 `participant.permissions` 复数）触发重发
 - **浏览器端语音复现方法（Playwright + 虚拟麦克风）**：`chromium --use-fake-device-for-media-stream --use-fake-ui-for-media-stream`，1 浏览器 + 12 脚本玩家组 13 人局；脚本在 `temp\td-e2e\repro-voice.mjs`（含云端 admin API 校验 tracks/permission）；断言点=云端 `tracks` 出现音频轨（本地 HTTP 服务需重新 `vite build` 才生效）
+- **声网替换（2026-09-19，动因：LiveKit Cloud 大陆跨境连接每次十几秒）**：权限模型 = 「连麦鉴权」开启后发布权编码在 AccessToken2 中——加入凭证为订阅角色（可听不可发）；获得发言权由服务端在状态推进时下发**含发布权限、短 TTL（默认 10 分钟，覆盖最长 90s 窗口）**的 token，前端 `renewToken` 即时生效；收回 = 下发订阅凭证即时降权 + TTL 到期兜底（声网**没有**"服务端实时改权限"API，强制力弱于 LiveKit，靠短 TTL 兜底）。踢人/关房走频道管理 REST（`POST /dev/v1/kicking-rule`：`join_channel` + `time=0` = 一次性踢出可立即重进，语义与"踢人不拉黑"一致；不带 uid = 踢出频道全员，用于终局关房）。uid 分配：玩家=座位号（1-13）、观战者=1000+顺序号（保存在 `RoomSpectator.uid`）。AccessToken2 内容体为压缩编码，离线无法断言权限位（联调实测）。
+- **声网集成要点**：REST 鉴权 `Authorization: Basic base64(AppId:AppCertificate)`；中国区接入点 `api.sd-rtn.com`（国际 `api.agora.io`）；npm 包 `agora-token`（服务端签发，导出名 `RtcRole` 而非文档源码里的 `Role`）+ `agora-rtc-sdk-ng`（前端）；`createClient` 的 `codec` 参数是视频编解码器（必填、与音频无关）；频道查询 API 只有"在不在频道"（无发流/权限状态）→ E2E 语音断言降级为"频道在线 + 界面文案 + 无麦克风错误"（见 `e2e/specs/02-voice.spec.ts` 注释）。
+- **声网计费**：免费层每月 1 万分钟（按"人×分钟"，13 人 1 小时局约 780 分钟 ≈ 12 局/月），超出 7 元/千分钟；控制台开启「连麦鉴权」是发布权控制生效的前提。
+- **声网凭据获取（2026-09-19 实操）**：控制台里 App ID / App 证书均掩码显示——App ID 可点复制图标获取（或用控制台 API `GET /dev/v1/projects` 的 `vendor_key`，本次实测该 API 可用）；**频道管理 REST 用「客户 ID + 客户密钥」基本认证**（控制台「设置 → RESTful API → 添加密钥」，**仅可下载一次** `key_and_secret.txt`），不是 App 证书——`.env` 需 `AGORA_CUSTOMER_KEY/SECRET`；「连麦鉴权」在「全部产品 → 实时互动 RTC → 功能配置」启用（**开启后不可关闭**，约 5 分钟生效）。
+- **Node ESM 与 CJS 包（翻车教训）**：`agora-token` 为 CommonJS 包——**vitest 通过不代表 Node 原生运行通过**：命名导入在 vitest（Vite 转换）下能解析、在 Node 原生 ESM 下报 `does not provide an export named 'RtcRole'` 并导致服务启动崩溃。修复：default 导入后解构 + `.d.ts` 声明 default 导出。**教训：改依赖加载方式后用 Node 原生方式实测（`node --input-type=module -e "import('./voice/agora.ts')..."`），不能只信单测。**
+- **声网链路实机验证（2026-09-19）**：E2E 语音 3 例全过（01 冒烟加入频道 + 02 发言授权/收回 + 02 夜间禁麦，1.3 分钟），浏览器经真实声网云完成加入与权限切换；本机 `.env` 已配置项目凭据（凭据不入库）。
+- **前端产物**：引入 `agora-rtc-sdk-ng` 后单包约 1.86MB（gzip 524KB，vite 提示超 500KB）；单页应用可接受，如需优化可后续 code-split。
 - **E2E 基础设施要点（M4d）**：runner 与 app 共享网络命名空间（`network_mode: service:app`）后用 `http://localhost:3000`——**非 localhost 的 http 会被 Chromium HTTPS-First 升级**（`--disable-features=HttpsFirstModeV2,...` 实测压不住，`ERR_SSL_PROTOCOL_ERROR`），localhost 天然安全上下文最稳；虚拟麦克风需 `--unsafely-treat-insecure-origin-as-secure`；`gameId` 只在**大厅视图**有（对局开始后 /api/view 不再返回）；复盘字段是 `players/timeline/winner`（不是 seats）；浏览器注入会话用 cookie `td_session`（`context.addCookies`）；compose 宿主端口冲突（3000 被占）→ `deploy/e2e.env` 用 `APP_PORT=3210`；用例间**不要 `some(async …)`**（async 回调恒真）；Playwright 镜像版本与 `@playwright/test` 精确锁定一致（1.63.0）
