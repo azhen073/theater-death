@@ -21,7 +21,7 @@
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
    工程规格查 `theater_death_development_requirements_v1.1.md`（v1.3：§07 旁观者小节 + 文末版本记录）。
-3. 进度断点（2026-09-19）：**语音媒体服务正在从 LiveKit 替换为声网**——代码/单测/部署配置已改完（`voice/agora.ts`、前端 `agora-rtc-sdk-ng`、compose 去 livekit 服务），**待阿真声网凭据**（App ID / App Certificate + 项目开启「连麦鉴权」）后联调与 E2E 实测；livekit 残留文件（`deploy/livekit.yaml`、`deploy/livekit-public.yaml`）待清理。此前里程碑：M1–M4 + 观战 + 踢人 + 板子编辑器 + 终局退出（PR#2）全部完成。**遗留动作（重要）**：服务器镜像需 `cd ~/theater-death && git pull && ./deploy/update.sh`（应用白天驱动崩溃修复、观战、踢人、板子编辑器、终局退出与本次声网语音；服务器 `.env` 同步改为 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE`）。
+3. 进度断点（2026-09-19）：**语音媒体服务已替换为声网并全链路验证**——代码推送 `32d1e02`（4 笔提交），CI success、新镜像已发布 ghcr；E2E 语音 3 例在真实声网云全过；控制台已完成（项目 theater-death、连麦鉴权开启、RESTful 密钥生成）。**遗留动作（重要）**：服务器更新——`cd ~/theater-death && git pull` → `.env` 加 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE` / `AGORA_CUSTOMER_KEY` / `AGORA_CUSTOMER_SECRET`（删旧 LiveKit 行；`PUBLIC_BASE_URL` / `SESSION_SECRET` / `SESSION_COOKIE_SECURE` 保持服务器值不动）→ `./deploy/update.sh`。此次一并应用白天驱动崩溃修复、观战、踢人、板子编辑器与终局退出。此前里程碑：M1–M4 + 观战 + 踢人 + 板子编辑器 + 终局退出（PR#2）全部完成。`deploy/livekit.yaml` / `livekit-public.yaml` 为旧配置残留（compose 服务已移除），待确认后删除。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
