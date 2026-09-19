@@ -4,7 +4,7 @@ import type { CatalogDTO } from '../contracts/catalog.ts';
 import type { DayDTO, Permission, RoomMemberDTO, RoomSnapshot, RoomAction } from '../contracts/v2.ts';
 import type { RoleId } from '../rulesets/types.ts';
 import { boardIssues, roleTotal } from '../web-v2/src/features/room/configuration.ts';
-import { canManageMember, memberLabel } from '../web-v2/src/features/room/policy.ts';
+import { canManageMember, hostExitDissolves, memberLabel } from '../web-v2/src/features/room/policy.ts';
 import { formatCountdown, publicPhaseLabel } from '../web-v2/src/presentation/labels.ts';
 
 function fixture<T>(name: string): T {
@@ -122,6 +122,19 @@ describe('v2 room member policy', () => {
     setRoomPermission(view, 'kickSpectator', permission(true));
     expect(canManageMember(view, 'kick', formalTarget.memberId)).toBe(false);
     expect(canManageMember(view, 'kick', spectator.memberId)).toBe(true);
+  });
+
+  it('treats a lobby host exit as dissolve, so the duplicate leave button can be hidden', () => {
+    const lobbyHost = copy(lobby);
+    lobbyHost.viewer.isHost = true;
+    expect(hostExitDissolves(lobbyHost)).toBe(true);
+    lobbyHost.viewer.isHost = false;
+    expect(hostExitDissolves(lobbyHost)).toBe(false);
+
+    // 对局中是「暂离」、复盘是「普通离开」，都不是解散 → 两个按钮含义不同，都要保留。
+    const playingHost = copy(night);
+    playingHost.viewer.isHost = true;
+    expect(hostExitDissolves(playingHost)).toBe(false);
   });
 
   it('labels self and host identity without inferring management permission', () => {

@@ -15,6 +15,15 @@ export function memberLabel(member: RoomMemberDTO, viewerId: string): string {
   return member.nickname + (member.userId === viewerId ? '（你）' : '') + (member.isHost ? ' · 房主' : '');
 }
 
+/**
+ * 房主在大厅退出＝解散整房（与服务端 RoomGovernance.leave 一致）。
+ * 此时界面只保留「解散房间」——两个按钮效果完全相同，隐藏「离开房间」避免误点。
+ * 对局中（暂离）与复盘（普通离开）都不是解散，两个按钮含义不同，都要保留。
+ */
+export function hostExitDissolves(view: RoomSnapshot): boolean {
+  return view.viewer.isHost && view.room.phase === 'lobby';
+}
+
 /** Exit semantics follow phase and membership, never hidden role/life information. */
 export function roomExitPresentation(view: RoomSnapshot) {
   const formal = view.viewer.kind === 'formal';
@@ -29,7 +38,7 @@ export function roomExitPresentation(view: RoomSnapshot) {
   return {
     label: '离开房间', title: '离开房间？',
     description: view.room.phase === 'lobby'
-      ? view.viewer.isHost
+      ? hostExitDissolves(view)
         ? '你是房主：退出将立即解散房间，所有成员回到入口页、房间码立即失效。账号保持登录。'
         : '你将离开当前房间，并释放正式名额（若有）。账号保持登录。'
       : '你将退出观战并返回首页，账号保持登录。私人第二屏需重新获得授权。',

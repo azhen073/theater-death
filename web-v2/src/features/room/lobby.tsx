@@ -6,7 +6,7 @@ import { ApiFailure } from '../../transport/http.ts';
 import { useIntent } from '../../transport/intent.ts';
 import { actionLabels, formatCountdown, presenceLabels, publicPhaseLabel, roomPermissionReasons } from '../../presentation/labels.ts';
 import { RulesBook } from '../rules/book.tsx';
-import { canManageMember, memberLabel, roomExitMessage, roomExitPresentation } from './policy.ts';
+import { canManageMember, hostExitDissolves, memberLabel, roomExitMessage, roomExitPresentation } from './policy.ts';
 
 type Confirmation = { action: 'kick' | 'transfer-host'; memberId: string; name: string } | { action: 'leave' | 'dissolve' };
 export function Lobby({ view, catalog, online, active = true, remaining, refresh, onExit, onExpired }: {
@@ -58,7 +58,7 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
       </section></div>
       <aside className="panel room-rules"><span className="eyebrow">THIS PERFORMANCE</span><h2>本局规则</h2><p>{view.room.requiredPlayers} 人 · {view.room.config.mode === 'formal' ? '正式模式' : '实验模式'}</p><dl>{catalog.roles.filter(role => view.room.config.roles[role.roleId] > 0).map(role => <div key={role.roleId}><dt>{role.name}</dt><dd>{view.room.config.roles[role.roleId]} 人</dd></div>)}</dl><p className="muted">配置已冻结，下一局也保持不变。</p><button className="button button--wide" onClick={() => setRules(true)}>查看完整规则</button></aside>
     </div>
-    <footer className="room-actions"><div><button className="text-button" disabled={locked || !caps.leave.allowed} onClick={() => setConfirmation({ action: 'leave' })}>{exit.label}</button>{caps.dissolve.allowed && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'dissolve' })}>解散房间</button>}</div><div className="button-row">
+    <footer className="room-actions"><div>{!hostExitDissolves(view) && <button className="text-button" disabled={locked || !caps.leave.allowed} onClick={() => setConfirmation({ action: 'leave' })}>{exit.label}</button>}{caps.dissolve.allowed && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'dissolve' })}>解散房间</button>}</div><div className="button-row">
       {caps.ready.allowed && <button className="button" disabled={locked} onClick={() => run('ready', { ready: !mine?.ready })}>{mine?.ready ? '取消准备' : '准备'}</button>}
       {view.viewer.isHost && isLobby && <div className="start-control"><button className="button button--primary" disabled={locked || !caps.start.allowed} onClick={() => run('start')}>{operation.busy ? '正在确认…' : '开始游戏'}</button>{!caps.start.allowed && <span>{roomPermissionReasons[caps.start.reason ?? ''] ?? '暂时不能开局。'}</span>}</div>}
     </div></footer>

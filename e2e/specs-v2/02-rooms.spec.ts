@@ -215,7 +215,7 @@ test('创建请求重试与同账号接管：保留原意图、taken_over 清旧
   }
 });
 
-test('房主在大厅退出即解散整房：本人与其余成员都回入口页、房间码失效', async ({ browser }, testInfo) => {
+test('大厅房主只有「解散房间」（F1）；房主 /leave 即解散整房，其余成员收到 dissolved 并回首页', async ({ browser }, testInfo) => {
   test.setTimeout(120_000);
   const accounts = loadRoomAccounts(testInfo.project.name);
   const host = await createPage(browser, accounts[0]!);
@@ -230,13 +230,15 @@ test('房主在大厅退出即解散整房：本人与其余成员都回入口�
     await enterRoom(joiner.page, code);
     await expect(memberCard(host.page, accounts[1]!.username)).toBeVisible();
 
-    // 房主用「离开房间」（不是「解散房间」）退出：大厅阶段语义就是解散整房。
-    await host.page.getByRole('button', { name: '离开房间', exact: true }).click();
-    const dialog = host.page.getByRole('dialog', { name: '离开房间？' });
-    await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText('解散');
-    await host.page.screenshot({ path: `/results/rooms-host-leave-confirm-${testInfo.project.name}.png` });
-    await dialog.getByRole('button', { name: '确认操作' }).click();
+    // F1：大厅阶段房主退出就等于解散，界面只保留「解散房间」，不再并列展示等价的「离开房间」。
+    await expect(host.page.getByRole('button', { name: '解散房间', exact: true })).toBeVisible();
+    await expect(host.page.getByRole('button', { name: '离开房间', exact: true })).toHaveCount(0);
+    await host.page.screenshot({ path: `/results/rooms-host-lobby-actions-${testInfo.project.name}.png` });
+
+    // 服务端语义不变：同一会话调用 /leave，房主在大厅退出即解散整房（界面已不提供该入口）。
+    const leave = await host.page.request.post(`/api/v2/rooms/${code}/leave`, { data: { requestId: `host-leave-${Date.now()}` } });
+    expect(leave.status()).toBe(200);
+    expect(await leave.json()).toMatchObject({ left: true, dissolved: true, seatRetained: false });
 
     await expect(host.page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible({ timeout: 20_000 });
     await host.page.screenshot({ path: `/results/rooms-host-leave-dissolve-${testInfo.project.name}.png` });
