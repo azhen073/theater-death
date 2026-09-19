@@ -12,9 +12,5 @@ services:
       DATA_DIR: /app/data-v2
       PORT: 3000
       VOICE_ENABLED: ${VOICE_ENABLED:-false}
-      VOICE_SERVICE_URL: ${VOICE_SERVICE_URL:-}
-      VOICE_ADMIN_URL: ${VOICE_ADMIN_URL:-}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
     volumes:
       - ../data-v2:/app/data-v2

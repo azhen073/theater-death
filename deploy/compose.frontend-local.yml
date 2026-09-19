@@ -17,10 +17,6 @@ services:
       ADMIN_COOKIE_NAME: td_admin_frontend_local
       DATA_DIR: /data
       VOICE_ENABLED: ${VOICE_ENABLED:-false}
-      VOICE_SERVICE_URL: ${VOICE_SERVICE_URL:-}
-      VOICE_ADMIN_URL: ${VOICE_ADMIN_URL:-}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - frontend-local-data:/data

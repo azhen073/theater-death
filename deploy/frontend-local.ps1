@@ -20,7 +20,6 @@ switch ($Action) {
   'start' {
     Write-Host 'Starting the existing local image and waiting for container health...'
     $services = @('app')
-    if ($Voice -eq 'on') { $services += 'livekit' }
     Invoke-DockerCommand $docker ($composeArgs + @('up', '-d', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '90') + $services) 110
     foreach ($path in @('/healthz', '/', '/admin')) {
       $uri = 'http://localhost:5174' + $path
@@ -34,6 +33,6 @@ switch ($Action) {
     }
     Write-Host "Ready: http://localhost:5174 (admin: /admin, voice: $Voice)"
   }
-  'stop' { Invoke-DockerCommand $docker ($composeArgs + @('stop', 'app', 'livekit')) 40 }
+  'stop' { Invoke-DockerCommand $docker ($composeArgs + @('stop', 'app')) 40 }
   'status' { Invoke-DockerCommand $docker ($composeArgs + @('ps', '--all')) 15 }
 }
