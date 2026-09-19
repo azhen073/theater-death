@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { makeEvent, type GameEvent } from '../engine/events.ts';
 import type { GameState } from '../engine/types.ts';
+import { Room, type RoomMember } from '../server/rooms.ts';
+import { gameView } from '../server/v2/view.ts';
+import { THEATER_DEATH_13 } from '../rulesets/theater-death-13.ts';
 import { publishedState } from '../visibility/knowledge.ts';
 import { buildPlayerView } from '../visibility/projection.ts';
 import { overrideLife, overridePlayer, playerIdAt, scenario } from './helpers.ts';
@@ -113,5 +116,76 @@ describe('公开面：未公告的死亡与翻牌不得对外可见', () => {
     expect(members.status).toBe(200);
     const memberList = members.json.members as Array<{ seat: number | null; alive: boolean | null }>;
     expect(memberList.find((member) => member.seat === 6)?.alive).toBe(true);
+  });
+
+  it('gameView 对普通玩家和公开观战都隐藏未公告的死亡、濒死与翻牌', () => {
+    const host: RoomMember = { playerId: 'p_1', nickname: '玩家1', ready: true, joinedAt: 0 };
+    const room = new Room('ROOM01', 'g_view', host, THEATER_DEATH_13);
+    const internal = overridePlayer(
+      overrideLife(overrideLife(scenario(), 'p_6', 'dead'), 'p_2', 'dying'),
+      'p_1',
+      { revealed: true },
+    );
+    room.state = { ...internal, phase: 'morning', nightStage: 2, night: {
+      nightNumber: 2,
+      guardSelections: [],
+      attacks: [],
+      rescue: null,
+      revive: null,
+      descenderCheck: null,
+      fatalRecords: [],
+      dyingSet: [],
+      deaths: ['p_3', 'p_6'],
+      sacrificeTriggered: false,
+    } };
+    room.events = [
+      event('deaths_announced', { seats: [6] }, { kind: 'server' }, 2),
+      event('reveal_announced', { reveals: [{ seat: 1, roleId: 'laike' }] }, { kind: 'server' }, 2),
+      event('revive_selected', { targetPlayerId: 'p_6' }, { kind: 'players', playerIds: ['p_3'] }, 2),
+    ];
+    room.driver = { windows: () => [{ id: 'revive', closesAt: 1000 }], proposalState: () => null } as unknown as NonNullable<Room['driver']>;
+
+    const player = gameView(room, { subjectPlayerId: 'p_1', readOnly: false }, 0);
+    const spectator = gameView(room, { subjectPlayerId: null, readOnly: true }, 0);
+
+    expect(player.public.seats?.find((seat) => seat.seat === 6)).toMatchObject({ alive: true, revealedRoleId: null });
+    expect(player.public.seats?.find((seat) => seat.seat === 2)?.alive).toBe(true);
+    expect(player.public.seats?.find((seat) => seat.seat === 1)?.revealedRoleId).toBeNull();
+    expect(player.private?.events?.map((item) => item.type)).not.toContain('revive_selected');
+    const factionRoom = player.private?.factionRoom;
+    expect(factionRoom === null || factionRoom === undefined || !('historyFromSeq' in factionRoom)).toBe(true);
+    expect(player.private?.targets).toEqual({});
+    expect(player.private?.proposal).toBeNull();
+    expect(spectator.public.seats?.find((seat) => seat.seat === 6)?.alive).toBe(true);
+    expect(spectator.public.seats?.find((seat) => seat.seat === 1)?.revealedRoleId).toBeNull();
+    expect(spectator.private).toBeNull();
+    expect(spectator.windows).toEqual([]);
+  });
+
+  it('水妖可见复活窗口和合法死亡目标，其他玩家看不到 revive', () => {
+    const host: RoomMember = { playerId: 'p_1', nickname: '玩家1', ready: true, joinedAt: 0 };
+    const room = new Room('ROOM02', 'g_revive_view', host, THEATER_DEATH_13);
+    const state = overrideLife(overrideLife(scenario(), 'p_3', 'dead'), 'p_6', 'dead');
+    room.state = { ...state, phase: 'morning', nightStage: 2, night: {
+      nightNumber: 2,
+      guardSelections: [],
+      attacks: [],
+      rescue: null,
+      revive: null,
+      descenderCheck: null,
+      fatalRecords: [],
+      dyingSet: [],
+      deaths: ['p_3', 'p_6'],
+      sacrificeTriggered: false,
+    } };
+    room.driver = { windows: () => [{ id: 'revive', closesAt: 1000 }], proposalState: () => null } as unknown as NonNullable<Room['driver']>;
+
+    const water = gameView(room, { subjectPlayerId: 'p_3', readOnly: false }, 0);
+    const civilian = gameView(room, { subjectPlayerId: 'p_1', readOnly: false }, 0);
+
+    expect(water.windows.map((window) => window.id)).toEqual(['revive']);
+    expect(water.private?.targets?.SUBMIT_REVIVE?.playerIds).toEqual(['p_6']);
+    expect(civilian.windows).toEqual([]);
+    expect(civilian.private?.targets).toEqual({});
   });
 });

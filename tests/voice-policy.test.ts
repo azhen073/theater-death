@@ -3,6 +3,7 @@ import {
   advanceElectionSpeech,
   advanceSpeech,
   beginDay,
+  currentSpeechRoundSpeaker,
   endLastWords,
   registerCandidacy,
   settleDayVote,
@@ -169,5 +170,20 @@ describe('语音许可策略（R-43；平票者开麦为 2026-09-16 追加裁定
       win: { winner: 'death_faction', dayNumber: 3, reason: '测试终局' },
     };
     expect(voicePermission(ended, 'p_2')).toEqual({ canPublish: false, reason: 'game_ended' });
+  });
+
+  it('V2-03 发言准备窗口不开麦（preparing_speech）', () => {
+    const speech = startDefaultSpeechRound(toSpeech(begun())).state;
+    const speaker = currentSpeechRoundSpeaker(speech);
+    expect(speaker).not.toBeNull();
+    expect(voicePermission(speech, speaker!)).toEqual({ canPublish: true, reason: 'speaker' });
+    const preparing: GameState = {
+      ...speech,
+      day: { ...(speech.day as DayContext), speechPreparing: true },
+    };
+    expect(voicePermission(preparing, speaker!)).toEqual({
+      canPublish: false,
+      reason: 'preparing_speech',
+    });
   });
 });

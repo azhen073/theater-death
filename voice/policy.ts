@@ -8,6 +8,7 @@ import type { GameState } from '../engine/types.ts';
 
 /**
  * 语音许可原因（供界面显示；不包含任何隐藏信息）。
+ * - preparing_speech：发言前准备窗口（V2-03：不开麦）
  * - speaker：当前时段获得发言许可
  * - dead_listener：已死亡，仅可公共旁听（遗言时段除外）
  * - night_silence：夜间（含晨间结算）全体静音
@@ -17,6 +18,7 @@ import type { GameState } from '../engine/types.ts';
  * - game_not_started / game_ended：流程外
  */
 export type VoicePermissionReason =
+  | 'preparing_speech'
   | 'speaker'
   | 'dead_listener'
   | 'night_silence'
@@ -69,6 +71,9 @@ export function voicePermission(state: GameState, playerId: string): VoicePermis
     return denied('game_not_started');
   }
   const day = state.day;
+  if (day?.speechPreparing) {
+    return denied('preparing_speech');
+  }
   if (day === null) {
     return denied('game_not_started');
   }
