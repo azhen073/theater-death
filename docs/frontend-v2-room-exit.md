@@ -19,7 +19,7 @@
 - `POST /rooms/:code/dissolve` 仅房主可用，且**不再限制大厅阶段**：大厅与复盘直接关闭房间；对局进行中会立即终止本局——未产生胜负的对局按 `aborted` 记入审计（与空房到期同一口径），并广播 `control{dissolved}` 给房间内所有成员（含观众），同时关闭媒体房间。
 - `/leave` 语义：房主在**大厅**退出即解散整房（响应 `{left:true, dissolved:true, seatRetained:false}`）；房主在**对局进行中**退出是「暂离」（响应 `{left:true, dissolved:false, seatRetained:true}`，席位与计时保留、房主由其他在线正式成员接任）；房主在**复盘**退出是**普通离开**（响应 `{left:true, dissolved:false}`，房间保留、其他人继续复盘、房主同样继任）。非房主一律按普通离开处理。空置导致房间被关闭时，回执的 `seatRetained` 归 `false`。
 - 因此「无正式成员的大厅」不再可达（房主退出即解散），5 分钟空房 TTL 只对**对局中全员暂离**后的房间生效。
-- 旧的契约夹具（`tests/fixtures/contract-2.1/*.json`）仍记录 `dissolve.reason='lobby_required'` 的历史取值；夹具只做 schema 校验，需按正规流程用 `EXPORT_CONTRACT_FIXTURES` 重新导出后才与新行为一致。
+- 契约夹具（`tests/fixtures/contract-2.1/*.json`）中没有「房主在非大厅阶段」的快照，因此不存在与新行为冲突的 `dissolve` 取值（房主·大厅的夹具仍是 `dissolve=true`）；夹具只做 schema 校验。若要补「房主在 playing/review 可解散」的样例，按正规流程用 `EXPORT_CONTRACT_FIXTURES` 重新导出。
 
 ## 实现边界与接口
 
