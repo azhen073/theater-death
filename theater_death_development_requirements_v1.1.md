@@ -735,7 +735,7 @@ https://docs.docker.com/get-started/
 
 ### v2.0.1-beta（2026-09-20）· 房间解散任意阶段生效 + 遗弃房间 24 小时回收（贡献提案 kiahir，用户（阿真）确认）
 
-- **版本号说明**：本版起本文档的版本名改用分支名 **`v2.0.1-beta`**（与推送分支 `2.0.1-beta` 一致），后续沿用该序列。注意它与**规则版本 2.0**（`docs/rules-v2-full.md`）、**客户端契约 2.1/2.2** 是三套独立编号，不要混用。
+- **版本号说明**：本版起本文档的版本名改用分支名 **`v2.0.1-beta`**（与推送分支 `2.0.1-beta` 一致），后续沿用该序列。注意它与**规则版本 2.0**（`docs/rules-v2-full.md`）、**客户端契约 2.1/2.2** 是三套独立编号，不要混用。**文件名保留基线名 `theater_death_development_requirements_v1.1.md` 不变**（改名会断开外部链接与全仓引用），即「文件名=基线版本、内容=累积版本」。
 
 - **v2 解散改为任意阶段立即生效**：`server/v2/governance.ts::dissolve` 去掉 `phase !== 'lobby'` → 409 `lobby_required` 的限制，仅保留「必须是房主」（非房主 403 `not_host`）。`dispose()` 增加幂等守卫，并在处置**未产生胜负**的对局时按 `aborted` 记入审计（与空房到期同一口径，`finishMatch` 自身幂等）；已终局的保持 `completed`。权限快照 `capabilities.room.dissolve` 只取决于是否房主，不再出现 `lobby_required`。
 - **v2 房主离开语义**：房主在**大厅**退出即解散整房（响应 `{left:true, dissolved:true, seatRetained:false}`）；房主在**对局进行中**退出是「暂离」（席位与计时保留，房主由其他在线正式成员继任，响应 `dissolved:false`）；房主在**复盘**退出是**普通离开**（房间保留、其他人继续看复盘、房主同样继任）。非房主一律按普通离开。实现为新增 `RoomGovernance.leave`，HTTP `/leave` 改走它；`RoomDirectory.leave` 保留为底层原语（不处理房主解散语义，避免测试脚手架与领域层混淆）。空置导致房间被关闭时回执的 `seatRetained` 归 `false`（沿用原契约）。
