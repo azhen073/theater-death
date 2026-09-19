@@ -1,0 +1,6 @@
+services:
+  test:
+    environment:
+      EXPORT_CONTRACT_FIXTURES: /app/tests/fixtures/contract-2.1
+    volumes:
+      - ../tests:/app/tests

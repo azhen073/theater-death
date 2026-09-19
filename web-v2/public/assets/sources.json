@@ -1,0 +1,66 @@
+[
+  {
+    "roleId": "researcher",
+    "file": "cards/researcher.png",
+    "source": "Art Materials/IdentityCards/cards/05_科研员_米提亚.png",
+    "sha256": "71e060885a822f058b46b4929f474ba1b30cda3ff6c938343a56455d7c825a36"
+  },
+  {
+    "roleId": "death",
+    "file": "cards/death.png",
+    "source": "Art Materials/IdentityCards/cards/07_死神_阿罗夏.png",
+    "sha256": "4576d0f9026886d3bec7739c6135d16d32c2727fb70601033556f4dbc587b31e"
+  },
+  {
+    "roleId": "water",
+    "file": "cards/water.png",
+    "source": "Art Materials/IdentityCards/cards/01_水妖_沃雅妮莎.png",
+    "sha256": "14ecf3610538b355f3b7df6655f95fa7471260fb7069f8bbf0054d1bec9a917e"
+  },
+  {
+    "roleId": "spirit",
+    "file": "cards/spirit.png",
+    "source": "Art Materials/IdentityCards/cards/08_魂灵_塔诗佳_冬妮娅.png",
+    "sha256": "0939d16c4231b25404092a4c6f281aea0ec16c2eb977932c741f8ade1db86e87"
+  },
+  {
+    "roleId": "mourner",
+    "file": "cards/mourner.png",
+    "source": "Art Materials/IdentityCards/cards/09_丧亲者_楚古诺夫.png",
+    "sha256": "23deaca1d540c40a25fc76a7c5af2b9da600ccb2978a6ea72b1b8c4e0b02f717"
+  },
+  {
+    "roleId": "civilian",
+    "file": "cards/civilian.png",
+    "source": "Art Materials/IdentityCards/cards/06_平民_托尔戈夫.png",
+    "sha256": "3cbe860916660dea087bcec2032eb95c5cfcf46eb7798c3357fb491864bf6f96"
+  },
+  {
+    "roleId": "laike",
+    "file": "cards/laike.png",
+    "source": "Art Materials/IdentityCards/cards/02_莱莱可_奥黛塔.png",
+    "sha256": "aa81e8f8b9d2516d9973828c6ea8e140a5cf43521d2665044f7d14c0939b473f"
+  },
+  {
+    "roleId": "descender",
+    "file": "cards/descender.png",
+    "source": "Art Materials/IdentityCards/cards/03_降临者_空.png",
+    "sha256": "cb700770c3680f38544e5060d4743972cb9ad7871fd6e36081eb60650db18ec2"
+  },
+  {
+    "roleId": "door",
+    "file": "cards/door.png",
+    "source": "Art Materials/IdentityCards/cards/04_门先生_瓦列里.png",
+    "sha256": "fff9b9332004b1390f690e77c194fcb674dfbf38cb4873b9b9d94e6860c8c2f6"
+  },
+  {
+    "file": "death-overlay.png",
+    "source": "7.0 Wraith_s Nocturne/UI_Img_ZDAQBookInfoDialog_Death_03.png",
+    "sha256": "9b9fdfeb6bce0f950a9925f5b31e52372277c6217d84d46ae478093fc0ff8270"
+  },
+  {
+    "file": "theater.png",
+    "source": "7.0 Wraith_s Nocturne/UI_Img_ZDAQBookPhotoDialog_PhotoBg.png",
+    "sha256": "af309ed76255db42355d7482819253fe889e5cc684ee36cb5c373f6fc01cec0d"
+  }
+]

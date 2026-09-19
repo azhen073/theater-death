@@ -1,0 +1,18 @@
+{
+  "currentRoomId": "r_e6eb381bafb021998218c79eca5a870d",
+  "rooms": [
+    {
+      "roomId": "r_e6eb381bafb021998218c79eca5a870d",
+      "roomCode": "UT3C36",
+      "gameId": null,
+      "phase": "lobby",
+      "memberId": "m_c9d4fd85e6926a828a7e488c6a55ba1e",
+      "kind": "formal",
+      "playerId": null,
+      "activeHere": true,
+      "controlling": true,
+      "canRecover": false,
+      "requiresTakeover": false
+    }
+  ]
+}

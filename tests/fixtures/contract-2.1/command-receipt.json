@@ -1,0 +1,1 @@
+{ "requestId": "fixture-command", "status": "rejected", "code": "action_forbidden", "message": "当前无此行动权限" }

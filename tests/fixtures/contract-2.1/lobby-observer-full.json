@@ -1,0 +1,360 @@
+{
+  "contractVersion": "2.2",
+  "rulesVersion": "2.0",
+  "roomId": "r_e6eb381bafb021998218c79eca5a870d",
+  "gameId": null,
+  "viewer": {
+    "userId": "3drPwOcgUHE7__y3afn3nSGvK08Lr5aMS0oG9iA8Xis",
+    "memberId": "m_7476050e3eaea618f7b69fd5051e20f2",
+    "kind": "public_spectator",
+    "subjectPlayerId": null,
+    "readOnly": true,
+    "isHost": false
+  },
+  "room": {
+    "code": "UT3C36",
+    "phase": "lobby",
+    "config": {
+      "rulesetId": "theater-death",
+      "version": "2.0",
+      "mode": "formal",
+      "roles": {
+        "laike": 1,
+        "door": 1,
+        "water": 1,
+        "descender": 1,
+        "researcher": 1,
+        "civilian": 4,
+        "death": 1,
+        "spirit": 2,
+        "mourner": 1
+      },
+      "timersSeconds": {
+        "faction": 60,
+        "ability": 30,
+        "vote": 60,
+        "speech": 120,
+        "election": 30,
+        "handover": 45,
+        "lastWords": 60,
+        "tieSpeech": 45,
+        "speechPrepare": 15,
+        "speechOrder": 45
+      },
+      "sheriff": {
+        "enabled": true,
+        "voteWeight": 1.5,
+        "handover": "designate_or_destroy"
+      },
+      "lastWords": {
+        "firstNight": true,
+        "dayEliminated": true,
+        "otherNights": false
+      },
+      "teamConfirm": "unanimous_or_latest",
+      "duplicateTargetPolicy": "allow",
+      "attackOrder": "seat_asc_then_source_priority",
+      "researcherAnnouncement": {
+        "count": "alive_at_announcement",
+        "includesMourner": true
+      },
+      "stageTriggerSnapshot": "death_event",
+      "replayDisclosure": "all_chat_and_action_log",
+      "stage1SpiritQuota": "eligibleLivingSpiritCount",
+      "stage1DeathQuota": 2,
+      "stage1OverkillThreshold": "initialSpiritCount",
+      "stage2JointQuota": 2,
+      "guardTargets": 2,
+      "guardBlocksPerTarget": 1,
+      "simultaneousWinPriority": "death_faction",
+      "researcherCondition": "currently_dead"
+    },
+    "requiredPlayers": 13,
+    "hostMemberId": "m_c9d4fd85e6926a828a7e488c6a55ba1e",
+    "formalMembers": [
+      {
+        "userId": "a27OykOH3pqkoCzSjzqmupsY2F3AsmVbuySgHrgw2XU",
+        "uid": "10000001",
+        "nickname": "httpusera",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_c9d4fd85e6926a828a7e488c6a55ba1e",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": true
+      },
+      {
+        "userId": "8QmCKCH9t5yPeEUYG5Qtd-dRxBXvOXDjPXvn4LO8qfg",
+        "uid": "10000002",
+        "nickname": "httpuserb",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_77fb41b63c35fbc85253a8d66b2bbec7",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "dG7UrwfP7sn68ktTMg261LAXsLEVbJFCcd7CoLVURXU",
+        "uid": "10000003",
+        "nickname": "httpuserc",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_ef2c92edfaff727a6ee479c6af70366d",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "Tgx5qKWAVbbGdkfQ4xqW0diDPHKi0TCxDiw3LyWGszE",
+        "uid": "10000004",
+        "nickname": "httpuserd",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_bef095dd94884556437d5d69431be717",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "VtxuAQEx01IK5Y9xYJEoVZ7DTwQiaEvSC9-lH1MlZgk",
+        "uid": "10000005",
+        "nickname": "httpusere",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_fe4100223836c2f9f233d74e777543b7",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "zd7jJ3uzuq8i8qcNStFI04i2qfXK3SDTlbcLkpR34AU",
+        "uid": "10000006",
+        "nickname": "httpuserf",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_dcbbaa81ee1caf4329643511fecb62f5",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "GUMpHABKluebp3-Zr0GzbXGsOJ4Yk8KKLg5dKYa-jMg",
+        "uid": "10000007",
+        "nickname": "httpuserg",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_5be44cda470e9889380df3fde44d37c8",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "AUhHIYnyoiQ4HFK-93rR7xznrTMccGXkapVCmTx3MJg",
+        "uid": "10000008",
+        "nickname": "httpuserh",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_a4ae7364c31ace6e1f525015327f0eb9",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "7yaJqqYZoTozzfPW4SeThavd3PS6dVhkSQXg2gXKrKg",
+        "uid": "10000009",
+        "nickname": "httpuseri",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_0cda64ea4fa3eb7f3b22cebcbdeb46c6",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "DWa4WeUvexnzRmr165gTUI55gHL21MvPmYGn8FESsZ4",
+        "uid": "10000010",
+        "nickname": "httpuserj",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_1d9d13c7cd226a4b3aee941fd51d8867",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "905GOQdM_Z9jI-GcYa5TDb3TFGWOFqqs4ASvsCqiD84",
+        "uid": "10000011",
+        "nickname": "httpuserk",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_65bcd1657f3c730eef7bb713897929aa",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "v2Fy5VKX0A6vn2zZJWBizHL39--TBx0wWJVyLWsajEc",
+        "uid": "10000012",
+        "nickname": "httpuserl",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_7491f8b36d0156913ff259046f227aef",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "Sc5AXeDojwqI7kARfuzvJO_9n3aEOmFcjwzORX4-iB0",
+        "uid": "10000013",
+        "nickname": "httpuserm",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_c0e347f67e7349dde5411a830ce82254",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      }
+    ],
+    "spectators": [
+      {
+        "userId": "3drPwOcgUHE7__y3afn3nSGvK08Lr5aMS0oG9iA8Xis",
+        "uid": "10000014",
+        "nickname": "httpusern",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_7476050e3eaea618f7b69fd5051e20f2",
+        "kind": "public_spectator",
+        "playerId": null,
+        "ready": null,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      }
+    ],
+    "emptyDeadline": null
+  },
+  "public": null,
+  "private": null,
+  "capabilities": {
+    "canPostPublic": false,
+    "canPostFaction": false,
+    "canPublishVoice": false,
+    "canVote": false,
+    "allowedCommands": [],
+    "commandReasons": {
+      "SUBMIT_GUARD": "spectator_read_only",
+      "SUBMIT_LAIKE": "spectator_read_only",
+      "EDIT_PROPOSAL": "spectator_read_only",
+      "CONFIRM_PROPOSAL": "spectator_read_only",
+      "SUBMIT_CHECK": "spectator_read_only",
+      "SUBMIT_RESCUE": "spectator_read_only",
+      "SUBMIT_REVIVE": "spectator_read_only",
+      "REGISTER_CANDIDACY": "spectator_read_only",
+      "WITHDRAW_CANDIDACY": "spectator_read_only",
+      "START_SPEECH": "spectator_read_only",
+      "END_ELECTION_SPEECH": "spectator_read_only",
+      "SUBMIT_ELECTION_VOTE": "spectator_read_only",
+      "DESIGNATE_SPEECH": "spectator_read_only",
+      "END_SPEECH": "spectator_read_only",
+      "SUBMIT_DAY_VOTE": "spectator_read_only",
+      "END_TIE_SPEECH": "spectator_read_only",
+      "END_LAST_WORDS": "spectator_read_only",
+      "SUBMIT_HANDOVER": "spectator_read_only"
+    },
+    "room": {
+      "ready": {
+        "allowed": false,
+        "reason": "spectator_read_only"
+      },
+      "start": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "promote": {
+        "allowed": false,
+        "reason": "room_full"
+      },
+      "leave": {
+        "allowed": true,
+        "reason": null
+      },
+      "transferHost": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "dissolve": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "endReview": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "kickFormal": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "kickSpectator": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "inviteSecondScreen": {
+        "allowed": false,
+        "reason": "spectator_read_only"
+      },
+      "revokeSecondScreen": {
+        "allowed": false,
+        "reason": "spectator_read_only"
+      }
+    }
+  },
+  "windows": [],
+  "tasks": [],
+  "submissionState": [],
+  "chat": {
+    "public": [],
+    "faction": []
+  },
+  "serverTime": 1000,
+  "viewVersion": 1
+}

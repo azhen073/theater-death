@@ -1,0 +1,39 @@
+# Reuse the locked dependency image built by Dockerfile.dependencies.
+FROM theater-death-contract-deps:sharp0354-ajv820 AS build
+WORKDIR /frontend-build
+COPY package-lock.json ./
+RUN node -e "const fs=require('fs');if(JSON.stringify(JSON.parse(fs.readFileSync('package-lock.json')))!==JSON.stringify(JSON.parse(fs.readFileSync('/app/package-lock.json'))))throw Error('Refresh dependency image for changed lockfile')"
+RUN ln -s /app/node_modules node_modules
+COPY package.json tsconfig.json vitest.config.ts vite.v2.config.ts ./
+COPY contracts/ ./contracts/
+COPY engine/ ./engine/
+COPY rulesets/ ./rulesets/
+COPY visibility/ ./visibility/
+COPY voice/ ./voice/
+COPY server/ ./server/
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+COPY docs/ ./docs/
+COPY web-v2/ ./web-v2/
+# The complete unit/API gate runs once at the final candidate checkpoint.
+RUN npm run typecheck && npm run typecheck:web:v2 && NODE_ENV=test npm test -- --maxWorkers=2
+RUN npm run build:web:v2
+
+FROM theater-death-contract-deps:sharp0354-ajv820 AS runtime
+ARG VCS_REF=unrecorded
+LABEL org.opencontainers.image.revision=$VCS_REF
+LABEL org.opencontainers.image.title="Theater Death v2 frontend and API"
+WORKDIR /srv/theater
+RUN ln -s /app/node_modules node_modules
+COPY --from=build /frontend-build/package.json ./package.json
+COPY --from=build /frontend-build/contracts ./contracts
+COPY --from=build /frontend-build/engine ./engine
+COPY --from=build /frontend-build/rulesets ./rulesets
+COPY --from=build /frontend-build/visibility ./visibility
+COPY --from=build /frontend-build/voice ./voice
+COPY --from=build /frontend-build/server ./server
+COPY --from=build /frontend-build/docs/rules-v2-full.md ./docs/rules-v2-full.md
+COPY --from=build /frontend-build/web-v2/dist ./web-v2/dist
+ENV NODE_ENV=production PORT=3000 DATA_DIR=/data WEB_ROOT=/srv/theater/web-v2/dist VOICE_ENABLED=false
+EXPOSE 3000
+CMD ["node", "server/v2/index.ts"]

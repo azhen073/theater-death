@@ -9,6 +9,7 @@ import type { Clock } from './clock.ts';
 import { createDayDriver, type DayDriver } from './day-driver.ts';
 import type { LogStore, StoredMessage } from './log-store.ts';
 import { createNightDriver, type NightDriver } from './night-driver.ts';
+import { queuedClock } from './queued-clock.ts';
 import type { Broadcaster } from './realtime.ts';
 
 export type GameDriver = NightDriver | DayDriver;
@@ -94,12 +95,14 @@ export class Room {
   /** 当前持有发布授权（已下发发布凭证）的玩家，用于识别权限变化 */
   readonly voiceGranted = new Set<string>();
   #queue: Promise<unknown> = Promise.resolve();
+  /** v2 persistent rooms share their queue with every match and timer. */
+  queueOwner: { enqueue<T>(task: () => T | Promise<T>): Promise<T> } | null = null;
 
   constructor(code: string, gameId: string, host: RoomMember, ruleset: RulesetConfig) {
     this.code = code;
     this.gameId = gameId;
     this.hostPlayerId = host.playerId;
-    this.ruleset = ruleset;
+    this.ruleset = structuredClone(ruleset);
     this.members.push(host);
   }
 
@@ -108,6 +111,7 @@ export class Room {
   }
 
   enqueue<T>(task: () => T | Promise<T>): Promise<T> {
+    if (this.queueOwner) return this.queueOwner.enqueue(task);
     const result = this.#queue.then(task, task);
     this.#queue = result.then(
       () => undefined,
@@ -118,6 +122,7 @@ export class Room {
 }
 
 export interface RoomDeps {
+  readonly strictWindows?: boolean;
   readonly clock: Clock;
   readonly ruleset: RulesetConfig;
   readonly logStore: LogStore;
@@ -133,6 +138,19 @@ export class RoomRegistry {
 
   constructor(deps: RoomDeps) {
     this.#deps = deps;
+  }
+
+  /** A single-game runtime under a stable v2 room; legacy room lifecycle is unchanged. */
+  createMatch(code: string, players: readonly { nickname: string }[], ruleset: RulesetConfig, queueOwner: Room['queueOwner']): Room {
+    if (players.length === 0 || this.#roomsByCode.has(code)) throw new Error('Match room unavailable');
+    const members = players.map((p) => this.#makeMember(p.nickname));
+    const room = new Room(code, `g_${randomBytes(16).toString('hex')}`, members[0]!, ruleset);
+    room.members.push(...members.slice(1));
+    room.queueOwner = queueOwner;
+    this.#roomsByCode.set(code, room);
+    this.#roomsByGameId.set(room.gameId, room);
+    this.#deps.logStore.recordRoom({ gameId: room.gameId, code, createdAt: this.#deps.clock.now(), ruleset });
+    return room;
   }
 
   createRoom(
@@ -371,7 +389,8 @@ export class RoomRegistry {
 
   #startNight(room: Room, state: GameState): void {
     const driver = createNightDriver({
-      clock: this.#deps.clock,
+      strictWindows: this.#deps.strictWindows,
+      clock: this.#deps.strictWindows ? queuedClock(this.#deps.clock, (task) => room.enqueue(task)) : this.#deps.clock,
       onStep: (step) => this.#step(room, step),
       onComplete: (next) => {
         if (next.phase === 'day') {
@@ -385,7 +404,8 @@ export class RoomRegistry {
 
   #startDay(room: Room, state: GameState): void {
     const driver = createDayDriver({
-      clock: this.#deps.clock,
+      strictWindows: this.#deps.strictWindows,
+      clock: this.#deps.strictWindows ? queuedClock(this.#deps.clock, (task) => room.enqueue(task)) : this.#deps.clock,
       onStep: (step) => this.#step(room, step),
       onComplete: (next) => {
         if (next.phase === 'night') {
@@ -407,6 +427,15 @@ export class RoomRegistry {
 
   getByGameId(gameId: string): Room | null {
     return this.#roomsByGameId.get(gameId) ?? null;
+  }
+
+  /** Called by v2 lifecycle policy only after it has selected an eligible idle/ended room. Audit rows stay intact. */
+  disposeRoom(gameId: string): void {
+    const room = this.#roomsByGameId.get(gameId);
+    if (!room) return;
+    room.driver?.dispose();
+    this.#roomsByCode.delete(room.code);
+    this.#roomsByGameId.delete(gameId);
   }
 
   #makeMember(nickname: string): RoomMember {

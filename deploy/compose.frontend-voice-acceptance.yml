@@ -1,0 +1,8 @@
+services:
+  api:
+    environment:
+      VOICE_ENABLED: 'true'
+      AGORA_APP_ID: ${AGORA_APP_ID:?Set AGORA_APP_ID before enabling voice}
+      AGORA_APP_CERTIFICATE: ${AGORA_APP_CERTIFICATE:?Set AGORA_APP_CERTIFICATE before enabling voice}
+      AGORA_CUSTOMER_KEY: ${AGORA_CUSTOMER_KEY:-}
+      AGORA_CUSTOMER_SECRET: ${AGORA_CUSTOMER_SECRET:-}

@@ -1,0 +1,67 @@
+name: theater-death-frontend-admin-acceptance
+services:
+  api:
+    extends:
+      file: compose.v2.yml
+      service: test
+    profiles: [admin]
+    command: [node, server/v2/index.ts]
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATA_DIR: /app/data-frontend-v2
+      PUBLIC_BASE_URL: http://localhost:5173
+      ACCOUNT_COOKIE_NAME: td_account_frontend_admin_test
+      ADMIN_COOKIE_NAME: td_admin_frontend_admin_test
+      ADMIN_PASSWORD: Admin-test-only-password-2026
+      VOICE_ENABLED: 'false'
+    volumes:
+      - frontend-admin-data:/app/data-frontend-v2
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://localhost:3000/healthz").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  web:
+    extends:
+      file: compose.v2.yml
+      service: test
+    profiles: [admin]
+    command: [npm, run, 'dev:web:v2']
+    environment:
+      NODE_ENV: development
+      API_PROXY_TARGET: http://api:3000
+    volumes:
+      - ../web-v2:/app/web-v2:ro
+      - ../vite.v2.config.ts:/app/vite.v2.config.ts:ro
+    depends_on:
+      api:
+        condition: service_healthy
+  seed:
+    extends:
+      file: compose.frontend.yml
+      service: seed
+    profiles: [admin]
+    volumes:
+      - frontend-admin-data:/app/data-frontend-v2
+      - frontend-admin-access:/test-access
+  browser:
+    image: theater-death-frontend-e2e:pw1630-ts
+    profiles: [admin]
+    network_mode: service:web
+    environment:
+      ADMIN_TEST_PASSWORD: Admin-test-only-password-2026
+    command: [npx, playwright, test, --config=playwright.v2.config.ts, specs-v2/15-admin.spec.ts]
+    volumes:
+      - ../e2e/specs-v2:/e2e/specs-v2:ro
+      - ../e2e/helpers-v2:/e2e/helpers-v2:ro
+      - ../e2e/playwright.v2.config.ts:/e2e/playwright.v2.config.ts:ro
+      - ../e2e/tsconfig.v2.json:/e2e/tsconfig.v2.json:ro
+      - ../test-results-frontend-v2:/results
+      - frontend-admin-access:/test-access:ro
+    depends_on:
+      web:
+        condition: service_started
+volumes:
+  frontend-admin-data:
+  frontend-admin-access:

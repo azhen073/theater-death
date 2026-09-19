@@ -1,0 +1,45 @@
+{
+  "contractVersion": "2.2",
+  "rulesVersion": "2.0",
+  "auth": {
+    "registration": "open",
+    "uid": {
+      "minLength": 8,
+      "maxLength": 20,
+      "pattern": "^\\d{8,20}$"
+    },
+    "nickname": {
+      "minLength": 2,
+      "maxLength": 32
+    },
+    "password": {
+      "minLength": 8,
+      "maxLength": 16
+    },
+    "sessionMaxAgeSeconds": 604800
+  },
+  "avatar": {
+    "maxBytes": 2097152,
+    "maxDimension": 4096,
+    "outputSize": 256,
+    "formats": [
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ]
+  },
+  "features": {
+    "voice": false,
+    "avatars": false,
+    "customBoards": true,
+    "secondScreens": true,
+    "persistentAccounts": true,
+    "gameRecovery": false
+  },
+  "socket": {
+    "path": "/api/v2/socket.io",
+    "pingIntervalMs": 10000,
+    "pingTimeoutMs": 20000,
+    "disconnectGraceMs": 15000
+  }
+}

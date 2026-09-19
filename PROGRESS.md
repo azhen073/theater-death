@@ -15,7 +15,7 @@
 | 房主踢人（v1.3 增补） | ✅ | 大厅期移出成员（清位、可重进）、移出观战者（不限阶段、连带语音参与者移除）；204 单测 + E2E 18/18 |
 | 板子编辑器（v1.4 增补） | ✅ | 入口页「自定义板子…」：只改角色数量、实时校验（复用服务端校验器）、强制实验模式；204 单测 + E2E 09 增量通过 |
 | 语音媒体服务（声网替换） | ✅ | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；**2026-09-19 真实云联调与 E2E 语音 3 例全过**；服务器更新待执行（见接续指引） |
-| PR#3 选定移植（贡献提案 syhneversigh） | 🚧 | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）✅ `4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设 + 版本记录）✅（本批）；**D 组（账号 / 房间模型 / 新前端体系）待做** |
+| PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
 
 ## 接续指引（compact 后先读这里）
 
@@ -25,7 +25,7 @@
 3. 进度断点（2026-09-19 深夜）：**PR#3 选定移植进行中**（外部贡献 syhneversigh，阿真确认照抄 A/B/D 三部分）。
    - **A 组已推送 `4688b49`**：公开知识泄露修复（`visibility/knowledge.ts` 先红后绿 9 例——修夜间名单在晨间公告前可从公开接口读到的泄露）、`engine/targets.ts`、`server/capabilities.ts`、`server/windows.ts` + `queued-clock.ts`、`server/log-store.ts`（迁移守卫 + 预备表列）、`GameCommand.windowInstanceId` / `START_SPEECH`、`LiveWindow.instanceId` / `type`。
    - **B 组（本批）**：天理夜死移交时机对齐 R-46/T-40 字面（晨间公告后立即办，不再等白天末尾）+ 规则 2.0 命名预设 `THEATER_DEATH_13_V2`（V2-01 立即终局 / V2-02 公告前竞选 / V2-03 发言 120 秒 + 15 秒准备窗口 / V2-04 提案兜底）；`engine/*`、`rulesets/*`、`day-driver` / `night-driver`、`clock` 照抄；版本记录已更新（规则书 Q-09 + 需求 v1.7 + `docs/rules-v2.md`）；增量 18 文件 193 例全过。
-   - **D 组待做**：账号系统、StableRoom 房间模型（暂离 / 接管 / 房主继任 / 空房策略）、web-v2 前端、contracts 契约与 fixtures、docs 全套、receipts / queued 接入、v2 语音改造为声网（PR 原为 LiveKit）；`server/rooms.ts` 手工合并（保声网与终局退出）。
+   - **D 组完成**：账号体系、StableRoom 房间模型（暂离 / 接管 / 房主继任 / 空房策略）、服务端 v2（/api/v2 + 契约 + 回执 + strictWindows）、web-v2 前端、contracts / docs / fixtures / E2E specs-v2 全套准入；`server/rooms.ts` 手工合并（保声网与终局退出）；**v2 语音改造为声网**（uid 稳定映射 + token 权限模型）；旧 LiveKit 自托管残留已删除。**全量 84 文件 517 例 + 双类型检查 + web-v2 构建全过。**
    - **服务器更新仍待执行**：`cd ~/theater-death && git pull` → `.env` 加 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE` / `AGORA_CUSTOMER_KEY` / `AGORA_CUSTOMER_SECRET`（删旧 LiveKit 行；`PUBLIC_BASE_URL` / `SESSION_SECRET` / `SESSION_COOKIE_SECURE` 保持服务器值不动）→ `./deploy/update.sh`；此前里程碑与语音链路均已就绪。
    - 本地分支 `pr3-review` 为 PR#3 head（审查用，暂留）；`deploy/livekit.yaml` / `livekit-public.yaml` 为旧残留，待确认后删除。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。

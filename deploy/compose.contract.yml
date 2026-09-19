@@ -1,0 +1,23 @@
+name: theater-death-contract
+services:
+  test:
+    extends:
+      file: compose.v2.yml
+      service: test
+  app:
+    extends:
+      service: test
+    profiles: ["app"]
+    command: ["node", "server/v2/index.ts"]
+    ports: ["127.0.0.1:3003:3000"]
+    cpus: 2
+    mem_limit: 4g
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATA_DIR: /app/data-v2
+      PUBLIC_BASE_URL: http://localhost:3003
+      ACCOUNT_COOKIE_NAME: td_account_contract_21
+      VOICE_ENABLED: "false"
+    volumes:
+      - ../data-contract-2.1:/app/data-v2

@@ -1,0 +1,10 @@
+[
+  { "file": "bootstrap.json", "schema": "Bootstrap", "endpoint": "manual fragment", "scenario": "manual fragment: bootstrap" },
+  { "file": "auth-me.json", "schema": "AuthMe", "endpoint": "manual fragment", "scenario": "manual fragment: auth me" },
+  { "file": "room-entry.json", "schema": "RoomEntry", "endpoint": "manual fragment", "scenario": "manual fragment: room entry" },
+  { "file": "command-receipt.json", "schema": "CommandReceipt", "endpoint": "manual fragment", "scenario": "manual fragment: command receipt" },
+  { "file": "receipt-lookup.json", "schema": "ReceiptLookup", "endpoint": "manual fragment", "scenario": "manual fragment: receipt lookup" },
+  { "file": "chat-message.json", "schema": "ChatMessage", "endpoint": "manual fragment", "scenario": "manual fragment: chat stream item" },
+  { "file": "error.json", "schema": "Error", "endpoint": "manual fragment", "scenario": "manual fragment: error" },
+  { "file": "control.json", "schema": "Control", "endpoint": "manual fragment", "scenario": "manual fragment: control" }
+]

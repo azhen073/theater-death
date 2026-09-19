@@ -1,0 +1,21 @@
+name: backend-v2-candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build locked dependencies
+        run: docker build -f deploy/Dockerfile.dependencies -t theater-death-contract-deps:sharp0354-ajv820 .
+      - name: Build candidate with the complete unit and API gate
+        run: docker build -f deploy/Dockerfile.v2 --build-arg VCS_REF="$GITHUB_SHA" -t "theater-death-v2:$GITHUB_SHA" .
+      - name: Save candidate identity
+        run: docker image inspect "theater-death-v2:$GITHUB_SHA" --format '{{json .}}' > candidate-image.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: candidate-image-identity
+          path: candidate-image.json
+# Explicit candidate job only. No registry push or deployment is performed here.

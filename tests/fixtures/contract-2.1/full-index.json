@@ -1,0 +1,116 @@
+[
+  {
+    "file": "bootstrap-full.json",
+    "schema": "Bootstrap",
+    "endpoint": "GET /api/v2/bootstrap",
+    "scenario": "anonymous bootstrap"
+  },
+  {
+    "file": "catalog-full.json",
+    "schema": "Catalog",
+    "endpoint": "GET /api/v2/catalog",
+    "scenario": "anonymous catalog"
+  },
+  {
+    "file": "auth-me-full.json",
+    "schema": "AuthMe",
+    "endpoint": "GET /api/v2/auth/me",
+    "scenario": "authenticated account"
+  },
+  {
+    "file": "lobby-entry-full.json",
+    "schema": "RoomEntry",
+    "endpoint": "POST /api/v2/rooms",
+    "scenario": "formal lobby entry"
+  },
+  {
+    "file": "lobby-formal-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "formal lobby snapshot"
+  },
+  {
+    "file": "lobby-observer-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "public observer lobby snapshot"
+  },
+  {
+    "file": "me-rooms-lobby-full.json",
+    "schema": "MeRooms",
+    "endpoint": "GET /api/v2/me/rooms",
+    "scenario": "lobby current rooms"
+  },
+  {
+    "file": "night-door-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "started door private snapshot"
+  },
+  {
+    "file": "night-spirit-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "started spirit effective proposal snapshot"
+  },
+  {
+    "file": "started-public-observer-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "started public observer snapshot"
+  },
+  {
+    "file": "private-second-screen-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "private second-screen snapshot"
+  },
+  {
+    "file": "socket-full-snapshot.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "Socket.IO view_updated",
+    "scenario": "started private Socket.IO snapshot"
+  },
+  {
+    "file": "command-receipt-full.json",
+    "schema": "CommandReceipt",
+    "endpoint": "POST /api/v2/rooms/{code}/command",
+    "scenario": "started command receipt"
+  },
+  {
+    "file": "receipt-lookup-full.json",
+    "schema": "ReceiptLookup",
+    "endpoint": "GET /api/v2/rooms/{code}/games/{gameId}/receipts/{requestId}",
+    "scenario": "started receipt lookup"
+  },
+  {
+    "file": "day-election-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "day election snapshot"
+  },
+  {
+    "file": "chat-ack-full.json",
+    "schema": "ChatAck",
+    "endpoint": "POST /api/v2/rooms/{code}/chat",
+    "scenario": "public chat acknowledgement"
+  },
+  {
+    "file": "review-constructed-full.json",
+    "schema": "ReviewWrapper",
+    "endpoint": "GET /api/v2/rooms/{code}/review",
+    "scenario": "constructed review (not a real gameplay chain)"
+  },
+  {
+    "file": "post-review-lobby-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "lobby after end-review"
+  },
+  {
+    "file": "me-rooms-post-review-full.json",
+    "schema": "MeRooms",
+    "endpoint": "GET /api/v2/me/rooms",
+    "scenario": "rooms after end-review"
+  }
+]

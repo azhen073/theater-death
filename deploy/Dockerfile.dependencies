@@ -1,0 +1,5 @@
+# Fixed baseline supplies Node24. Only a lockfile change rebuilds this reusable layer.
+FROM ghcr.io/azhen073/theater-death@sha256:d4ef39c208b61fc89e6885cba8cbf35437e06b839cc9aefc63f6cd76b49f7c93
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev --no-audit --no-fund --registry=https://registry.npmjs.org

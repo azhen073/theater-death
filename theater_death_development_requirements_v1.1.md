@@ -1,6 +1,6 @@
 # 《剧院死神》在线法官 · 开发需求文档
 
-版本：v1.5 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设，见文末版本记录）  
+版本：v1.5 · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入，见文末版本记录）  
 适用读者：给 Codex 与项目维护者  
 整理日期：2026-09-16 · 增补记录 2026-09-17
 
@@ -707,3 +707,15 @@ https://docs.docker.com/get-started/
 - **规则 2.0 命名预设（`THEATER_DEATH_13_V2`）**：新增可选命名预设，正式模式允许默认 1.1 与 2.0 两个命名预设（R-54 相应扩展）；差异点：V2-01 结算后立即判胜负（成立即终局，跳过遗言与移交）；V2-02 首日竞选先于晨间公告（首夜存活名单 `eligibleAtStart` 判定公告前白天权限）；V2-03 发言 120 秒 + 15 秒不开麦准备窗口（`START_SPEECH` 提前开始）；V2-04 提案兜底最后合法草稿（含空刀，覆盖 R-47“从未达成视为空行动”）。默认 1.1 预设行为不变；完整增补见 `docs/rules-v2.md`。
 - 实现：`engine/day.ts`（移交时机、v2 立即终局与公告前竞选）、`engine/proposal.ts`（`resolvedProposal`）、`engine/night.ts`（`eligibleAtStart`）、`engine/types.ts`、`rulesets/theater-death-13-v2.ts`（新增）、`rulesets/validate.ts`、`server/day-driver.ts`（准备窗口、截止即拒、代际守卫）、`server/night-driver.ts`（`strictWindows`、v2 首日流程）、`server/commands.ts` / `server/windows.ts` / `server/queued-clock.ts`、`visibility/review.ts`（`messageId` 透传）。
 - 测试：`engine-day`（T-40 新预期）、`day-driver`、`night-driver`（`ProposalView.effective`）、`deadline-queue`（4 例）、`window-instances`（3 例）；本次按测试策略增量运行 18 文件 193 例全过 + 类型检查（容器内构建链全量兜底）。
+
+### v1.8（2026-09-19）· 账号体系与 v2 服务端 / 前端体系准入（贡献提案 syhneversigh，用户（阿真）确认；媒体层改造为声网）
+
+- **准入范围**（PR #3 选定部分照抄，语音统一为声网，v1 入口与既有玩法不变）：
+  - **账号体系**：数字 UID 注册 / 登录（10000001 起、字符串传输、删除不复用）、scrypt 密码（8–16 码点，兼容迁移旧哈希）、口令会话（7 天）、改名 / 改密 / 停用 / 永久删除、注册开关持久化、管理后台（`ADMIN_PASSWORD` ≥16 位 + `td_admin_v2` cookie + `admin_actions` 审计 + 限流）、schema 4 迁移（保留账号 ID、哈希与有效会话）。
+  - **房间与席位模型（v2）**：StableRoom（房间与单局解耦）＋ RoomDirectory / Access 租约（sessionId + epoch）＋ 接管（旧设备断权）＋ 暂离对局（局中离开保留席位，同账号可恢复）＋ 在线状态（心跳 10s / 超时 20s / 断线宽限 15s）＋ 空房策略（无正式成员 5 分钟 TTL、复盘期最后一名正式成员离开即销毁、局中超时按 aborted 落审计）＋ 房主继任。
+  - **服务端 v2**：`server/v2`（`/api/v2` 前缀、契约 2.1/2.2、回执幂等 receipts + 指纹、窗口实例 strictWindows、公开 / 个人 / 第二屏三级视图、任务窗口 capabilities / targets、维护清扫）。
+  - **web-v2 前端**：独立构建（`vite.v2.config.ts`、`npm run build:web:v2`）：大厅 / 昼夜行动 / 情报 / 公屏 / 观战 / 终局复盘与账号管理；头像 sharp 处理。
+  - **语音**：v2 语音层由 LiveKit 改造为声网（与 v1 同一 `voice/agora.ts`；uid 由媒体身份稳定映射；发布权编码在短期 token，前端 `renewToken` 即时生效；`/api/v2/voice/sync` 保留为轻量对齐——关房与回收失效租约）。旧 LiveKit 自托管残留（`deploy/livekit*.yaml`、`render-livekit-config.sh` 等）不再入库。
+  - **契约与文档**：`contracts/*`、`docs/*`（openapi v2.2、client-contract 2.1/2.2、frontend-v2-*、rules-v2 增补）、E2E `specs-v2`（16 例）+ `helpers-v2`、`tests/fixtures/contract-2.1`（30 份快照）。
+- **边界**：v1 入口（3000）与既有玩法保持不变；v2 为并行体系（独立进程 `server/v2/index.ts`、独立数据目录 `data-v2`）；媒体服务全仓库统一为声网。
+- 测试：84 文件 517 例全过（含 v2 全套与 v1 回归）+ 根 / 前端 v2 双类型检查 + `build:web:v2` 构建通过。本次为无先例大集成，按全量回归执行（增量测试策略之外的临时例外）；容器内构建链亦全量兜底。

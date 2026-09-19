@@ -1,0 +1,33 @@
+import { createServer } from 'node:http';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { createSystemClock } from '../clock.ts';
+import { createLogStore } from '../log-store.ts';
+import { createAgoraVoiceService } from '../../voice/agora.ts';
+import { configuration } from './config.ts';
+import { AccountStore } from './account-store.ts';
+import { createV2App } from './app.ts';
+import { AvatarStore } from './avatars.ts';
+import { createFrontendApp } from './frontend-app.ts';
+
+const config = configuration();
+mkdirSync(config.dataDir, { recursive: true });
+const clock = createSystemClock();
+const accounts = new AccountStore(join(config.dataDir, 'accounts.sqlite'), () => clock.now());
+const logStore = createLogStore(join(config.dataDir, 'audit.sqlite'));
+const voice = config.voiceEnabled ? createAgoraVoiceService({ appId: process.env.AGORA_APP_ID ?? '', appCertificate: process.env.AGORA_APP_CERTIFICATE ?? '', customerKey: process.env.AGORA_CUSTOMER_KEY ?? '', customerSecret: process.env.AGORA_CUSTOMER_SECRET ?? '' }) : null;
+const avatars = new AvatarStore(accounts, join(config.dataDir, 'avatars'));
+const backend = createV2App({ accounts, clock, logStore, avatars, origin: config.origin, cookieName: config.cookieName, adminCookieName: config.adminCookieName, secureCookies: config.secureCookies, adminPassword: config.adminPassword, voice });
+const app = process.env.WEB_ROOT ? createFrontendApp(backend.app, process.env.WEB_ROOT) : backend.app;
+const server = createServer(app);
+backend.hub.attachV2(server);
+backend.maintenance.start();
+server.listen(config.port, '0.0.0.0', () => console.log(`theater-death API v2 listening on ${config.port}`));
+let stopping = false;
+const shutdown = () => {
+  if (stopping) return; stopping = true;
+  backend.close();
+  server.close(() => { void backend.drain().finally(() => { accounts.close(); logStore.close(); process.exit(0); }); });
+  setTimeout(() => process.exit(1), 8000).unref();
+};
+process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);
