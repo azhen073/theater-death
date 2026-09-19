@@ -188,7 +188,7 @@ describe('v2 room governance', () => {
     expect(playing.controls.some((event) => event.reason === 'dissolved')).toBe(true);
   });
 
-  it('treats a host leaving as dissolve in lobby and review, but as a temporary absence during play', async () => {
+  it('treats a host leaving as dissolve only in lobby, as a temporary absence during play, and as a plain leave in review', async () => {
     const lobby = setup();
     const lobbyHost = account(lobby.accounts, 'leave_lobby_host');
     const lobbyRoom = await lobby.directory.create(lobbyHost.session, THEATER_DEATH_13_V2);
@@ -210,9 +210,13 @@ describe('v2 room governance', () => {
     const review = setup();
     const reviewed = await fullMatch(review.directory, review.accounts, 'leave_review');
     reviewed.room.runtime!.state = { ...reviewed.room.runtime!.state!, phase: 'ended', win: { winner: 'human', dayNumber: 1, reason: 'leave_review' } };
-    expect(await review.governance.leave(reviewed.room, reviewed.players[0]!.session)).toMatchObject({ left: true, dissolved: true, seatRetained: false });
-    expect(reviewed.room.dissolved).toBe(true);
-    expect(review.directory.byCode.has(reviewed.room.code)).toBe(false);
+    const reviewSuccessor = reviewed.players[1]!;
+    await review.presence.connect(reviewed.room, reviewSuccessor.session, 'review-successor-socket');
+    expect(await review.governance.leave(reviewed.room, reviewed.players[0]!.session)).toMatchObject({ left: true, dissolved: false });
+    expect(reviewed.room.dissolved).toBe(false);
+    expect(review.directory.byCode.has(reviewed.room.code)).toBe(true);
+    expect(reviewed.room.phase).toBe('review');
+    expect(reviewed.room.hostMemberId).toBe(reviewed.room.members.get(reviewSuccessor.userId)!.memberId);
 
     const member = setup();
     const normal = await fullMatch(member.directory, member.accounts, 'leave_member');

@@ -54,21 +54,22 @@ export class RoomGovernance {
     });
   }
   /**
-   * 房主主动退出：大厅与复盘阶段直接解散整房；
-   * 对局进行中仍是「暂离」（保留席位与计时），交由调用方按普通离开处理。
-   * 非房主一律按普通离开处理。
+   * 房主主动退出：**仅大厅阶段**解散整房；
+   * 对局进行中是「暂离」（保留席位与计时，房主由其他在线正式成员继任）；
+   * 复盘阶段是**普通离开**——房间保留，其他人继续看复盘，房主同样继任。
+   * 非房主一律按普通离开处理。房间因空置被回收时，回执里的 seatRetained 归 false。
    */
   leave(room: StableRoom, session: AccountSession): Promise<{ left: true; dissolved: boolean; seatRetained: boolean }> {
     return this.directory.mutate(room, () => {
       const member = this.directory.member(room, session);
       const host = member.kind === 'formal' && room.hostMemberId === member.memberId;
-      if (host && room.phase !== 'playing') {
+      if (host && room.phase === 'lobby') {
         this.dispose(room);
         return { left: true as const, dissolved: true, seatRetained: false };
       }
       this.directory.removeMember(room, member, 'left');
       return { left: true as const, dissolved: false, seatRetained: room.participants.has(session.userId) };
-    });
+    }).then((result) => ({ ...result, seatRetained: !room.dissolved && result.seatRetained }));
   }
   /** Caller already holds membership/room queues; game audit is retained. */
   dispose(room: StableRoom): void {

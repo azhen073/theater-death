@@ -124,7 +124,7 @@ describe('v2 operation receipt HTTP contract', () => {
     expect(await json(dissolveReplay)).toEqual(dissolveBody);
   });
 
-  it('dissolves a reviewed room when the host leaves last, then replays the original response', async () => {
+  it('immediately disposes an empty reviewed room after the last formal leave and replays its response', async () => {
     const h = await makeHarness(14);
     const { room } = await startFullRoom(h);
     const spectator = h.users[13]!;
@@ -135,11 +135,11 @@ describe('v2 operation receipt HTTP contract', () => {
       const response = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: `review-dispose-leave-${index}` }), h.users[index]);
       expect(response.status).toBe(200);
     }
-    // 房主在复盘阶段退出即解散整房（其余 12 名正式成员已先行离开）。
+    // 房主在复盘阶段是普通离开（不解散）；其余 12 名正式成员已先行离开，因此离开后房间空置 → 立即关闭。
     const finalLeave = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: 'review-dispose-final' }), h.users[0]);
     expect(finalLeave.status).toBe(200);
     const finalBody = await json(finalLeave);
-    expect(finalBody).toEqual({ left: true, dissolved: true, seatRetained: false });
+    expect(finalBody).toEqual({ left: true, dissolved: false, seatRetained: false });
     expect((await request(h, '/api/v2/auth/me', {}, h.users[0])).status).toBe(200);
     expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, spectator)).status).toBe(404);
     expect((await json(await request(h, '/api/v2/me/rooms', {}, spectator))).currentRoomId).toBeNull();
