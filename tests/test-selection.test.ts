@@ -31,6 +31,16 @@ describe('incremental test selector', () => {
     expect(selected('tests/helpers.ts')).toContain('tests/visibility.test.ts');
   });
 
+  it('maps the legacy v1 entry and web-v2 sources to their reviewed suites', () => {
+    expect(selected('server/legacy-index.ts')).toEqual([
+      'tests/server-api.test.ts', 'tests/realtime.test.ts', 'tests/spectator.test.ts', 'tests/capabilities.test.ts',
+      'tests/receipts.test.ts', 'tests/v2-api.test.ts', 'tests/v2-maintenance.test.ts',
+    ]);
+    const frontend = selected('web-v2/src/features/room/policy.ts');
+    expect(frontend).toContain('tests/frontend-v2-room-model.test.ts');
+    expect(frontend).toContain('tests/frontend-v2-voice-session.test.ts');
+  });
+
   it('deduplicates multiple mappings and selects runtime dependencies for package changes', () => {
     expect(selected('docs/openapi-v2.2.json', 'docs/openapi-v2.2.json', 'contracts/catalog.ts')).toEqual([
       'tests/contract-openapi.test.ts', 'tests/client-catalog.test.ts',

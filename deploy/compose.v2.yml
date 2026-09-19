@@ -16,6 +16,7 @@ x-source: &source
     - ../tests:/app/tests:ro
     - ../scripts:/app/scripts:ro
     - ../web:/app/web:ro
+    - ../web-v2:/app/web-v2:ro
     - ../package.json:/app/package.json:ro
     - ../package-lock.json:/source-lock.json:ro
     - ../tsconfig.json:/app/tsconfig.json:ro

@@ -33,12 +33,13 @@ const mappings = [
   [/^rulesets\//, ['rulesets', 'engine-setup', 'v2-proposal', 'v2-first-election', 'v2-timers']],
   [/^visibility\//, ['visibility', 'knowledge', 'review', 'v2-spectators-api']],
   [/^server\/(clock|queued-clock|windows|commands|day-driver|night-driver)\.ts$/, ['day-driver', 'night-driver', 'window-instances', 'deadline-queue', 'v2-api', 'v2-timers']],
-  [/^server\/(rooms|realtime|app|session|log-store|index|health|capabilities|receipts)\.ts$/, ['server-api', 'realtime', 'spectator', 'capabilities', 'receipts', 'v2-api', 'v2-maintenance']],
+  [/^server\/(rooms|realtime|app|session|log-store|index|legacy-index|health|capabilities|receipts)\.ts$/, ['server-api', 'realtime', 'spectator', 'capabilities', 'receipts', 'v2-api', 'v2-maintenance']],
   [/^server\/v2\/(account-store|auth|passwords|errors|admin)\.ts$/, ['account-store', 'auth-v2', 'auth-race', 'passwords', 'v2-api']],
   [/^server\/v2\/(access|spectators|second-screen|view|realtime)\.ts$/, ['access-v2', 'knowledge', 'v2-realtime', 'v2-spectators-api', 'v2-api']],
   [/^server\/v2\/(config|maintenance|diagnostics|media|rate-limit)\.ts$/, ['v2-config', 'v2-maintenance', 'v2-media', 'voice-agora']],
   [/^server\/v2\/(app|index|parse-command)\.ts$/, ['auth-v2', 'v2-api', 'contract-http-lifecycle', 'contract-knowledge-api', 'v2-spectators-api', 'v2-media', 'v2-maintenance', 'room-operation-api', 'command-receipts-api', 'chat-receipts-api', 'avatars-api', 'client-catalog', 'contract-openapi']],
   [/^voice\//, ['voice-policy', 'voice-api', 'voice-agora', 'v2-media']],
+  [/^web-v2\//, ['frontend-v2-actions', 'frontend-v2-avatar', 'frontend-v2-chat-tracker', 'frontend-v2-command-tracker', 'frontend-v2-display-model', 'frontend-v2-draft-reconciliation', 'frontend-v2-http-deadline', 'frontend-v2-http', 'frontend-v2-ids', 'frontend-v2-room-model', 'frontend-v2-snapshot', 'frontend-v2-voice-session']],
   [/^(deploy\/|scripts\/|\.github\/|package.*json$|tsconfig.json$|vitest.config.ts$)/, ['smoke']],
 ];
 const files = process.argv.slice(2);
