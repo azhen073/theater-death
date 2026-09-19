@@ -10,6 +10,7 @@ import type {
 import type { RoleId } from '../rulesets/types.ts';
 import { viewerContext, type ViewerContext } from './context.ts';
 import { filterVisible } from './deliver.ts';
+import { publishedState } from './knowledge.ts';
 import { factionRoomView, type FactionRoomView } from './rooms.ts';
 
 /**
@@ -96,6 +97,7 @@ export function buildPlayerView(input: {
   if (me === undefined) {
     throw new Error(`未知玩家 ${playerId}`);
   }
+  const published = publishedState(state, events);
 
   return {
     gameId: state.gameId,
@@ -113,7 +115,7 @@ export function buildPlayerView(input: {
       guardHistory: me.guardHistory,
       voteFrozen: me.voteFrozen,
     },
-    seats: state.players
+    seats: published.players
       .slice()
       .sort((left, right) => left.seat - right.seat)
       .map((player) => ({

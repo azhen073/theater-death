@@ -26,6 +26,8 @@ export type NightWindowId = 'guard' | 'faction' | 'laike' | 'check' | 'rescue' |
 export interface LiveWindow {
   readonly id: string;
   readonly closesAt: number;
+  readonly instanceId?: string;
+  readonly type?: string;
 }
 
 /** R-47 阵营协商的本人视角：同池成员可见草稿版本、目标与确认进度 */

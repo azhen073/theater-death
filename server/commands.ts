@@ -38,6 +38,7 @@ export type NightCommand =
 export type NightCommandType = NightCommand['type'];
 
 export type DayCommand =
+  | { readonly type: 'START_SPEECH'; readonly playerId: string }
   | {
       readonly type: 'END_LAST_WORDS';
       readonly playerId: string;
@@ -86,6 +87,6 @@ export type DayCommand =
 
 export type DayCommandType = DayCommand['type'];
 
-export type GameCommand = NightCommand | DayCommand;
+export type GameCommand = (NightCommand | DayCommand) & { readonly windowInstanceId?: string };
 
 export type GameCommandType = GameCommand['type'];

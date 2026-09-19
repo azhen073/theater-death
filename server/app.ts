@@ -7,6 +7,7 @@ import {
   buildReviewView,
   canPostPublic,
   canReadRoomMessage,
+  publishedState,
   roomMembership,
 } from '../visibility/index.ts';
 import type { Clock } from './clock.ts';
@@ -134,6 +135,7 @@ export function createApp(deps: AppDeps): Express {
       fail(res, 404, 'room_not_found', '房间不存在');
       return;
     }
+    const published = room.state === null ? null : publishedState(room.state, room.events);
     res.json({
       roomCode: room.code,
       phase: room.state === null ? 'lobby' : 'started',
@@ -141,11 +143,12 @@ export function createApp(deps: AppDeps): Express {
       memberCount: room.members.length,
       members: room.members.map((member) => {
         const player = room.state?.players.find((item) => item.playerId === member.playerId);
+        const publishedPlayer = published?.players.find((item) => item.playerId === member.playerId);
         return {
           playerId: member.playerId,
           nickname: member.nickname,
           seat: player?.seat ?? null,
-          alive: player === undefined ? null : player.life !== 'dead',
+          alive: publishedPlayer === undefined ? null : publishedPlayer.life !== 'dead',
           watched: room.spectators.some((item) => item.bindPlayerId === member.playerId),
         };
       }),
