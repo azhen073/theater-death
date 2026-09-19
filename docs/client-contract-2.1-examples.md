@@ -1,6 +1,6 @@
 # 2.1 前端联调示例
 
-以下示例随2.1候选交付；实施进度以进度文档为准。示例不包含前端UI，不替代OpenAPI和共享DTO。
+以下示例随2.1候选交付；实施进度以贡献者本地的 2.1 进度记录为准（**未随仓库入库**）。示例不包含前端UI，不替代OpenAPI和共享DTO；当前 schema 见 [OpenAPI 2.2](openapi-v2.2.json)。
 
 可直接导入的最小辅助代码见 [contract-client.ts](examples/contract-client.ts)：统一HTTP发送、按账号/房间接收快照、单调时钟倒计时与头像版本保护。用户切换账号/房间时创建新的SnapshotCursor；收到需要清除授权的control时调用clear，关闭旧Socket。updated且gameChanged时清除旧局草稿，再渲染新的完整快照。
 

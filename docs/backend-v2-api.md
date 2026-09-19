@@ -1,6 +1,6 @@
 # 后端 v2 接口契约
 
-> 历史rc.1接口记录。新前端请使用 [契约2.1](client-contract-2.1.md)、[OpenAPI](openapi-v2.1.json) 和 [实际验证进度](client-contract-2.1-progress.md)。2.1仍使用/api/v2，但不保留本文旧join/watch/gameId握手协议。
+> 历史rc.1接口记录。新前端请使用 [契约2.1](client-contract-2.1.md) 与当前 [OpenAPI 2.2](openapi-v2.2.json)（2.1 的实施进度与验收记录为贡献者本地文档，未随仓库入库）。2.1仍使用/api/v2，但不保留本文旧join/watch/gameId握手协议。
 
 本地候选入口 http://localhost:3001，仅提供API，未提供新版网页。旧版网页和对局仍使用3000端口，旧Cookie不能访问v2。
 
@@ -68,9 +68,11 @@ Socket.IO路径 `/api/v2/socket.io`，握手auth传 `{gameId}`，使用相同Coo
 
 ## 媒体和诊断
 
-POST rooms/:code/voice/token获得30秒加入凭证，token本身无发布权，发布权限由服务端同步。POST rooms/:code/voice/sync重新同步。未配置语音时返回voice_disabled，游戏计时不暂停。
+POST rooms/:code/voice/token获得加入凭证（订阅角色：可听不可发；默认有效期30分钟）。发布权由服务端在状态推进时下发的**短期发布凭证（默认10分钟，覆盖最长90秒发言窗口）**授予，前端 `renewToken` 即时生效；收回时下发订阅凭证即时降权。POST rooms/:code/voice/sync重新同步。未配置语音时返回voice_disabled，游戏计时不暂停。
 
-LiveKit必须配置签名Webhook到 `/api/v2/voice/webhook`（application/webhook+json）。后台验证签名和消息摘要，并移出不再拥有租约的参与者；周期同步也移除未知身份。外部媒体服务失败时，网页/API撤销仍立即生效，远端媒体移出只能在连接恢复后重试，不能把模拟测试说成实机语音保证。
+> 2026-09-19 媒体层已由 LiveKit 替换为**声网 Agora**（`voice/agora.ts`）：声网把发布权编码在 token 内，且**不提供**服务端实时改权限 API，因此按上面"短期发布凭证 + 到期兜底"实现 R-43；踢人（观战者）与终局关房改走声网频道管理 REST（一次性踢出、可立即重进）。
+>
+> 原 LiveKit 签名 Webhook（`/api/v2/voice/webhook`、`application/webhook+json`）在声网方案下**不再启用**：`server/v2/index.ts` 未注入 `verifyWebhook`，该路由不会被注册（`server/v2/app.ts` 保留为历史遗留）。周期同步仍会移出未知身份与失效租约。外部媒体服务失败时，网页/API撤销仍立即生效，远端媒体移出只能在连接恢复后重试，不能把模拟测试说成实机语音保证。
 
 GET /healthz无认证，返回存活状态和API/规则版本；GET /api/v2/diagnostics需登录，提供rss、eventLoopP99Ms、房间数，不含身份或凭证。
 

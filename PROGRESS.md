@@ -6,7 +6,7 @@
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
-| 文档 | ✅ | 规则书 v1.1 + 需求文档 v1.2（v1.1 + 观战增补），Q-01–Q-08 全量定值（规则书第 09 章） |
+| 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v1.9**，Q-01–Q-08 全量定值（规则书第 09 章） |
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
@@ -14,6 +14,8 @@
 | 观战（v1.2 增补） | ✅ | 绑定玩家只读第二屏：入口选择目标、只读大厅/对局、语音旁听、终局复盘同权；194 单测 + E2E 16/16 |
 | 房主踢人（v1.3 增补） | ✅ | 大厅期移出成员（清位、可重进）、移出观战者（不限阶段、连带语音参与者移除）；204 单测 + E2E 18/18 |
 | 板子编辑器（v1.4 增补） | ✅ | 入口页「自定义板子…」：只改角色数量、实时校验（复用服务端校验器）、强制实验模式；204 单测 + E2E 09 增量通过 |
+| 终局退出（v1.5 增补） | ✅ | 仅终局后可退出：释放席位、房主不解散、空房销毁；对局中仍 409；`tests/server-api.test.ts` +3 例 + E2E `10-end-exit.spec.ts` 2 例 |
+| 文档一致性整理（v1.9） | ✅ | 全仓库 24 个 md 逐项核对：清理 LiveKit 残留（脚本 / compose / 文档）、修正版本号与单测计数、修复失效链接、同步 R-54 正文；**无玩法变更** |
 | 语音媒体服务（声网替换） | ✅ | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；**2026-09-19 真实云联调与 E2E 语音 3 例全过**；服务器更新待执行（见接续指引） |
 | PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
 
@@ -21,14 +23,14 @@
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v1.7：规则 2.0 命名预设与移交时机对齐，见文末版本记录）。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v1.9：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理，见文末版本记录）。
 3. 进度断点（2026-09-19 深夜）：**PR#3 选定移植进行中**（外部贡献 syhneversigh，阿真确认照抄 A/B/D 三部分）。
    - **A 组已推送 `4688b49`**：公开知识泄露修复（`visibility/knowledge.ts` 先红后绿 9 例——修夜间名单在晨间公告前可从公开接口读到的泄露）、`engine/targets.ts`、`server/capabilities.ts`、`server/windows.ts` + `queued-clock.ts`、`server/log-store.ts`（迁移守卫 + 预备表列）、`GameCommand.windowInstanceId` / `START_SPEECH`、`LiveWindow.instanceId` / `type`。
    - **B 组（本批）**：天理夜死移交时机对齐 R-46/T-40 字面（晨间公告后立即办，不再等白天末尾）+ 规则 2.0 命名预设 `THEATER_DEATH_13_V2`（V2-01 立即终局 / V2-02 公告前竞选 / V2-03 发言 120 秒 + 15 秒准备窗口 / V2-04 提案兜底）；`engine/*`、`rulesets/*`、`day-driver` / `night-driver`、`clock` 照抄；版本记录已更新（规则书 Q-09 + 需求 v1.7 + `docs/rules-v2.md`）；增量 18 文件 193 例全过。
    - **D 组完成**：账号体系、StableRoom 房间模型（暂离 / 接管 / 房主继任 / 空房策略）、服务端 v2（/api/v2 + 契约 + 回执 + strictWindows）、web-v2 前端、contracts / docs / fixtures / E2E specs-v2 全套准入；`server/rooms.ts` 手工合并（保声网与终局退出）；**v2 语音改造为声网**（uid 稳定映射 + token 权限模型）；旧 LiveKit 自托管残留已删除。**全量 84 文件 517 例 + 双类型检查 + web-v2 构建全过。**
    - **入口切换（2026-09-19，阿真要求）**：镜像默认启动**新版（v2）体系与新前端**（`server/index.ts` 分发；`server/legacy-index.ts` + `ENTRY=v1` 供回滚与旧版 E2E）；compose 数据目录 `/app/data-v2`（旧 `../data` 保留挂载）、`WEB_ROOT=web-v2/dist`、`NODE_ENV` 可覆盖（本地 http 用 development）；e2e.env 设 `ENTRY=v1`；RUNBOOK §2.1 / .env.example 已更新。CI 绿（`35cf1ee` 起镜像 = 新前端）。
    - **服务器更新仍待执行**：`cd ~/theater-death && git pull` → `.env` 加 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE` / `AGORA_CUSTOMER_KEY` / `AGORA_CUSTOMER_SECRET`（删旧 LiveKit 行；`PUBLIC_BASE_URL` / `SESSION_SECRET` / `SESSION_COOKIE_SECURE` 保持服务器值不动）→ `./deploy/update.sh`；此前里程碑与语音链路均已就绪。
-   - 本地分支 `pr3-review` 为 PR#3 head（审查用，暂留）；`deploy/livekit.yaml` / `livekit-public.yaml` 为旧残留，待确认后删除。
+   - 本地分支 `pr3-review` 为 PR#3 head（审查用，暂留）；`deploy/livekit.yaml` / `livekit-public.yaml` 旧残留**已删除**（v1.9 另清理了 `frontend-local.ps1` 的 `livekit` 服务与各 compose 的 `LIVEKIT_*` / `VOICE_SERVICE_URL` / `VOICE_ADMIN_URL` 环境变量）。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
 ## 仓库与交付
@@ -189,32 +191,46 @@ theater_death/
 ├─ theater_death_rulebook_v1.1.md
 ├─ theater_death_development_requirements_v1.1.md
 ├─ package.json / package-lock.json / tsconfig.json / vitest.config.ts
-├─ .env.example / .gitignore / .dockerignore / .gitattributes
-├─ .github/workflows/release.yml   CI：构建（含测试）并发布 ghcr 镜像
+├─ .env.example / .env.v2.example / .env.frontend-local.example
+├─ .gitignore / .dockerignore / .gitattributes
+├─ .github/workflows/  release.yml（push main → 构建含测试 → 发布 ghcr 镜像）
+│           · backend-v2-check.yml / backend-v2-candidate.yml（v2 增量检查与候选门禁）
 ├─ deploy/  Dockerfile（node:24.15.0-bookworm-slim 锁定）· docker-compose.yml（image 指向 ghcr）
-│           · install/start/stop/update × {ps1,sh} · RUNBOOK.md（运行手册）
-│           · （livekit.yaml / livekit-public.yaml 为旧自托管配置，待删除）
-├─ engine/  index · types · events · emit · random · setup · proposal · night · victory · morning · stage · day
-├─ rulesets/ index · types · roles · theater-death-13 · validate
-├─ visibility/  index · context · deliver · rooms · chat · errors · projection · review
-├─ server/  index.ts（express + Socket.IO 装配启动）· health.ts · app · session · rooms · log-store
-│           · realtime · clock · commands · night-driver · day-driver
+│           · Dockerfile.v2 / Dockerfile.frontend-v2 / Dockerfile.e2e / Dockerfile.dependencies
+│           · compose.*.yml（v2 / v2.release / v2.load / contract / frontend* / e2e）
+│           · install/start/stop/update × {ps1,sh} · frontend-local.ps1 · v2.ps1 · RUNBOOK.md（运行手册）
+│           · （旧 livekit.yaml / livekit-public.yaml 已删除；媒体服务现为声网托管）
+├─ engine/  index · types · events · emit · random · setup · proposal · night · victory · morning · stage · day · targets
+├─ rulesets/ index · types · roles · theater-death-13 · theater-death-13-v2 · validate
+├─ visibility/  index · context · deliver · rooms · chat · errors · projection · review · knowledge
+├─ server/  index.ts（入口分发：新版 v2 / 旧版 v1）· legacy-index.ts · health.ts · app · session · rooms
+│           · log-store · realtime · clock · queued-clock · commands · night-driver · day-driver
+│           · capabilities · windows · receipts · v2/（账号 · 稳定房间与租约 · 契约 2.x · 回执 · 视图与第二屏 · 媒体 · 管理 · 维护）
+├─ contracts/  v2 · catalog · admin（新版客户端契约类型）
 ├─ voice/   policy（R-43 许可策略，纯函数）· agora（声网适配：订阅/发布/降权 token 签发、踢人/关房 REST）
-├─ tests/   17 个文件共 187 用例（见"测试状态"）：smoke · rulesets · engine-setup · engine-proposal
-│           · engine-night · engine-morning · engine-info · engine-day · visibility · night-driver
-│           · server-api · realtime · day-driver · review · voice-policy · voice-agora
-│           · voice-api（+ server-test-utils 工具）
-├─ e2e/      Playwright 端到端验收：specs/（01 冒烟·02 语音·03 越权·04 全流程·05 恢复·06 泄漏）
-│           · helpers/（api·bot·cloud·driver·ui·board·env）· capacity.mjs · package.json（配套镜像 deploy/Dockerfile.e2e 与 compose e2e profile）
-├─ vite.config.ts               前端构建配置（root=web，产物 web/dist）
+├─ scripts/  build-frontend-v2 · select-tests · test-incremental · v2-capacity · v2-capacity-seed · seed-frontend-v2
+├─ docs/    契约 2.1 / 2.2 · OpenAPI v2.2 · 规则 2.0（rules-v2 / rules-v2-full）· frontend-v2-* · backend-v2-*
+├─ tests/   84 个测试文件（见"测试状态"）：v1 引擎与驱动（smoke · rulesets · engine-* · visibility
+│           · night-driver · day-driver · server-api · realtime · spectator · review · voice-*）
+│           · v2 体系（v2-api · v2-config · v2-realtime · v2-media · v2-timers · v2-victory · account-*
+│             · avatars* · stable-room · room-* · screen-grants · empty-rooms · receipts · frontend-v2-*
+│             · contract-* · knowledge · targets · capabilities 等）
+│           · fixtures/contract-2.1（29 份 JSON 快照 + full-index）
+├─ e2e/     容器化 Playwright 验收：specs/（v1 入口 10 个：01 冒烟·02 语音·03 越权·04 全流程·05 恢复
+│           · 06 泄漏·07 观战·08 踢人·09 板子编辑器·10 终局退出）
+│           · specs-v2/（v2 入口 16 个：账号·房间·行动·夜行·情报·公屏·复盘·展示·全流程·恢复·特殊行动·治理重连·发布冒烟·账号失败·管理·语音）
+│           · helpers/ 与 helpers-v2/ · capacity.mjs · timeline.mjs · playwright.config.ts / playwright.v2.config.ts
+│           · （配套镜像 deploy/Dockerfile.e2e 与 compose e2e profile）
+├─ vite.config.ts / vite.v2.config.ts   前端构建配置（产物 web/dist 与 web-v2/dist）
 ├─ web/  index.html · tsconfig.json（独立 DOM 环境与 JSX）
 │        src/ main.tsx · app.tsx · game.tsx · review.tsx · voice.tsx（语音条与控制器）· api.ts · format.ts · types.ts · styles.css · vite-env.d.ts
-└─ data/        SQLite 落盘位置（compose 挂载 ../data:/app/data）
+├─ web-v2/  index.html · tsconfig.json（默认入口新前端）：src/ app · features/（账号·大厅·行动·情报·公屏·观战·复盘·语音·管理）· transport · presentation · styles
+└─ data/ + data-v2/   SQLite 落盘位置（旧 `../data` 与新 `../data-v2`，由 `.env` 的 ENTRY 决定）
 ```
 
 ## 测试状态
 
-208 passed / 18 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `vite build`）。
+520 passed / 84 files（容器内 `npm run test`，由镜像构建强制执行；镜像同时执行 `typecheck`（服务端）、`typecheck:web`（前端）与 `build:web` / `build:web:v2`）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 

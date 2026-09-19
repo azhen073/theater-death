@@ -1,6 +1,6 @@
 # 契约 2.1 开发与候选维护
 
-契约2.1候选已部署到本机3001，[验收记录](client-contract-2.1-acceptance.md)固定源码、镜像与测试结果。完整计划见 [实施计划](client-contract-2.1-plan.md)，逐步证据见 [进度](client-contract-2.1-progress.md)。本次不部署前端或公网服务。
+契约2.1候选已部署到本机3001；固定源码、镜像、测试结果、完整计划与逐步证据见贡献者本地的 2.1 验收/计划/进度记录（**均未随仓库入库**）。本次不部署前端或公网服务。
 
 ## 隔离开发
 
@@ -22,7 +22,7 @@ docker compose -f deploy/compose.contract.yml --profile app up -d app
 
 日志位置：`C:/Users/xumat/AppData/Local/Docker/log/host/com.docker.backend.exe.log*`（包含轮转文件）。本机Docker路径：`C:/Users/xumat/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe`。如果代理沙箱账号的LOCALAPPDATA不同，应使用实际安装路径。启动时使用隐藏窗口，界面需要用户操作时另行说明。
 
-2026-09-19补充：正常CLI重启也复现了Ingest socket错误，因此上述处理只能称为临时恢复，不能认为已根治。5174现在有专用 `deploy/frontend-local.ps1` 启动/健康检查入口和 `deploy/recover-docker-sockets.ps1` 保守恢复入口；限制、预览及操作说明见 [前端交付手册](frontend-v2-handoff.md#日常启动和-docker-故障恢复)。不将恢复操作放进正常启动脚本，也不对正常运行的引擎隔离socket目录。
+2026-09-19补充：正常CLI重启也复现了Ingest socket错误，因此上述处理只能称为临时恢复，不能认为已根治。5174有专用 `deploy/frontend-local.ps1` 启动/健康检查入口；socket 故障的判定与恢复辅助函数在 `deploy/docker-local-common.ps1`（`Find-SocketStartupFailure` / `Get-SocketRecoveryTargets` / `Assert-SocketDirectory`，由 `tests/deploy-frontend-local.tests.ps1` 覆盖）。文中提到的独立恢复脚本 `recover-docker-sockets.ps1` 与《前端交付手册》属贡献者本地文件，**未随仓库入库**。不将恢复操作放进正常启动脚本，也不对正常运行的引擎隔离socket目录。
 
 ## 切换与回滚约束
 

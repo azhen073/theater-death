@@ -1,8 +1,8 @@
 # 前端接入契约 2.1
 
-契约2.1已交付本地候选v2.1.0-rc.1，运行于http://localhost:3001。固定源码/镜像、验证范围及回滚点见 [验收记录](client-contract-2.1-acceptance.md)，小步实施证据见 [进度](client-contract-2.1-progress.md)。新前端可按本契约开始对接。
+契约2.1已交付本地候选v2.1.0-rc.1，运行于http://localhost:3001。固定源码/镜像、验证范围及回滚点与逐步实施证据见贡献者本地的 2.1 验收/进度记录（未随仓库入库）；本仓库保留的当前接口契约与 schema 见 [契约2.2](client-contract-2.2.md) 与 [OpenAPI 2.2](openapi-v2.2.json)。新前端可按本契约开始对接。
 
-前端接入顺序：[OpenAPI请求响应](openapi-v2.1.json) → [动作参数及错误处理](client-contract-2.1-actions.md) → [事件字段与可见范围](client-contract-2.1-events.md) → [代理、Cookie、Socket与倒计时示例](client-contract-2.1-examples.md)。共享类型在contracts/v2.ts和contracts/catalog.ts；[完整JSON/mock索引](../tests/fixtures/contract-2.1/full-index.json)覆盖主要身份与阶段。运维与候选切换见 [运行手册](client-contract-2.1-runbook.md)。
+前端接入顺序：[OpenAPI请求响应](openapi-v2.2.json)（2.1 版 OpenAPI 未随仓库入库，2.2 为当前 schema） → [动作参数及错误处理](client-contract-2.1-actions.md) → [事件字段与可见范围](client-contract-2.1-events.md) → [代理、Cookie、Socket与倒计时示例](client-contract-2.1-examples.md)。共享类型在contracts/v2.ts和contracts/catalog.ts；[完整JSON/mock索引](../tests/fixtures/contract-2.1/full-index.json)覆盖主要身份与阶段。运维与候选切换见 [运行手册](client-contract-2.1-runbook.md)。
 
 ## 版本与身份
 

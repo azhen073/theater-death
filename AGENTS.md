@@ -5,7 +5,8 @@
 ## 必读文档
 
 - `PROGRESS.md` — 进度与交接（compact 后接续工作先读这里）
-- `theater_death_rulebook_v1.1.md` — 玩法权威（R-01–R-54，含 S3 裁定第 09 章）
+- `theater_death_rulebook_v1.1.md` — 玩法权威（R-01–R-54，含 S3 裁定第 09 章；默认 1.1 命名预设）
+- `docs/rules-v2-full.md` — 规则 2.0 现行合并版（默认入口支持 v2 命名预设，差异见 `docs/rules-v2.md`）
 - `theater_death_development_requirements_v1.1.md` — 工程规格（F-01–F-10、测试 T-01–T-50、里程碑 M1–M4）
 
 ## 当前进度
@@ -18,8 +19,8 @@
 - M3d 完成：网页前端（React + Vite，同镜像交付）；创建房间 → 13 人开局 → 昼夜循环 → 终局复盘的浏览器全流程实机验收通过。
 - M4a 完成：规则收尾（实验模式 API + 大厅横幅 + 落盘、T-50/T-17/T-36 测试补齐）；M4c 完成：部署与运行手册（install/start/stop/update 脚本、RUNBOOK）、大厅退出/解散功能、GitHub（公开）仓库 + Actions 构建发布 ghcr 镜像、服务器部署并经外网域名验证。
 - M4b 语音完成（LiveKit：R-43 许可策略、短期凭证与服务端权限同步、前端语音条、compose voice profile、RUNBOOK §7）；**服务器实机双设备验收通过**（修复发布权限竞态：失败自动重试 + 权限事件驱动，Playwright 虚拟麦克风复现验证）。
-- 207 个单测全过（镜像构建含服务端/前端类型检查与 vite build）；**M4d 完成**：容器化 Playwright E2E（chromium+webkit：全角色流程、语音组、越权、泄漏、恢复、容量）并修复白天驱动崩溃；**M4e 完成**：收官报告 `M4_ACCEPTANCE_REPORT.md`（§15 格式）；**观战（需求 v1.2 增补）完成**：绑定玩家只读第二屏（`tests/spectator.test.ts` 7 例 + E2E `07-spectator.spec.ts` 2 例）；**房主踢人（需求 v1.3 增补）完成**：大厅期移出成员/观战者（`tests/server-api.test.ts` 踢人 7 例 + E2E `08-kick.spec.ts` 2 例）；**终局退出（需求 v1.5 增补）完成**：仅终局后可退出（释放席位、房主不解散、空房销毁；对局中仍 409，`tests/server-api.test.ts` +3 例 + E2E `10-end-exit.spec.ts` 2 例）。E2E 累计 21 例（chromium 17 + webkit 4，静态清点；最近一次全量运行是 v1.2 时的 16/16，此后按测试策略改为增量）。遗留动作：服务器更新镜像应用崩溃修复、观战、踢人与终局退出（`git pull && ./deploy/update.sh`）。细化计划见 `PROGRESS.md`。
-- 语音关键约束（2026-09-19 起）：服务器语音采用 **声网 Agora 免费层**（App ID / App Certificate 只入 `.env`，不入库；项目须在控制台**开启「连麦鉴权」**发布权限控制才生效）；R-43 发布权通过短期 token 实现——加入 = 订阅角色（可听不可发），发言 = 服务端下发发布凭证（TTL 10 分钟）+ 前端 `renewToken` 即时生效，收回 = 订阅凭证即时降权 + TTL 到期兜底；踢人/关房走频道管理 REST（一次性踢出，可立即重进）。上一代 LiveKit 实现已移除（`deploy/livekit*.yaml` 残留待清理）。
+- 520 个单测全过 / 84 个测试文件（镜像构建含服务端/前端类型检查与 `build:web:v2`；2026-09-19 全量实测）；**M4d 完成**：容器化 Playwright E2E（chromium+webkit：全角色流程、语音组、越权、泄漏、恢复、容量）并修复白天驱动崩溃；**M4e 完成**：收官报告 `M4_ACCEPTANCE_REPORT.md`（§15 格式，属 2026-09-16 时点快照）；**观战（需求 v1.2 增补）完成**：绑定玩家只读第二屏（`tests/spectator.test.ts` 7 例 + E2E `07-spectator.spec.ts` 2 例）；**房主踢人（需求 v1.3 增补）完成**：大厅期移出成员/观战者（`tests/server-api.test.ts` 踢人 7 例 + E2E `08-kick.spec.ts` 2 例）；**终局退出（需求 v1.5 增补）完成**：仅终局后可退出（释放席位、房主不解散、空房销毁；对局中仍 409，`tests/server-api.test.ts` +3 例 + E2E `10-end-exit.spec.ts` 2 例）。E2E：v1 入口累计 21 例（chromium 17 + webkit 4，静态清点；最近一次全量运行是 v1.2 时的 16/16，此后按测试策略改为增量），v2 入口另有 `e2e/specs-v2/` 16 个 spec。**v1.7/v1.8 完成（贡献提案 syhneversigh，阿真确认）**：天理夜死移交时机对齐 + 规则 2.0 命名预设 + 账号体系与 v2 服务端/前端体系准入（`server/v2`、`web-v2`、`contracts/`、`docs/`、`e2e/specs-v2`）；镜像默认入口已切换为新版（`.env` 设 `ENTRY=v1` 可回滚）。**v1.9 完成（贡献提案 kiahir，阿真确认）**：全仓库文档一致性核对（媒体服务残留 / 版本号与计数 / 失效链接 / R-54 正文），无玩法变更。遗留动作：服务器更新镜像并改配声网凭据（`git pull` → `.env` 换 `AGORA_*` → `./deploy/update.sh`）。细化计划见 `PROGRESS.md`。
+- 语音关键约束（2026-09-19 起）：服务器语音采用 **声网 Agora 免费层**（App ID / App Certificate 只入 `.env`，不入库；项目须在控制台**开启「连麦鉴权」**发布权限控制才生效）；R-43 发布权通过短期 token 实现——加入 = 订阅角色（可听不可发），发言 = 服务端下发发布凭证（TTL 10 分钟）+ 前端 `renewToken` 即时生效，收回 = 订阅凭证即时降权 + TTL 到期兜底；踢人/关房走频道管理 REST（一次性踢出，可立即重进）。上一代 LiveKit 实现与其残留已清理（`deploy/livekit*.yaml`、`deploy/frontend-local.ps1` 的 `livekit` 服务、各 compose 中的 `LIVEKIT_*` / `VOICE_SERVICE_URL` / `VOICE_ADMIN_URL` 环境变量）；仅 `docs/openapi-v2.2.json` 的 `/voice/webhook`（`livekitSignature`）与 `server/v2/app.ts` 中未被注入的 `verifyWebhook` 路由仍为历史遗留（**未启用**，待定）。
 - 关于夜间窗口"无事可做提前结束"的提案已讨论并否决：固定时长是防泄露设计（需求明文），不要重新引入。
 - 构建/测试命令：`docker compose -f deploy/docker-compose.yml build`（构建即跑全部测试）。
 

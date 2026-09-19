@@ -1,5 +1,7 @@
 # 《剧院死神》M4 收官验收报告（§15 交付格式）
 
+> **历史快照（2026-09-16）**：本报告固化的是 M4 收官时点的数据与结论（187 单测 / E2E 14/14 / 服务器媒体 = LiveKit Cloud）。此后仓库已并入规则 2.0、账号体系与 v2 体系（需求 v1.7/v1.8），语音媒体于 2026-09-19 由 LiveKit 换为**声网 Agora**（需求 v1.6）。正文按原样保留，不代表当前状态；当前进度与计数见 `PROGRESS.md`，当前工程规格见 `theater_death_development_requirements_v1.1.md`（v1.9）。
+
 - 报告日期：2026-09-16
 - 编制：开发协作者（AI 辅助）；人工验收部分由阿真执行
 - 规则依据：`theater_death_rulebook_v1.1.md`（含第 09 章 S3 裁定）；工程规格：`theater_death_development_requirements_v1.1.md` §15
