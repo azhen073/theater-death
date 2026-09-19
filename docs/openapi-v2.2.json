@@ -750,7 +750,7 @@
       ],
       "post": {
         "summary": "离开房间但保持账号登录；房间存在时可恢复当前局身份",
-        "description": "局中为暂离，计时继续。终局无正式成员时立即关闭房间并移出剩余观众，最终退出响应seatRetained=false；离线正式成员仍计入房间。大厅与局中无正式成员按5分钟清理。相同requestId重试可读取原成功回执。",
+        "description": "大厅阶段房主退出即解散整房（dissolved=true）；局中为暂离，计时继续（dissolved=false）；复盘阶段为普通离开，房间保留、其他人继续看复盘、房主由其他在线正式成员继任（dissolved=false）。复盘无正式成员时立即关闭房间并移出剩余观众，最终退出响应seatRetained=false；离线正式成员仍计入房间（全员离线满24小时回收）。大厅与局中无正式成员按5分钟清理。相同requestId重试可读取原成功回执。",
         "requestBody": {
           "required": true,
           "content": {
@@ -781,12 +781,16 @@
                     "left": {
                       "type": "boolean"
                     },
+                    "dissolved": {
+                      "type": "boolean"
+                    },
                     "seatRetained": {
                       "type": "boolean"
                     }
                   },
                   "required": [
                     "left",
+                    "dissolved",
                     "seatRetained"
                   ],
                   "additionalProperties": false
