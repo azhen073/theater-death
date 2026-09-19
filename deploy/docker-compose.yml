@@ -11,7 +11,12 @@ services:
       - "${APP_PORT:-3000}:3000"
     environment:
       PORT: "3000"
-      DATA_DIR: /app/data
+      # 默认生产；本地以 http 调试（PUBLIC_BASE_URL 为 http）时设 NODE_ENV=development
+      NODE_ENV: ${NODE_ENV:-production}
+      # 默认新版（v2）入口；ENTRY=v1 回滚旧版（旧数据目录同时保留挂载）
+      ENTRY: ${ENTRY:-}
+      DATA_DIR: /app/data-v2
+      WEB_ROOT: /app/web-v2/dist
       SESSION_SECRET: ${SESSION_SECRET:-change-me}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
@@ -21,6 +26,7 @@ services:
       AGORA_CUSTOMER_KEY: ${AGORA_CUSTOMER_KEY:-}
       AGORA_CUSTOMER_SECRET: ${AGORA_CUSTOMER_SECRET:-}
     volumes:
+      - ../data-v2:/app/data-v2
       - ../data:/app/data
 
   e2e:
