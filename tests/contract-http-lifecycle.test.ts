@@ -75,7 +75,7 @@ describe('v2 HTTP lifecycle contract', () => {
     const live = await connectRoom(h, h.users[0]!, room.roomId);
     const voiceBefore = await request(h, `/api/v2/rooms/${room.roomCode}/voice/token`, post({ requestId: 'voice-before', gameId: started.gameId }), h.users[0]);
     expect(voiceBefore.status).toBe(200);
-    const oldIdentity = voice.issued.at(-1)!.playerId;
+    const oldIdentity = voice.issued.at(-1)!.uid;
     const replacement = h.accounts.createSession(h.users[0]!.userId);
     const newer: User = { ...h.users[0]!, cookie: `td_account_v2=${replacement.token}`, sessionId: replacement.session.id };
     const noTakeover = await request(h, `/api/v2/rooms/${room.roomCode}/enter`, post({ requestId: 'enter-without-takeover' }), newer);
@@ -88,7 +88,7 @@ describe('v2 HTTP lifecycle contract', () => {
     const oldVoice = await request(h, `/api/v2/rooms/${room.roomCode}/voice/token`, post({ requestId: 'old-voice', gameId: started.gameId }), h.users[0]);
     expect(oldVoice.status).toBe(403);
     await h.app.drain();
-    expect(voice.removed.some((entry) => entry.identity === oldIdentity)).toBe(true);
+    expect(voice.removed.some((entry) => entry.uid === oldIdentity)).toBe(true);
   });
 
   it('runs a real first night and first-day election timeout over HTTP, ends review, starts a new game, and rejects the old gameId', async () => {

@@ -7,7 +7,7 @@ import { createLogStore } from '../server/log-store.ts';
 import { AccountStore } from '../server/v2/account-store.ts';
 import { createV2App } from '../server/v2/app.ts';
 import { AvatarStore } from '../server/v2/avatars.ts';
-import { createLiveKitVoiceService } from '../voice/livekit.ts';
+import { createAgoraVoiceService } from '../voice/agora.ts';
 
 const dataDir = process.env.DATA_DIR;
 const clockPath = '/clock-control/clock.sock';
@@ -22,8 +22,8 @@ const clock = createFakeClock(Number(process.env.CLOCK_START_MS ?? Date.now()));
 const accounts = new AccountStore(join(dataDir, 'accounts.sqlite'), () => clock.now());
 const logStore = createLogStore(join(dataDir, 'audit.sqlite'));
 const avatars = new AvatarStore(accounts, join(dataDir, 'avatars'));
-const voice = process.env.VOICE_ENABLED === 'true' ? createLiveKitVoiceService({
-  adminUrl: process.env.VOICE_ADMIN_URL!, publicUrl: process.env.VOICE_SERVICE_URL!, apiKey: process.env.LIVEKIT_API_KEY!, apiSecret: process.env.LIVEKIT_API_SECRET!, tokenTtlSeconds: 30, removeUnknownParticipants: true,
+const voice = process.env.VOICE_ENABLED === 'true' ? createAgoraVoiceService({
+  appId: process.env.AGORA_APP_ID!, appCertificate: process.env.AGORA_APP_CERTIFICATE!, customerKey: process.env.AGORA_CUSTOMER_KEY ?? '', customerSecret: process.env.AGORA_CUSTOMER_SECRET ?? '',
 }) : null;
 const backend = createV2App({ accounts, clock, logStore, avatars, origin: 'http://localhost:5173', cookieName: process.env.ACCOUNT_COOKIE_NAME ?? 'td_account_frontend_acceptance', secureCookies: false, voice });
 const server: Server = createServer(backend.app);

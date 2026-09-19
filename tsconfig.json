@@ -23,5 +23,6 @@
     "rulesets/**/*.ts",
     "tests/**/*.ts",
     "vitest.config.ts"
-  ]
+  ],
+  "exclude": ["node_modules", "web-v2", "tests/frontend-v2-*"]
 }
