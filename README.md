@@ -39,6 +39,26 @@ docker compose -f deploy/docker-compose.yml up -d
 
 推送代码到 `main` 后，GitHub Actions 会自动构建（镜像构建内含全部测试）并发布 `ghcr.io/azhen073/theater-death:latest`。
 
+## 贡献
+
+`main` 分支受保护：请从自己的分支发起 Pull Request（至少 1 个批准后合并）。
+
+```bash
+git checkout -b feat/your-change
+# 改动后先跑相关测试
+docker compose -f deploy/docker-compose.yml build   # 完整构建；或仅跑相关单测
+git push origin feat/your-change
+gh pr create
+```
+
+- 玩法规则改动必须先更新规则书条款引用、测试与版本记录
+- 客户端只能提交意图，身份由服务端会话解析——不接受信任载荷自报的改动
+- 报告真实执行命令与结果；未运行的测试必须标明
+
+## 致谢
+
+- **syhneversigh**：贡献账号体系（数字 UID）、v2 稳定房间模型与租约、新版前端（web-v2）、契约 2.x 与验收测试等（PR #3，已按采用/调整说明整合进 `main`）
+
 ## 目录结构
 
 | 目录 | 内容 |
@@ -52,5 +72,6 @@ docker compose -f deploy/docker-compose.yml up -d
 | `web-v2/` | 新版前端（React + Vite，同镜像交付，默认入口） |
 | `contracts/` | 新版客户端契约类型 |
 | `docs/` | 契约文档、规则 2.0 增补与前端说明 |
-| `tests/` | Vitest 全量测试（517 用例） |
+| `tests/` | Vitest 全量测试（520 用例）+ `fixtures/contract-2.1` 契约快照 |
+| `e2e/` | Playwright 端到端验收（`specs/` 旧版、`specs-v2/` 新版） |
 | `deploy/` | Dockerfile、compose、安装/更新脚本、运行手册 |
