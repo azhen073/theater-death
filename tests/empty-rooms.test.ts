@@ -147,6 +147,29 @@ describe('v2 empty room policy', () => {
     expect(directory.byCode.has(room.code)).toBe(true);
   });
 
+  it('forget cancels and drops both pending timers so a disposed room leaves no residue', async () => {
+    const { clock, accounts, directory, empty } = setup();
+    const offlineHost = account(accounts, 'forget_offline');
+    const offlineRoom = await directory.create(offlineHost.session, THEATER_DEATH_13_V2);
+    empty.observe(offlineRoom);
+    expect(offlineRoom.allOfflineSince).toBe(1_000);
+    expect(empty.offlinePending.has(offlineRoom.roomId)).toBe(true);
+
+    const emptyHost = account(accounts, 'forget_empty');
+    const emptyRoom = await directory.create(emptyHost.session, THEATER_DEATH_13_V2);
+    await directory.leave(emptyRoom, emptyHost.session);
+    empty.observe(emptyRoom);
+    expect(empty.pending.has(emptyRoom.roomId)).toBe(true);
+    expect(clock.pendingCount()).toBe(2);
+
+    empty.forget(offlineRoom.roomId);
+    empty.forget(emptyRoom.roomId);
+    expect(empty.offlinePending.size).toBe(0);
+    expect(empty.pending.size).toBe(0);
+    expect(clock.pendingCount()).toBe(0);
+    empty.close();
+  });
+
   it('keeps a reviewed match with all-offline formal members below the offline TTL, then reclaims it', async () => {
     const { clock, accounts, directory, empty } = setup();
     const { room, players } = await fullMatch(directory, accounts, 'empty_retention');

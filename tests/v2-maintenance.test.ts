@@ -128,6 +128,8 @@ describe('v2 maintenance lifecycle', () => {
     h.clock.elapse(1); await h.app.maintenance.sweep();
     expect(h.app.directory.byId.has(room.roomId)).toBe(false); expect(stable.dissolved).toBe(true);
     expect(h.logs.listMatches(room.roomId).at(-1)?.status).toBe('completed');
+    // removed 钩子会清掉空房/离线定时器：销毁后不应留下 pending 条目。
+    expect(h.app.empty.pending.size).toBe(0); expect(h.app.empty.offlinePending.size).toBe(0);
   });
 
   it('expires natural seven-day sessions with HTTP 401, session_expired socket control, and media revocation while retaining formal seats', async () => {

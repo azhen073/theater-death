@@ -46,6 +46,17 @@ export class EmptyRooms {
     });
     this.offlinePending.set(room.roomId, handle);
   }
+  /**
+   * 房间被销毁时的兜底清理：不经 observe 的销毁路径（如 RoomGovernance.dispose）也应清掉待执行定时器，
+   * 避免 pending/offlinePending 里留下永不执行的条目。由 RoomDirectory 的 removed 钩子调用。
+   */
+  forget(roomId: string): void {
+    for (const map of [this.pending, this.offlinePending]) {
+      const handle = map.get(roomId);
+      if (handle) this.directory.deps.clock.cancel(handle);
+      map.delete(roomId);
+    }
+  }
   observe(room: StableRoom): void {
     if (room.dissolved) { this.cancel(room); this.cancelOffline(room); return; }
     if (room.formalMembers().length > 0) {

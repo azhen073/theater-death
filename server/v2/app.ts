@@ -68,7 +68,7 @@ export function createV2App(deps: V2Deps) {
     changed: refresh,
     control: (room, sessionId, reason) => hub?.control(room, sessionId, reason),
     beforeMutation: (room) => empty.expireIfDue(room),
-    removed: (room) => { snapshots.forget(room.roomId); if (room.gameId) { access.delete(room.gameId); void media.closeRoom(room.gameId); } },
+    removed: (room) => { snapshots.forget(room.roomId); empty.forget(room.roomId); if (room.gameId) { access.delete(room.gameId); void media.closeRoom(room.gameId); } },
     closedMatch: (gameId) => { access.delete(gameId); void media.closeRoom(gameId); },
   });
   governance = new RoomGovernance(directory);
