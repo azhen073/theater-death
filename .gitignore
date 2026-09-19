@@ -2,6 +2,17 @@ node_modules/
 dist/
 coverage/
 data/
+data-v2/
+data-v2-test/
+data-v2-load/
+data-contract-2.1/
+test-results-v2/
+.env.v2
 .env
+.env.frontend-local
+deploy/livekit.generated.yaml
+livekit.generated.yaml
 e2e-results/
 e2e/results/
+data-frontend-v2/
+test-results-frontend-v2/

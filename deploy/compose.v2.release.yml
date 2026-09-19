@@ -1,0 +1,20 @@
+name: theater-death-v2-candidate
+services:
+  app:
+    image: ${V2_IMAGE:?Set V2_IMAGE to the verified local candidate tag}
+    restart: unless-stopped
+    ports: ["127.0.0.1:3001:3000"]
+    cpus: 2
+    mem_limit: 4g
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3001}
+      DATA_DIR: /app/data-v2
+      PORT: 3000
+      VOICE_ENABLED: ${VOICE_ENABLED:-false}
+      VOICE_SERVICE_URL: ${VOICE_SERVICE_URL:-}
+      VOICE_ADMIN_URL: ${VOICE_ADMIN_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+    volumes:
+      - ../data-v2:/app/data-v2

@@ -15,7 +15,7 @@
 
 ## 2 首次安装
 
-1. 安装并启动 Docker（Windows/macOS 用 Docker Desktop；Linux 用 Docker Engine + compose 插件），确认 `docker --version` 可用。
+1. 安装并启动 Docker（Windows/macOS 用 Docker Desktop；Linux 用 Docker Engine + compose 插件），确认 `docker info` 成功；`docker --version` 只检查客户端，不表示引擎已就绪。
 2. 获取项目文件（整个目录，含 `deploy/`）。
 3. 运行安装脚本（首次与日常分开）：
    - Windows：`deploy\install.ps1`
@@ -124,36 +124,47 @@ git pull
 | PUBLIC_BASE_URL | 入口地址（公网部署填隧道或反代域名） |
 | SESSION_SECRET | 会话签名密钥；轮换后所有人需重新加入（房间是内存态，不恢复） |
 | SESSION_COOKIE_SECURE | HTTPS 部署时设为 true |
-| VOICE_ENABLED | 语音总开关（见 §7） |
-| AGORA_APP_ID / AGORA_APP_CERTIFICATE | 声网项目的 App ID 与 App Certificate（签发语音 token；不入版本库） |
-| AGORA_CUSTOMER_KEY / AGORA_CUSTOMER_SECRET | 声网频道管理 REST 凭据（踢人/终局关房；控制台「设置 → RESTful API」生成；不入版本库） |
+| VOICE_ENABLED / VOICE_SERVICE_URL / VOICE_ADMIN_URL | 语音总开关与媒体地址（见 §7） |
+| LIVEKIT_API_KEY / LIVEKIT_API_SECRET | LiveKit 密钥（安装脚本自动生成；托管服务时填控制台中的值） |
+| LIVEKIT_NODE_IP | 自托管 LiveKit 对外公布的节点地址（本地 127.0.0.1；局域网填宿主内网 IP） |
+| COMPOSE_PROFILES | 启用自托管语音时设为 voice，compose 会额外启动 livekit 容器 |
 
-## 7 语音（声网托管，公共白天语音）
+## 7 语音（公共白天语音）
 
-- **未启用或声网不可用时**：页面明确显示「**文字测试模式**」，白天公屏照常可用，夜间仅获准阵营房文字协商；**不得声称语音功能已完成**。媒体失败不改变胜负、不暂停计时，自动回落文字。
-- **发言许可**（R-43，服务端实施）：竞选候选发言轮（仅当前候选）、发言轮（仅当前发言者）、遗言（仅遗言者）、平票者发言轮（仅当前平票发言者）可开麦；竞选/放逐投票与重投期间、夜间（含晨间结算）全体禁麦；死者仅公共旁听。
-- **权限实现（连麦鉴权 + 短期 token）**：加入凭证为订阅角色（可听不可发）；轮到发言时服务端在状态推进时下发**发布凭证**（默认 10 分钟，覆盖最长发言窗口），前端 `renewToken` 即时生效；权限收回时下发订阅凭证即时降权，发布权限到期由声网侧自动兜底收回。玩家自己的静音不会被流程切换强制取消。踢人 = 一次性踢出（频道内清位，可立即重进，不拉黑）。
+- **未启用或媒体不可用时**：页面明确显示「**文字测试模式**」，白天公屏照常可用，夜间仅获准阵营房文字协商；**不得声称语音功能已完成**。媒体失败不改变胜负、不暂停计时，自动回落文字。
+- **发言许可**（R-43，服务端实施，不只是前端置灰）：竞选候选发言轮（仅当前候选）、发言轮（仅当前发言者）、遗言（仅遗言者）、平票者发言轮（仅当前平票发言者）可开麦；竞选/放逐投票与重投期间、夜间（含晨间结算）全体禁麦；死者仅公共旁听。
+- 凭证为短期最小权限：加入语音时签发，**不含发布权**；发布权由服务端在每次状态推进时同步给媒体服务，重连后重新校验资格；玩家自己的静音不会被流程切换强制取消。
 
-### 7.1 配置（声网，免费层每月 1 万分钟）
+### 7.1 本机 / 局域网自托管 LiveKit
 
-1. 注册声网账号（shengwang.cn，需实名认证），控制台创建项目（安全模式），取得 **App ID** 与 **App Certificate**（控制台列表里可能掩码显示，点复制图标获取真值）。
-2. **开启「连麦鉴权」**：控制台「全部产品 → 实时互动 RTC → 功能配置 → 连麦鉴权」启用（**开启后不可关闭**，约 5 分钟生效）。
-3. 生成 **频道管理 REST 凭据**：控制台「设置 → RESTful API → 添加密钥」，下载 `key_and_secret.txt`（**下载后控制台不再展示**，妥善保管）。
-4. `.env` 设置：
+1. `.env` 设置：`VOICE_ENABLED=true`、取消 `COMPOSE_PROFILES=voice` 注释、`LIVEKIT_NODE_IP=<宿主内网 IP 或 127.0.0.1>`（自托管密钥安装脚本已生成）。
+2. `deploy/update.sh` 或 `deploy/start.sh` 重启后，compose 会额外启动 livekit 容器（版本锁定 v1.9.7，配置见 `deploy/livekit.yaml`）。
+3. `VOICE_SERVICE_URL`：本机自测填 `ws://localhost:7880`；局域网填 `ws://<宿主内网IP>:7880`。
+4. 浏览器必须能**直连**媒体端口 7881/TCP、7882/UDP——网页经隧道/反代可达**不等于**语音可用。
+
+### 7.2 服务器公网自托管 LiveKit（有公网入站时，动态 IP 可用）
+
+前提：出口有**公网 IP**（IPv4 或 IPv6）且能在路由器/光猫上做端口映射。LiveKit 会自动用 STUN 发现当前公网 IP，**动态 IP 变化后重启容器即可**，不需要改配置。
+
+1. **端口映射**（路由器/光猫 → 服务器内网 IP）：`UDP 7882`、`TCP 7881`；服务器防火墙放行同样两个端口（如 `sudo ufw allow 7881/tcp && sudo ufw allow 7882/udp`）。
+2. **信号域名**：反代或 Cloudflare Tunnel 把 `livekit.<你的域名>` 指向本服务 `7880`（Tunnel 路由即可，媒体不走隧道）。
+3. `.env` 设置：
    ```
    VOICE_ENABLED=true
-   AGORA_APP_ID=<控制台 App ID>
-   AGORA_APP_CERTIFICATE=<控制台 App Certificate>
-   AGORA_CUSTOMER_KEY=<客户 ID>
-   AGORA_CUSTOMER_SECRET=<客户密钥>
+   COMPOSE_PROFILES=voice
+   LIVEKIT_NODE_IP=                # 必须留空：交给 STUN 自动发现
+   LIVEKIT_CONFIG_FILE=livekit-public.yaml
+   VOICE_SERVICE_URL=wss://livekit.<你的域名>
    ```
-5. 重启应用（`deploy/update.sh` 或 `deploy/start.sh`），页面语音面板不再显示"文字测试模式"即为生效。
-6. 计费：免费层按「人×分钟」每月 1 万分钟（13 人 1 小时局约 780 分钟），超出按 7 元/千分钟；用量在声网控制台查看。
+4. 重启后验证：服务器日志出现 `nodeIP: <当前公网 IP>`；外网（手机流量）打开游戏加入语音实测。
 
-### 7.2 关于媒体链路
+### 7.3 托管媒体（服务器无公网入站 / 不便做端口映射时）
 
-- 声网为托管服务：客户端就近接入国内边缘节点，**服务器不需要开放任何入站端口**，隧道/反代只需要承载网页与信令。
-- 某网络下语音不可用时页面自动回落文字模式，不阻塞对局；排查顺序见 §8。
+媒体流量不能经 HTTP 反向代理/隧道，服务器无法开放 7881/7882 时应使用托管服务（如 LiveKit Cloud 免费层）：
+
+1. 在媒体服务控制台创建项目，取得 **WebSocket URL**（如 `wss://xxx.livekit.cloud`）与 **API Key / Secret**。
+2. `.env`：`VOICE_ENABLED=true`、`VOICE_SERVICE_URL=<wss 地址>`、`VOICE_ADMIN_URL=`（留空，自动取同值）、`LIVEKIT_API_KEY/SECRET=<控制台值>`；**不要**设置 `COMPOSE_PROFILES`（不启动本地 livekit 容器）。
+3. 免费层超出月度额度后新请求自动失败（不产生费用），页面回落文字模式。
 
 ## 8 故障排查
 
@@ -163,19 +174,18 @@ git pull
 | 日志提示 SESSION_SECRET 未设置 | 用安装脚本生成 `.env`；手动部署确保含随机值 |
 | 隧道 530 / error 1033 | cloudflared 连接器没连上：检查本机 cloudflared 进程与 Zero Trust 面板 Tunnel 状态 |
 | 加入房间提示房间不存在 | 房间在后端内存中：服务重启后旧房间码失效，重新创建房间即可 |
-| 语音按钮提示连接失败 | ① `.env` 的 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE` 是否与项目一致；② 控制台是否已开启「连麦鉴权」；③ `logs app` 查看服务端报错 |
-| 加入语音后说不了话 | 正常受限：界面会显示原因（夜间静音 / 投票禁麦 / 非你的发言时间 / 已出局旁听）；发布权由服务端通过短期 token 控制，不受浏览器本地状态影响 |
+| 语音按钮提示连接失败 | ① 浏览器能否访问 `VOICE_SERVICE_URL`（自托管须直连 7881/7882）；② 托管密钥是否正确；③ `docker compose ... logs livekit`（自托管） |
+| 加入语音后说不了话 | 正常受限：界面会显示原因（夜间静音 / 投票禁麦 / 非你的发言时间 / 已出局旁听）；服务端发布权不受浏览器本地状态影响 |
 | 构建失败 | 多为网络问题：确认 Docker 可用、registry 加速已配置，重跑安装脚本 |
 
 ## 9 端到端验收（E2E，开发/验收用，可选）
 
-全部在容器内运行；语音用例经**声网测试项目**（消耗少量免费额度）验证，需要项目根 `.env` 提供 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE`。
+全部在容器内运行，媒体后端使用自托管 LiveKit（**不依赖云凭证**），不影响生产部署。
 
-1. 构建（首次或代码变更后）：`docker compose -f deploy/docker-compose.yml --env-file .env --env-file deploy/e2e.env build app e2e`
-2. 语音相关用例：`docker compose -f deploy/docker-compose.yml --env-file .env --env-file deploy/e2e.env --profile e2e run --rm e2e npx playwright test specs/01-smoke.spec.ts specs/02-voice.spec.ts`
-3. 全部用例：`… --profile e2e run --rm e2e npx playwright test`
-4. 容量测试（正式板完整日夜循环，约 4 分钟）：`… run --rm e2e node capacity.mjs`
-5. 结果：项目根 `e2e-results/`（HTML 报告 `html/index.html`、失败截图/trace、`capacity-*.json`）
+1. 构建（首次或代码变更后）：`docker compose -f deploy/docker-compose.yml --env-file deploy/e2e.env build app e2e`
+2. 全部用例（约 18 分钟）：`docker compose -f deploy/docker-compose.yml --env-file deploy/e2e.env --profile e2e run --rm e2e npx playwright test`
+3. 容量测试（正式板完整日夜循环，约 4 分钟）：`… run --rm e2e node capacity.mjs`
+4. 结果：项目根 `e2e-results/`（HTML 报告 `html/index.html`、失败截图/trace、`capacity-*.json`）
 
 说明：功能用例使用实验模式缩短板（大厅有醒目提示，不代表正式板时长）；端口冲突时改 `deploy/e2e.env` 的 `APP_PORT`；开发迭代可挂载 `-v "<repo>/e2e:/src:ro"` 并前置 `cp -r /src/. /e2e/`。
 

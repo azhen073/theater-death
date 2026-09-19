@@ -1,0 +1,6 @@
+{
+  "requestId": "contract-command",
+  "status": "rejected",
+  "code": "stale_window",
+  "message": "行动窗口已更换，请刷新状态"
+}

@@ -1,32 +1,22 @@
 export const ENV = {
   baseUrl: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
-  agoraAppId: process.env.E2E_AGORA_APP_ID ?? '',
-  agoraAppCertificate: process.env.E2E_AGORA_APP_CERTIFICATE ?? '',
-  agoraCustomerKey: process.env.E2E_AGORA_CUSTOMER_KEY ?? '',
-  agoraCustomerSecret: process.env.E2E_AGORA_CUSTOMER_SECRET ?? '',
-  agoraRestBaseUrl: process.env.E2E_AGORA_REST_BASE_URL ?? 'https://api.sd-rtn.com',
+  livekitWsUrl: process.env.E2E_LIVEKIT_WS_URL ?? '',
+  livekitAdminUrl: process.env.E2E_LIVEKIT_ADMIN_URL ?? '',
+  livekitApiKey: process.env.E2E_LIVEKIT_API_KEY ?? '',
+  livekitApiSecret: process.env.E2E_LIVEKIT_API_SECRET ?? '',
 } as const;
 
-/**
- * 声网管理凭据（频道管理 REST 用，从项目根 .env 的 AGORA_* 继承）。
- * 注意：RESTful API 使用控制台「设置 → RESTful API」生成的「客户 ID + 客户密钥」，
- * 不是 App ID / App Certificate。
- */
-export function requireAgoraAdmin(): {
-  appId: string;
-  customerKey: string;
-  customerSecret: string;
-  restBaseUrl: string;
+export function requireLiveKitAdmin(): {
+  url: string;
+  key: string;
+  secret: string;
 } {
-  if (ENV.agoraAppId === '' || ENV.agoraCustomerKey === '' || ENV.agoraCustomerSecret === '') {
-    throw new Error(
-      '缺少 E2E_AGORA_APP_ID / E2E_AGORA_CUSTOMER_KEY / E2E_AGORA_CUSTOMER_SECRET（控制台 RESTful API 凭据）',
-    );
+  if (ENV.livekitAdminUrl === '' || ENV.livekitApiKey === '' || ENV.livekitApiSecret === '') {
+    throw new Error('缺少 E2E_LIVEKIT_ADMIN_URL / E2E_LIVEKIT_API_KEY / E2E_LIVEKIT_API_SECRET');
   }
   return {
-    appId: ENV.agoraAppId,
-    customerKey: ENV.agoraCustomerKey,
-    customerSecret: ENV.agoraCustomerSecret,
-    restBaseUrl: ENV.agoraRestBaseUrl,
+    url: ENV.livekitAdminUrl,
+    key: ENV.livekitApiKey,
+    secret: ENV.livekitApiSecret,
   };
 }

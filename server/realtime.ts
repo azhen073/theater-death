@@ -4,7 +4,7 @@ import type { GameEvent } from '../engine/events.ts';
 import type { GameState } from '../engine/types.ts';
 import { ROLE_DEFINITIONS } from '../rulesets/roles.ts';
 import { canReadRoomMessage, roomMembership } from '../visibility/index.ts';
-import type { VoicePermissionPush } from '../voice/policy.ts';
+import type { VoicePermission } from '../voice/policy.ts';
 import type { ChatMessage, RoomRegistry } from './rooms.ts';
 import { SESSION_COOKIE_NAME, verifySession } from './session.ts';
 
@@ -25,7 +25,7 @@ export interface Broadcaster {
   attach(server: HttpServer, deps: BroadcasterDeps): void;
   emitGameEvents(gameId: string, events: readonly GameEvent[], state: GameState): void;
   emitChat(gameId: string, state: GameState, message: ChatMessage): void;
-  emitVoicePermission(gameId: string, perPlayer: ReadonlyMap<string, VoicePermissionPush>): void;
+  emitVoicePermission(gameId: string, perPlayer: ReadonlyMap<string, VoicePermission>): void;
 }
 
 function roomChannel(gameId: string): string {
@@ -181,8 +181,8 @@ export function createBroadcaster(): Broadcaster {
       if (server === null) {
         return;
       }
-      for (const [playerId, push] of perPlayer) {
-        server.to(playerChannel(gameId, playerId)).emit('voice_permission', push);
+      for (const [playerId, permission] of perPlayer) {
+        server.to(playerChannel(gameId, playerId)).emit('voice_permission', permission);
       }
     },
   };

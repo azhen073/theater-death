@@ -6,6 +6,7 @@
     "moduleResolution": "NodeNext",
     "types": ["node"],
     "strict": true,
+    "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -16,6 +17,7 @@
     "noImplicitOverride": true
   },
   "include": [
+    "contracts/**/*.ts",
     "engine/**/*.ts",
     "visibility/**/*.ts",
     "server/**/*.ts",

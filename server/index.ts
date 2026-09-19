@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { THEATER_DEATH_13 } from '../rulesets/theater-death-13.ts';
-import { createAgoraVoiceService, type VoiceService } from '../voice/agora.ts';
+import { createLiveKitVoiceService, type VoiceService } from '../voice/livekit.ts';
 import { createApp } from './app.ts';
 import { systemClock } from './clock.ts';
 import { createLogStore } from './log-store.ts';
@@ -25,22 +25,22 @@ function createVoice(): VoiceService | null {
   if (process.env.VOICE_ENABLED !== 'true') {
     return null;
   }
-  const appId = process.env.AGORA_APP_ID ?? '';
-  const appCertificate = process.env.AGORA_APP_CERTIFICATE ?? '';
-  if (appId === '' || appCertificate === '') {
+  const serviceUrl = process.env.VOICE_SERVICE_URL ?? '';
+  const adminUrl = process.env.VOICE_ADMIN_URL ?? serviceUrl;
+  const apiKey = process.env.LIVEKIT_API_KEY ?? '';
+  const apiSecret = process.env.LIVEKIT_API_SECRET ?? '';
+  if (serviceUrl === '' || apiKey === '' || apiSecret === '') {
     console.warn(
-      '[theater-death] VOICE_ENABLED=true 但语音配置不完整（需要 AGORA_APP_ID / AGORA_APP_CERTIFICATE），按「文字测试模式」运行',
+      '[theater-death] VOICE_ENABLED=true 但语音配置不完整（需要 VOICE_SERVICE_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET），按「文字测试模式」运行',
     );
     return null;
   }
-  const customerKey = process.env.AGORA_CUSTOMER_KEY ?? '';
-  const customerSecret = process.env.AGORA_CUSTOMER_SECRET ?? '';
-  if (customerKey === '' || customerSecret === '') {
-    console.warn(
-      '[theater-death] 未配置 AGORA_CUSTOMER_KEY / AGORA_CUSTOMER_SECRET：踢人与终局关房将不可用（语音本体不受影响）',
-    );
-  }
-  return createAgoraVoiceService({ appId, appCertificate, customerKey, customerSecret });
+  return createLiveKitVoiceService({
+    adminUrl: adminUrl === '' ? serviceUrl : adminUrl,
+    publicUrl: serviceUrl,
+    apiKey,
+    apiSecret,
+  });
 }
 
 const voice = createVoice();

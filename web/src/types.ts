@@ -140,24 +140,15 @@ export interface VoiceView {
 }
 
 export interface VoiceTokenResponse {
-  readonly appId: string;
-  readonly channel: string;
-  readonly uid: number;
+  readonly url: string;
   readonly token: string;
+  readonly roomName: string;
   readonly permission: VoicePermission;
-}
-
-/** Socket.IO 推送的语音许可载荷：权限变化时附带新 token（获得=发布凭证，失去=订阅凭证） */
-export interface VoicePermissionPush {
-  readonly permission: VoicePermission;
-  readonly token?: string;
 }
 
 export interface GameViewResponse {
   readonly phase: GamePhase;
   readonly rulesetMode: RulesetMode;
-  /** 房间码（终局退出等操作需要） */
-  readonly roomCode: string;
   readonly voice: VoiceView;
   readonly view: PlayerView;
   readonly proposal: ProposalView | null;

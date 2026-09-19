@@ -1,0 +1,32 @@
+html { zoom: var(--display-scale, 1); }
+body { min-width: 0; }
+html[data-reduced-motion='true'] *,
+html[data-reduced-motion='true'] *::before,
+html[data-reduced-motion='true'] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+.account-profile > div { min-width: 0; }
+.account-profile h2, .account-profile h3 { overflow-wrap: anywhere; }
+.setting-row small { display: block; margin-top: 6px; }
+.modal-game-context { top: 0; }
+.chat-composer, .chat-composer textarea, input { scroll-margin-bottom: 130px; }
+.mobile-action-bar { bottom: var(--keyboard-inset, 0px); }
+html[data-keyboard-open='true'] .mobile-action-summary span { display: none; }
+.death-notice {
+  position: fixed; top: 105px; right: 24px; z-index: 20;
+  display: flex; align-items: center; gap: 10px; max-width: min(340px, calc(100vw - 32px));
+  padding: 10px 16px; border: 1px solid #c5a8ad; border-radius: 10px;
+  background: #fff8f8ed; color: #783c49; box-shadow: 0 5px 20px #46252d18;
+  pointer-events: none; user-select: none; animation: public-death-notice 1.8s ease both;
+}
+.death-notice img { width: 48px; height: 48px; object-fit: contain; }
+.death-notice span { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+@keyframes public-death-notice {
+  0%, 100% { opacity: 0; }
+  15%, 85% { opacity: 1; }
+}
+@media (max-width: 600px) {
+  .death-notice { top: 90px; right: 16px; }
+}

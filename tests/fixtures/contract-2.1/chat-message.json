@@ -1,0 +1,1 @@
+{ "messageId": "message-fixture-1", "clientMessageId": "client-fixture-1", "cursor": 1, "senderId": "player-fixture-1", "text": "fixture message", "at": 1000 }

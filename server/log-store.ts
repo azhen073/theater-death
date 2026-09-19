@@ -11,6 +11,8 @@ export interface StoredEvent {
 }
 
 export interface StoredMessage {
+  readonly messageId?: string;
+  readonly clientMessageId?: string;
   readonly id: number;
   readonly channel: string;
   readonly senderId: string;
@@ -27,6 +29,10 @@ export interface StoredRoomRecord {
 }
 
 export interface LogStore {
+  recordPersistentRoom(room: { roomId: string; code: string; createdAt: number; ruleset: unknown }): void;
+  recordMatch(match: { gameId: string; roomId: string; startedAt: number }): void;
+  finishMatch(gameId: string, status: 'completed' | 'aborted', at: number): void;
+  listMatches(roomId: string): Array<{ gameId: string; roomId: string; startedAt: number; endedAt: number | null; status: 'playing' | 'completed' | 'aborted' }>;
   appendEvents(gameId: string, events: readonly GameEvent[]): void;
   appendMessage(gameId: string, message: StoredMessage): void;
   /** 保存房间创建时的板子快照（含实验模式值，T-49 / R-54） */
@@ -39,6 +45,8 @@ export interface LogStore {
 
 export function createLogStore(path: string): LogStore {
   const db = new DatabaseSync(path);
+  const schema = Number(db.prepare('PRAGMA user_version').get()!.user_version);
+  if (schema > 1) { db.close(); throw new Error('unsupported_audit_schema'); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS events (
       game_id TEXT NOT NULL,
@@ -66,19 +74,35 @@ export function createLogStore(path: string): LogStore {
       created_at INTEGER NOT NULL,
       ruleset TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS persistent_rooms (
+      room_id TEXT PRIMARY KEY, code TEXT NOT NULL, created_at INTEGER NOT NULL, ruleset TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS matches (
+      game_id TEXT PRIMARY KEY, room_id TEXT NOT NULL REFERENCES persistent_rooms(room_id),
+      started_at INTEGER NOT NULL, ended_at INTEGER,
+      status TEXT NOT NULL CHECK(status IN ('playing','completed','aborted'))
+    );
+    CREATE INDEX IF NOT EXISTS matches_room ON matches(room_id);
   `);
+
+  if (schema === 0) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec('ALTER TABLE messages ADD COLUMN message_id TEXT; ALTER TABLE messages ADD COLUMN client_message_id TEXT; PRAGMA user_version = 1; COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
+  }
 
   const insertEvent = db.prepare(
     'INSERT OR REPLACE INTO events (game_id, seq, day_number, stage, type, payload, visibility) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
   const insertMessage = db.prepare(
-    'INSERT OR REPLACE INTO messages (game_id, id, channel, sender_id, text, at, event_seq) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT OR REPLACE INTO messages (game_id, id, channel, sender_id, text, at, event_seq, message_id, client_message_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const selectEvents = db.prepare(
     'SELECT seq, day_number, stage, type, payload, visibility FROM events WHERE game_id = ? AND seq > ? ORDER BY seq ASC',
   );
   const selectMessages = db.prepare(
-    'SELECT id, channel, sender_id, text, at, event_seq FROM messages WHERE game_id = ? AND id > ? ORDER BY id ASC',
+    'SELECT id, channel, sender_id, text, at, event_seq, message_id, client_message_id FROM messages WHERE game_id = ? AND id > ? ORDER BY id ASC',
   );
   const insertRoom = db.prepare(
     'INSERT OR REPLACE INTO rooms (game_id, code, created_at, ruleset) VALUES (?, ?, ?, ?)',
@@ -88,6 +112,20 @@ export function createLogStore(path: string): LogStore {
   );
 
   return {
+    recordPersistentRoom(room) {
+      db.prepare('INSERT INTO persistent_rooms VALUES(?,?,?,?)').run(room.roomId, room.code, room.createdAt, JSON.stringify(room.ruleset));
+    },
+    recordMatch(match) {
+      db.prepare("INSERT INTO matches VALUES(?,?,?,NULL,'playing')").run(match.gameId, match.roomId, match.startedAt);
+    },
+    finishMatch(gameId, status, at) {
+      db.prepare("UPDATE matches SET status=?,ended_at=? WHERE game_id=? AND status='playing'").run(status, at, gameId);
+    },
+    listMatches(roomId) {
+      return db.prepare('SELECT * FROM matches WHERE room_id=? ORDER BY started_at,game_id').all(roomId).map((r) => ({
+        gameId: String(r.game_id), roomId: String(r.room_id), startedAt: Number(r.started_at), endedAt: r.ended_at === null ? null : Number(r.ended_at), status: r.status as 'playing' | 'completed' | 'aborted',
+      }));
+    },
     appendEvents(gameId, events) {
       for (const event of events) {
         insertEvent.run(
@@ -110,6 +148,8 @@ export function createLogStore(path: string): LogStore {
         message.text,
         message.at,
         message.eventSeq,
+        message.messageId ?? null,
+        message.clientMessageId ?? null,
       );
     },
     recordRoom(room) {
@@ -147,6 +187,8 @@ export function createLogStore(path: string): LogStore {
         text: row.text as string,
         at: row.at as number,
         eventSeq: row.event_seq as number,
+        ...(row.message_id === null ? {} : { messageId: row.message_id as string }),
+        ...(row.client_message_id === null ? {} : { clientMessageId: row.client_message_id as string }),
       }));
     },
     close() {

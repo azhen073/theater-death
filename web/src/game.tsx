@@ -19,7 +19,6 @@ import type {
   LifeState,
   SeatPublicView,
   VoicePermission,
-  VoicePermissionPush,
 } from './types.ts';
 import { VoicePanel } from './voice.tsx';
 
@@ -30,11 +29,9 @@ interface GameScreenProps {
   readonly messages: readonly ChatMessage[];
   readonly serverOffset: number;
   readonly voicePermission: VoicePermission | null;
-  readonly voicePush: VoicePermissionPush | null;
   onCommand(action: string, extra?: Record<string, unknown>): Promise<CommandReceipt>;
   onOpenReview(): void;
   onLeaveSpectate(): void;
-  onLeaveRoom(): void;
 }
 
 export function GameScreen(props: GameScreenProps) {
@@ -141,27 +138,9 @@ export function GameScreen(props: GameScreenProps) {
         {ended && (
           <section className="card">
             <h3>对局结束</h3>
-            <div className="row">
-              <button type="button" className="primary" onClick={props.onOpenReview}>
-                查看复盘
-              </button>
-              {spectating === null && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        '退出房间会释放你的席位，之后无法再看这份复盘且不能重新加入。确定退出？',
-                      )
-                    ) {
-                      props.onLeaveRoom();
-                    }
-                  }}
-                >
-                  退出房间
-                </button>
-              )}
-            </div>
+            <button type="button" className="primary" onClick={props.onOpenReview}>
+              查看复盘
+            </button>
           </section>
         )}
         {!ended && spectating === null && (
@@ -187,7 +166,6 @@ export function GameScreen(props: GameScreenProps) {
           <VoicePanel
             enabled={data.voice.enabled}
             permission={props.voicePermission ?? data.voice.permission}
-            push={props.voicePush}
             spectating={spectating !== null}
           />
         )}

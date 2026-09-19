@@ -1,0 +1,43 @@
+name: theater-death-v2
+x-source: &source
+  image: theater-death-contract-deps:sharp0354-ajv820
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile.dependencies
+  working_dir: /app
+  volumes:
+    - ../contracts:/app/contracts:ro
+    - ../docs:/app/docs:ro
+    - ../server:/app/server:ro
+    - ../engine:/app/engine:ro
+    - ../visibility:/app/visibility:ro
+    - ../voice:/app/voice:ro
+    - ../rulesets:/app/rulesets:ro
+    - ../tests:/app/tests:ro
+    - ../scripts:/app/scripts:ro
+    - ../web:/app/web:ro
+    - ../package.json:/app/package.json:ro
+    - ../package-lock.json:/source-lock.json:ro
+    - ../tsconfig.json:/app/tsconfig.json:ro
+    - ../vitest.config.ts:/app/vitest.config.ts:ro
+services:
+  test:
+    <<: *source
+    environment:
+      NODE_ENV: test
+    command: ["node", "scripts/test-incremental.mjs", "tests/smoke.test.ts"]
+  app:
+    extends:
+      service: test
+    profiles: ["app"]
+    command: ["node", "server/v2/index.ts"]
+    ports: ["127.0.0.1:3001:3000"]
+    cpus: 2
+    mem_limit: 4g
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATA_DIR: /app/data-v2
+      VOICE_ENABLED: "false"
+    volumes:
+      - ../data-v2:/app/data-v2

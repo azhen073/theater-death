@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { THEATER_DEATH_13 } from '../rulesets/theater-death-13.ts';
-import type { Room } from '../server/rooms.ts';
-import type { VoiceService } from '../voice/agora.ts';
+import type { VoiceService } from '../voice/livekit.ts';
 import {
   clientForRole,
   getJson,
@@ -14,37 +13,22 @@ import {
 } from './server-test-utils.ts';
 
 function createFakeVoice() {
-  const removed: Array<{ roomName: string; uid: number }> = [];
+  const removed: Array<{ roomName: string; identity: string }> = [];
   const service: VoiceService = {
-    issueCredentials({ roomName, uid }) {
-      return { appId: 'appid-test', channel: roomName, uid, token: `sub-${uid}` };
+    async issueCredentials({ roomName, playerId }) {
+      return { url: 'wss://voice.test', token: `token-${playerId}`, roomName };
     },
-    issuePublishGrant({ roomName, uid }) {
-      return { token: `pub-${roomName}-${uid}`, expiresAt: Date.now() + 600_000 };
-    },
-    issueSubscriberGrant({ roomName, uid }) {
-      return { token: `sub-${roomName}-${uid}` };
+    async syncRoom() {
+      return;
     },
     async closeRoom() {
       return;
     },
-    async removeParticipant(roomName, uid) {
-      removed.push({ roomName, uid });
+    async removeParticipant(roomName, identity) {
+      removed.push({ roomName, identity });
     },
   };
   return { service, removed };
-}
-
-/** 把已开局房间强制置为终局（附最小 win 结果），用于终局后行为测试 */
-function forceEnded(room: Room): void {
-  if (room.state === null) {
-    throw new Error('对局未开始');
-  }
-  room.state = {
-    ...room.state,
-    phase: 'ended',
-    win: { winner: 'death_faction', dayNumber: room.state.dayNumber, reason: '测试强制终局' },
-  };
 }
 
 describe('HTTP：房间与开局', () => {
@@ -500,60 +484,6 @@ describe('HTTP：离开与解散房间', () => {
     expect(leave.status).toBe(409);
     expect((leave.json.error as Record<string, unknown>).code).toBe('game_started');
   });
-
-  it('终局后普通成员可退出：席位释放、会话失效，房间与他人复盘保留', async () => {
-    const context = await startTestServer();
-    const { roomCode, clients, room } = await setupStartedGame(context);
-    forceEnded(room);
-    const leaver = clients[12];
-
-    const left = await postJson(context, `/api/rooms/${roomCode}/leave`, {}, leaver.cookie);
-    expect(left.status).toBe(200);
-    expect(left.json.dissolved).toBe(false);
-
-    const afterLeave = await getJson(context, '/api/view', leaver.cookie);
-    expect(afterLeave.status).toBe(403);
-
-    expect(context.registry.getByCode(roomCode)).not.toBeNull();
-    const others = await getJson(context, '/api/view', clients[0].cookie);
-    expect(others.status).toBe(200);
-    const review = await getJson(context, '/api/review', clients[0].cookie);
-    expect(review.status).toBe(200);
-  });
-
-  it('终局后房主退出不解散：其他成员仍能查看复盘', async () => {
-    const context = await startTestServer();
-    const { roomCode, clients, hostClient, room } = await setupStartedGame(context);
-    forceEnded(room);
-
-    const left = await postJson(context, `/api/rooms/${roomCode}/leave`, {}, hostClient.cookie);
-    expect(left.status).toBe(200);
-    expect(left.json.dissolved).toBe(false);
-    expect(context.registry.getByCode(roomCode)).not.toBeNull();
-
-    const otherView = await getJson(context, '/api/view', clients[1].cookie);
-    expect(otherView.status).toBe(200);
-    const otherReview = await getJson(context, '/api/review', clients[1].cookie);
-    expect(otherReview.status).toBe(200);
-  });
-
-  it('终局后最后一名成员退出：房间销毁', async () => {
-    const context = await startTestServer();
-    const { roomCode, clients, room } = await setupStartedGame(context);
-    forceEnded(room);
-
-    let last = 0;
-    for (const client of clients) {
-      const left = await postJson(context, `/api/rooms/${roomCode}/leave`, {}, client.cookie);
-      expect(left.status).toBe(200);
-      last = left.json.dissolved === true ? 1 : 0;
-    }
-    expect(last, '最后一名成员退出时应报告 dissolved').toBe(1);
-    expect(context.registry.getByCode(roomCode)).toBeNull();
-
-    const gone = await getJson(context, '/api/view', clients[0].cookie);
-    expect(gone.status).toBe(404);
-  });
 });
 
 describe('HTTP：房主踢人', () => {
@@ -733,7 +663,7 @@ describe('HTTP：踢观战者与语音参与者清理', () => {
     );
     expect(kicked.status).toBe(200);
     await waitFor(() => fakeVoice.removed.length === 1);
-    expect(fakeVoice.removed).toEqual([{ roomName: gameId, uid: 1000 }]);
+    expect(fakeVoice.removed).toEqual([{ roomName: gameId, identity: spectatorId }]);
   });
 
   it('观战者主动退出观战时同样移除媒体参与者', async () => {
@@ -751,6 +681,6 @@ describe('HTTP：踢观战者与语音参与者清理', () => {
     const left = await postJson(context, '/api/spectate/leave', {}, spectatorCookie);
     expect(left.status).toBe(200);
     await waitFor(() => fakeVoice.removed.length === 1);
-    expect(fakeVoice.removed[0]?.uid).toBe(1000);
+    expect(fakeVoice.removed[0]?.identity).toBe(spectatorId);
   });
 });

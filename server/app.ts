@@ -14,7 +14,7 @@ import type { GameCommand } from './commands.ts';
 import type { GameState } from '../engine/types.ts';
 import type { RulesetConfig } from '../rulesets/types.ts';
 import { validateRuleset } from '../rulesets/validate.ts';
-import type { VoiceService } from '../voice/agora.ts';
+import type { VoiceService } from '../voice/livekit.ts';
 import { voicePermission, SPECTATOR_PERMISSION } from '../voice/policy.ts';
 import { healthPayload } from './health.ts';
 import type { Broadcaster } from './realtime.ts';
@@ -257,15 +257,12 @@ export function createApp(deps: AppDeps): Express {
       fail(res, 400, 'invalid_target', '需要且只能指定一名目标（玩家或观战者）');
       return;
     }
-    const spectator = room.spectators.find((item) => item.spectatorId === targetSpectatorId);
     const result = deps.registry.kickSpectator(room, targetSpectatorId);
     if (!result.ok) {
       fail(res, result.status, result.code, result.message);
       return;
     }
-    if (spectator !== undefined) {
-      removeVoiceViewer(deps, room.gameId, spectator.uid);
-    }
+    removeVoiceViewer(deps, room.gameId, targetSpectatorId);
     res.json({ kicked: true, kind: 'spectator' });
   });
 
@@ -281,12 +278,9 @@ export function createApp(deps: AppDeps): Express {
     }
     const room = deps.registry.getByGameId(session.gameId);
     if (room !== null) {
-      const spectator = room.spectators.find((item) => item.spectatorId === session.playerId);
       deps.registry.removeSpectator(room, session.playerId);
-      if (spectator !== undefined) {
-        removeVoiceViewer(deps, room.gameId, spectator.uid);
-      }
     }
+    removeVoiceViewer(deps, session.gameId, session.playerId);
     clearSessionCookie(res, deps);
     res.json({ left: true });
   });
@@ -312,7 +306,6 @@ export function createApp(deps: AppDeps): Express {
     res.json({
       phase: room.state.phase,
       rulesetMode: room.ruleset.mode,
-      roomCode: room.code,
       voice: {
         enabled: voiceEnabled,
         permission:
@@ -543,7 +536,7 @@ export function createApp(deps: AppDeps): Express {
     });
   });
 
-  app.post('/api/voice/token', (req, res) => {
+  app.post('/api/voice/token', async (req, res) => {
     const viewer = resolveViewer(req, res, deps);
     if (viewer === null) {
       return;
@@ -567,25 +560,23 @@ export function createApp(deps: AppDeps): Express {
       return;
     }
     if (viewer.kind === 'spectator') {
-      // 观众只订阅不发布：凭证为订阅角色，也不进入玩家动态授权
-      const credentials = voice.issueCredentials({
+      // 观众只订阅不发布：token 本就不含发布权，也不进入玩家动态授权
+      const credentials = await voice.issueCredentials({
         roomName: room.gameId,
-        uid: viewer.spectator.uid,
+        playerId: viewer.spectator.spectatorId,
       });
       res.json({ ...credentials, permission: SPECTATOR_PERMISSION });
       return;
     }
-    const player = room.state.players.find((item) => item.playerId === session.playerId);
-    if (player === undefined) {
-      fail(res, 403, 'not_member', '你已不在该房间中');
-      return;
-    }
     const permission = voicePermission(room.state, session.playerId);
-    const credentials = voice.issueCredentials({ roomName: room.gameId, uid: player.seat });
+    const credentials = await voice.issueCredentials({
+      roomName: room.gameId,
+      playerId: session.playerId,
+    });
     res.json({ ...credentials, permission });
   });
 
-  app.post('/api/voice/sync', (req, res) => {
+  app.post('/api/voice/sync', async (req, res) => {
     const viewer = resolveViewer(req, res, deps);
     if (viewer === null) {
       return;
@@ -609,22 +600,17 @@ export function createApp(deps: AppDeps): Express {
       return;
     }
     const state = room.state;
-    const player = state.players.find((item) => item.playerId === session.playerId);
-    if (player === undefined) {
-      fail(res, 403, 'not_member', '你已不在该房间中');
+    const permissions = new Map<string, boolean>(
+      state.players.map((player) => [player.playerId, voicePermission(state, player.playerId).canPublish]),
+    );
+    try {
+      await voice.syncRoom({ roomName: room.gameId, permissions });
+    } catch (error) {
+      console.warn(`[theater-death] 语音同步失败：${String(error)}`);
+      fail(res, 503, 'voice_unavailable', '媒体服务暂时不可用');
       return;
     }
-    // 客户端重连后主动对齐：返回本人当前许可与对应的短期 token（发布或订阅）
-    const permission = voicePermission(state, session.playerId);
-    let token: string;
-    if (permission.canPublish) {
-      room.voiceGranted.add(session.playerId);
-      token = voice.issuePublishGrant({ roomName: room.gameId, uid: player.seat }).token;
-    } else {
-      room.voiceGranted.delete(session.playerId);
-      token = voice.issueSubscriberGrant({ roomName: room.gameId, uid: player.seat }).token;
-    }
-    res.json({ permission, token });
+    res.json({ permission: voicePermission(state, session.playerId) });
   });
 
   const webRoot = deps.webRoot ?? null;
@@ -674,12 +660,12 @@ function setSessionCookie(
 }
 
 /** 观战者离开观战（被移出或主动退出）时移除其媒体参与者；失败只记日志，不影响业务结果 */
-function removeVoiceViewer(deps: AppDeps, gameId: string, uid: number): void {
+function removeVoiceViewer(deps: AppDeps, gameId: string, spectatorId: string): void {
   const voice = deps.voice ?? null;
   if (voice === null) {
     return;
   }
-  void voice.removeParticipant(gameId, uid).catch((error: unknown) => {
+  void voice.removeParticipant(gameId, spectatorId).catch((error: unknown) => {
     console.warn(`[theater-death] 移除语音参与者失败：${String(error)}`);
   });
 }

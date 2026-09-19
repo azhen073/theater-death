@@ -1,0 +1,45 @@
+name: theater-death-contract-load
+services:
+  load-app:
+    image: ${V2_LOAD_IMAGE:?Set V2_LOAD_IMAGE to the verified candidate image}
+    working_dir: /app
+    command: ["node", "server/v2/index.ts"]
+    profiles: ["load"]
+    ports: ["127.0.0.1:3002:3000"]
+    cpus: 2
+    mem_limit: 4g
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATA_DIR: /app/data-v2
+      PUBLIC_BASE_URL: http://localhost:3002
+      ACCOUNT_COOKIE_NAME: td_account_load_contract_21
+      VOICE_ENABLED: "false"
+    volumes:
+      - ../data-v2-load/contract-2.1:/app/data-v2
+  load-seed:
+    extends:
+      file: compose.v2.yml
+      service: test
+    profiles: ["load"]
+    environment:
+      DATA_DIR: /app/data-v2
+      ACCOUNT_COOKIE_NAME: td_account_load_contract_21
+      FIXTURE_PATH: /app/test-results-v2/contract-2.1/load-fixture.json
+    volumes:
+      - ../data-v2-load/contract-2.1:/app/data-v2
+      - ../test-results-v2:/app/test-results-v2
+    command: ["node", "scripts/v2-capacity-seed.ts"]
+  load-client:
+    extends:
+      file: compose.v2.yml
+      service: test
+    profiles: ["load"]
+    environment:
+      BASE_URL: http://load-app:3000
+      FIXTURE_PATH: /app/test-results-v2/contract-2.1/load-fixture.json
+      RESULT_PATH: ${CAPACITY_RESULT_PATH:-/app/test-results-v2/contract-2.1/capacity.json}
+      DURATION_MS: ${CAPACITY_DURATION_MS:-300000}
+    volumes:
+      - ../test-results-v2:/app/test-results-v2
+    command: ["node", "scripts/v2-capacity.mjs"]

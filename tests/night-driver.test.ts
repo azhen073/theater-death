@@ -292,6 +292,7 @@ describe('夜间驱动：阵营协商视图（R-47、M3d）', () => {
       targetPlayerIds: [],
       confirmedBy: [],
       locked: false,
+      effective: { revision: null, targetPlayerIds: [], basis: 'empty' },
     });
     expect(driver.proposalState('p_6')).toBeNull();
 

@@ -1,0 +1,52 @@
+# Test the actual candidate artifact on a non-localhost HTTP origin, including
+# crypto.randomUUID fallback. This project never mounts the user's local data.
+name: theater-death-frontend-smoke
+services:
+  app:
+    image: theater-death-frontend-v2:local
+    environment:
+      NODE_ENV: development
+      PUBLIC_BASE_URL: http://theater-smoke:3000
+      ACCOUNT_COOKIE_NAME: td_account_frontend_smoke
+      ADMIN_COOKIE_NAME: td_admin_frontend_smoke
+      ADMIN_PASSWORD: Admin-test-only-password-2026
+      DATA_DIR: /app/data-frontend-v2
+      VOICE_ENABLED: 'false'
+    volumes:
+      - frontend-smoke-data:/app/data-frontend-v2
+    networks:
+      default:
+        aliases: [theater-smoke]
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://localhost:3000/healthz").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  seed:
+    extends:
+      file: compose.frontend.yml
+      service: seed
+    profiles: [smoke]
+    volumes:
+      - frontend-smoke-data:/app/data-frontend-v2
+      - frontend-smoke-access:/test-access
+  browser:
+    image: theater-death-frontend-e2e:pw1630-ts
+    profiles: [smoke]
+    environment:
+      FRONTEND_BASE_URL: http://theater-smoke:3000
+      ADMIN_TEST_PASSWORD: Admin-test-only-password-2026
+    command: [npx, playwright, test, --config=playwright.v2.config.ts, specs-v2/13-release-smoke.spec.ts]
+    volumes:
+      - ../e2e/specs-v2:/e2e/specs-v2:ro
+      - ../e2e/helpers-v2:/e2e/helpers-v2:ro
+      - ../e2e/playwright.v2.config.ts:/e2e/playwright.v2.config.ts:ro
+      - ../e2e/tsconfig.v2.json:/e2e/tsconfig.v2.json:ro
+      - ../test-results-frontend-v2:/results
+      - frontend-smoke-access:/test-access:ro
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  frontend-smoke-data:
+  frontend-smoke-access:

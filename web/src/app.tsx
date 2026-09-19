@@ -15,7 +15,6 @@ import type {
   ReviewView,
   ViewResponse,
   VoicePermission,
-  VoicePermissionPush,
   WatchCandidate,
 } from './types.ts';
 
@@ -58,7 +57,6 @@ export function App() {
   const [review, setReview] = useState<ReviewView | null>(null);
   const [connected, setConnected] = useState(false);
   const [voicePermission, setVoicePermission] = useState<VoicePermission | null>(null);
-  const [voicePush, setVoicePush] = useState<VoicePermissionPush | null>(null);
   const serverOffset = useRef(0);
 
   const loadView = useCallback(async (mode: 'state' | 'all') => {
@@ -141,9 +139,8 @@ export function App() {
       onChatMessage: (incoming) => {
         setMessages((previous) => mergeMessages(previous, [incoming]));
       },
-      onVoicePermission: (push) => {
-        setVoicePermission(push.permission);
-        setVoicePush(push);
+      onVoicePermission: (permission) => {
+        setVoicePermission(permission);
       },
     });
     return () => {
@@ -196,7 +193,6 @@ export function App() {
     setMessages([]);
     setReview(null);
     setVoicePermission(null);
-    setVoicePush(null);
   }, []);
 
   const isGame = session.kind === 'game';
@@ -204,27 +200,6 @@ export function App() {
   const lobbySpectating = session.kind === 'lobby' ? session.lobby.spectating : null;
   const gameSpectating = game?.spectating ?? null;
   const spectating = gameSpectating ?? lobbySpectating;
-
-  /** 终局后退出房间：释放席位并回到入口页（服务端会清会话 cookie） */
-  const leaveRoom = useCallback(async () => {
-    const code = game?.roomCode ?? null;
-    if (code === null) {
-      return;
-    }
-    try {
-      await api.leaveRoom(code);
-    } catch {
-      // 房间已解散/已不存在等情况按已退出处理
-    }
-    setSession({ kind: 'entry' });
-    setMessage(null);
-    setPublicEvents([]);
-    setPersonalEvents([]);
-    setMessages([]);
-    setReview(null);
-    setVoicePermission(null);
-    setVoicePush(null);
-  }, [game?.roomCode]);
 
   return (
     <div className="shell">
@@ -276,11 +251,9 @@ export function App() {
           messages={messages}
           serverOffset={serverOffset.current}
           voicePermission={voicePermission}
-          voicePush={voicePush}
           onCommand={sendCommand}
           onOpenReview={() => void openReview()}
           onLeaveSpectate={() => void leaveSpectate()}
-          onLeaveRoom={() => void leaveRoom()}
         />
       )}
       {review !== null && <ReviewScreen review={review} onClose={() => setReview(null)} />}

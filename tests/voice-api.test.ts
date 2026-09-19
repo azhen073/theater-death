@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { VoiceService } from '../voice/agora.ts';
+import type { VoiceService } from '../voice/livekit.ts';
 import {
   connectClient,
   getJson,
@@ -11,40 +11,33 @@ import {
 } from './server-test-utils.ts';
 
 function createFakeVoice() {
-  const issued: Array<{ roomName: string; uid: number }> = [];
-  const grants: Array<{ roomName: string; uid: number }> = [];
-  const revokes: Array<{ roomName: string; uid: number }> = [];
+  const issued: Array<{ roomName: string; playerId: string }> = [];
+  const syncs: Array<{ roomName: string; permissions: ReadonlyMap<string, boolean> }> = [];
   const closed: string[] = [];
-  const removed: Array<{ roomName: string; uid: number }> = [];
-  let seq = 0;
+  const removed: Array<{ roomName: string; identity: string }> = [];
   const service: VoiceService = {
-    issueCredentials({ roomName, uid }) {
-      issued.push({ roomName, uid });
-      return { appId: 'appid-test', channel: roomName, uid, token: `sub-${++seq}` };
+    async issueCredentials({ roomName, playerId }) {
+      issued.push({ roomName, playerId });
+      return { url: 'wss://voice.test', token: `token-${playerId}`, roomName };
     },
-    issuePublishGrant({ roomName, uid }) {
-      grants.push({ roomName, uid });
-      return { token: `pub-${++seq}`, expiresAt: Date.now() + 600_000 };
-    },
-    issueSubscriberGrant({ roomName, uid }) {
-      revokes.push({ roomName, uid });
-      return { token: `resub-${++seq}` };
+    async syncRoom({ roomName, permissions }) {
+      syncs.push({ roomName, permissions });
     },
     async closeRoom(roomName) {
       closed.push(roomName);
     },
-    async removeParticipant(roomName, uid) {
-      removed.push({ roomName, uid });
+    async removeParticipant(roomName, identity) {
+      removed.push({ roomName, identity });
     },
   };
-  return { service, issued, grants, revokes, closed, removed };
+  return { service, issued, syncs, closed, removed };
 }
 
 function errorCode(response: { json: Record<string, unknown> }): unknown {
   return (response.json.error as { code?: unknown } | undefined)?.code;
 }
 
-describe('语音 API 与许可授权', () => {
+describe('语音 API 与许可同步', () => {
   it('未配置语音时：token 接口 409，视图标记未启用', async () => {
     const context = await startTestServer();
     const lobby = await setupLobby(context);
@@ -66,21 +59,17 @@ describe('语音 API 与许可授权', () => {
     expect((view.json.voice as { enabled: boolean }).enabled).toBe(true);
   });
 
-  it('开局后签发凭证：夜间全员静音、appId/频道/uid（座位号）与许可正确', async () => {
+  it('开局后签发凭证：夜间全员静音、房间号与玩家身份正确', async () => {
     const fake = createFakeVoice();
     const context = await startTestServer({ voice: fake.service });
     const game = await setupStartedGame(context);
     const token = await postJson(context, '/api/voice/token', {}, game.hostClient.cookie);
     expect(token.status).toBe(200);
-    expect(token.json.appId).toBe('appid-test');
-    expect(token.json.channel).toBe(game.room.gameId);
-    const hostSeat = game.room.state?.players.find(
-      (player) => player.playerId === game.hostClient.playerId,
-    )?.seat;
-    expect(token.json.uid).toBe(hostSeat);
+    expect(token.json.url).toBe('wss://voice.test');
+    expect(token.json.token).toBe(`token-${game.hostClient.playerId}`);
+    expect(token.json.roomName).toBe(game.room.gameId);
     expect(token.json.permission).toEqual({ canPublish: false, reason: 'night_silence' });
     expect(fake.issued).toHaveLength(1);
-    expect(fake.issued[0]?.uid).toBe(hostSeat);
 
     const view = await getJson(context, '/api/view', game.hostClient.cookie);
     const voice = view.json.voice as { enabled: boolean; permission: unknown };
@@ -88,31 +77,33 @@ describe('语音 API 与许可授权', () => {
     expect(voice.permission).toEqual({ canPublish: false, reason: 'night_silence' });
   });
 
-  it('sync 接口：返回本人许可与对应凭证（禁麦时为订阅凭证）', async () => {
+  it('sync 接口：把全员许可同步给媒体服务并返回本人许可', async () => {
     const fake = createFakeVoice();
     const context = await startTestServer({ voice: fake.service });
     const game = await setupStartedGame(context);
+    fake.syncs.length = 0;
     const synced = await postJson(context, '/api/voice/sync', {}, game.hostClient.cookie);
     expect(synced.status).toBe(200);
     expect(synced.json.permission).toEqual({ canPublish: false, reason: 'night_silence' });
-    expect(typeof synced.json.token).toBe('string');
-    expect(fake.revokes).toHaveLength(1);
-    expect(fake.revokes[0]?.roomName).toBe(game.room.gameId);
+    expect(fake.syncs).toHaveLength(1);
+    expect(fake.syncs[0]?.roomName).toBe(game.room.gameId);
+    expect(fake.syncs[0]?.permissions.size).toBe(13);
+    expect([...fake.syncs[0]!.permissions.values()].every((value) => value === false)).toBe(true);
   });
 
-  it('状态推进时通过 Socket.IO 推送个人许可', async () => {
+  it('状态推进时自动同步媒体许可，并通过 Socket.IO 推送个人许可', async () => {
     const fake = createFakeVoice();
     const context = await startTestServer({ realtime: true, voice: fake.service });
     const game = await setupStartedGame(context);
     const socket = await connectClient(context, game.hostClient.cookie);
+    const before = fake.syncs.length;
     context.clock.advance(90_000);
+    await waitFor(() => fake.syncs.length > before);
     await waitFor(() => socket.voicePermissions.length > 0);
-    expect(socket.voicePermissions[0]).toEqual({
-      permission: { canPublish: false, reason: 'night_silence' },
-    });
+    expect(socket.voicePermissions[0]).toEqual({ canPublish: false, reason: 'night_silence' });
   });
 
-  it('竞选发言中的候选获得发布凭证，其他玩家保持禁麦', async () => {
+  it('竞选发言中的候选获得发布权，其他玩家保持禁麦', async () => {
     const fake = createFakeVoice();
     const context = await startTestServer({ voice: fake.service });
     const game = await setupStartedGame(context);
@@ -142,15 +133,6 @@ describe('语音 API 与许可授权', () => {
     const candidateToken = await postJson(context, '/api/voice/token', {}, candidate!.cookie);
     expect(candidateToken.status).toBe(200);
     expect(candidateToken.json.permission).toEqual({ canPublish: true, reason: 'speaker' });
-
-    // sync 对齐时拿到发布凭证（短期授权）
-    const grantsBefore = fake.grants.length;
-    const synced = await postJson(context, '/api/voice/sync', {}, candidate!.cookie);
-    expect(synced.status).toBe(200);
-    expect(synced.json.permission).toEqual({ canPublish: true, reason: 'speaker' });
-    expect(typeof synced.json.token).toBe('string');
-    expect(fake.grants.length).toBe(grantsBefore + 1);
-    expect(fake.grants.at(-1)?.uid).toBe(seatOne?.seat);
 
     const other = game.clients.find((client) => client.playerId !== candidate!.playerId);
     expect(other).toBeDefined();

@@ -7,7 +7,6 @@ import type {
   ReviewView,
   ViewResponse,
   VoicePermission,
-  VoicePermissionPush,
   VoiceTokenResponse,
   WatchCandidate,
 } from './types.ts';
@@ -128,14 +127,14 @@ export const api = {
     return request<VoiceTokenResponse>('POST', '/api/voice/token');
   },
   voiceSync() {
-    return request<{ permission: VoicePermission; token: string }>('POST', '/api/voice/sync');
+    return request<{ permission: VoicePermission }>('POST', '/api/voice/sync');
   },
 };
 
 export interface SocketHandlers {
   onGameEvent(event: PushEvent): void;
   onChatMessage(message: ChatMessage): void;
-  onVoicePermission(push: VoicePermissionPush): void;
+  onVoicePermission(permission: VoicePermission): void;
   onConnect(): void;
   onDisconnect(): void;
 }
@@ -146,6 +145,8 @@ export function connectSocket(handlers: SocketHandlers): Socket {
   socket.on('disconnect', handlers.onDisconnect);
   socket.on('game_event', (event: PushEvent) => handlers.onGameEvent(event));
   socket.on('chat_message', (message: ChatMessage) => handlers.onChatMessage(message));
-  socket.on('voice_permission', (push: VoicePermissionPush) => handlers.onVoicePermission(push));
+  socket.on('voice_permission', (permission: VoicePermission) =>
+    handlers.onVoicePermission(permission),
+  );
   return socket;
 }

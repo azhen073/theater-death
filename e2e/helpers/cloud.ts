@@ -1,67 +1,41 @@
-import { requireAgoraAdmin } from './env.ts';
+import { RoomServiceClient } from 'livekit-server-sdk';
+import { requireLiveKitAdmin } from './env.ts';
 
-function authHeader(customerKey: string, customerSecret: string): string {
-  return `Basic ${Buffer.from(`${customerKey}:${customerSecret}`).toString('base64')}`;
+export interface CloudParticipant {
+  identity: string;
+  canPublish: boolean;
+  canSubscribe: boolean;
+  tracks: Array<{ type: number; muted: boolean }>;
 }
 
-export interface AgoraUserStatus {
-  readonly inChannel: boolean;
-  readonly uid: number;
-  readonly join: number | null;
-  readonly role: number | null;
+export function createAdmin(): RoomServiceClient {
+  const { url, key, secret } = requireLiveKitAdmin();
+  return new RoomServiceClient(url, key, secret);
 }
 
-/** 查询频道内所有用户 uid（频道不存在或无人时为空数组） */
-export async function listChannelUserIds(gameId: string): Promise<number[]> {
-  const { appId, customerKey, customerSecret, restBaseUrl } = requireAgoraAdmin();
-  const response = await fetch(
-    `${restBaseUrl}/dev/v1/channel/user/${encodeURIComponent(appId)}/${encodeURIComponent(gameId)}`,
-    { headers: { Accept: 'application/json', Authorization: authHeader(customerKey, customerSecret) } },
-  );
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    throw new Error(`声网查询用户列表失败：HTTP ${response.status} ${detail}`);
-  }
-  const payload = (await response.json()) as {
-    success: boolean;
-    data?: {
-      channel_exist?: boolean;
-      users?: number[];
-      broadcasters?: number[];
-      audience?: number[];
-    };
-  };
-  if (payload.data === undefined || payload.data.channel_exist !== true) {
-    return [];
-  }
-  return [
-    ...(payload.data.users ?? []),
-    ...(payload.data.broadcasters ?? []),
-    ...(payload.data.audience ?? []),
-  ];
+export async function listParticipants(
+  admin: RoomServiceClient,
+  gameId: string,
+): Promise<CloudParticipant[]> {
+  const participants = await admin.listParticipants(gameId);
+  return participants.map((participant) => ({
+    identity: participant.identity,
+    canPublish: participant.permission?.canPublish === true,
+    canSubscribe: participant.permission?.canSubscribe === true,
+    tracks: participant.tracks.map((track) => ({
+      type: track.type ?? -1,
+      muted: track.muted,
+    })),
+  }));
 }
 
-/** 查询指定用户在频道内的状态（声网仅提供"在不在频道"，不提供发流/权限状态） */
-export async function fetchUserStatus(gameId: string, uid: number): Promise<AgoraUserStatus> {
-  const { appId, customerKey, customerSecret, restBaseUrl } = requireAgoraAdmin();
-  const response = await fetch(
-    `${restBaseUrl}/dev/v1/channel/user/property/${encodeURIComponent(appId)}/${uid}/${encodeURIComponent(gameId)}`,
-    { headers: { Accept: 'application/json', Authorization: authHeader(customerKey, customerSecret) } },
-  );
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    throw new Error(`声网查询用户状态失败：HTTP ${response.status} ${detail}`);
-  }
-  const payload = (await response.json()) as {
-    success: boolean;
-    data?: { in_channel?: boolean; uid?: number; join?: number; role?: number };
-  };
-  return {
-    inChannel: payload.data?.in_channel === true,
-    uid,
-    join: payload.data?.join ?? null,
-    role: payload.data?.role ?? null,
-  };
+export async function findParticipant(
+  admin: RoomServiceClient,
+  gameId: string,
+  playerId: string,
+): Promise<CloudParticipant | undefined> {
+  const participants = await listParticipants(admin, gameId);
+  return participants.find((participant) => participant.identity.startsWith(playerId));
 }
 
 export async function waitFor<T>(
@@ -83,41 +57,44 @@ export async function waitFor<T>(
   }
 }
 
-/** 等待频道内出现语音用户；脚本玩家不加入语音，返回的 uid 通常即浏览器玩家 */
-export function waitForChannelUser(
+/** 等待某玩家在媒体服务上出现「已发布音频轨」（TrackType.AUDIO = 0）。 */
+export function waitForAudioTrack(
+  admin: RoomServiceClient,
   gameId: string,
-  options: { exclude?: ReadonlySet<number>; timeoutMs?: number } = {},
-): Promise<number> {
+  playerId: string,
+  options: { timeoutMs?: number } = {},
+): Promise<CloudParticipant> {
   return waitFor(
     async () => {
-      const uids = await listChannelUserIds(gameId);
-      const candidate = uids.find((uid) => !(options.exclude?.has(uid) ?? false));
-      return candidate ?? false;
+      const participant = await findParticipant(admin, gameId, playerId);
+      if (participant && participant.tracks.some((track) => track.type === 0)) {
+        return participant;
+      }
+      return false;
     },
-    {
-      timeoutMs: options.timeoutMs ?? 30_000,
-      intervalMs: 2000,
-      label: '浏览器玩家出现在语音频道',
-    },
+    { timeoutMs: options.timeoutMs ?? 20_000, label: `${playerId} 音频轨发布` },
   );
 }
 
-/** 等待指定用户进入（expected=true）或离开（expected=false）语音频道 */
-export function waitForUserInChannel(
+/** 等待某玩家在媒体服务上的发布权变为期望值。 */
+export function waitForCanPublish(
+  admin: RoomServiceClient,
   gameId: string,
-  uid: number,
+  playerId: string,
   expected: boolean,
   options: { timeoutMs?: number } = {},
-): Promise<boolean> {
+): Promise<CloudParticipant> {
   return waitFor(
     async () => {
-      const status = await fetchUserStatus(gameId, uid);
-      return status.inChannel === expected;
+      const participant = await findParticipant(admin, gameId, playerId);
+      if (participant && participant.canPublish === expected) {
+        return participant;
+      }
+      return false;
     },
     {
       timeoutMs: options.timeoutMs ?? 20_000,
-      intervalMs: 1000,
-      label: `用户 ${uid} ${expected ? '进入' : '离开'}语音频道`,
+      label: `${playerId} canPublish=${expected}`,
     },
   );
 }

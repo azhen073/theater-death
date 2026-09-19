@@ -13,19 +13,23 @@ if (Test-Path -LiteralPath $envPath) {
   Write-Host '检测到既有 .env，跳过生成（如需重建请先删除 .env）。'
 } else {
   $secret = -join (1..64 | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
+  $livekitKey = 'LK' + (-join (1..24 | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }))
+  $livekitSecret = -join (1..64 | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) })
   $lines = @(
     '# 由 deploy/install.ps1 生成；请勿提交到版本库',
     'APP_PORT=3000',
     'SESSION_SECRET=' + $secret,
     'SESSION_COOKIE_SECURE=false',
     'PUBLIC_BASE_URL=http://localhost:3000',
-    '# 语音（声网）：填入声网控制台项目的 App ID / App Certificate 并把 VOICE_ENABLED 改为 true',
+    '# 启用自托管语音：把 VOICE_ENABLED 改为 true，并取消 COMPOSE_PROFILES 注释',
     'VOICE_ENABLED=false',
-    'AGORA_APP_ID=',
-    'AGORA_APP_CERTIFICATE='
+    'LIVEKIT_API_KEY=' + $livekitKey,
+    'LIVEKIT_API_SECRET=' + $livekitSecret,
+    'LIVEKIT_NODE_IP=127.0.0.1',
+    '# COMPOSE_PROFILES=voice'
   )
   [System.IO.File]::WriteAllLines($envPath, $lines, (New-Object System.Text.UTF8Encoding $false))
-  Write-Host '已生成 .env（含随机 SESSION_SECRET）。'
+  Write-Host '已生成 .env（含随机 SESSION_SECRET 与 LiveKit 密钥）。'
 }
 
 Write-Host '尝试拉取预构建镜像（由 CI 构建）...'

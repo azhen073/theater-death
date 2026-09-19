@@ -1,0 +1,22 @@
+services:
+  api:
+    environment:
+      VOICE_ENABLED: 'true'
+      VOICE_SERVICE_URL: ws://livekit:7880
+      VOICE_ADMIN_URL: http://livekit:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: devsecret-local-only-change-me-123456
+    depends_on:
+      livekit:
+        condition: service_started
+  livekit:
+    image: livekit/livekit-server:v1.9.7
+    command: [--config, /etc/livekit.yaml]
+    environment:
+      LIVEKIT_KEYS: 'devkey: devsecret-local-only-change-me-123456'
+    volumes:
+      - ./livekit-acceptance.yaml:/etc/livekit.yaml:ro
+  browser:
+    depends_on:
+      livekit:
+        condition: service_started

@@ -1,0 +1,33 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "剧院死神管理 API", "version": "2.2-admin.1", "description": "独立维护者会话；管理员可控制注册、账号状态、昵称、密码与永久删除。" },
+  "servers": [{ "url": "/api/v2/admin" }],
+  "security": [{ "adminCookie": [] }],
+  "paths": {
+    "/auth/login": { "post": { "security": [], "summary": "管理员登录", "requestBody": { "$ref": "#/components/requestBodies/AdminPassword" }, "responses": { "200": { "$ref": "#/components/responses/AdminSession" }, "default": { "$ref": "#/components/responses/Error" } } } },
+    "/auth/logout": { "post": { "summary": "管理员退出", "responses": { "200": { "description": "已退出" }, "default": { "$ref": "#/components/responses/Error" } } } },
+    "/me": { "get": { "summary": "当前管理员会话", "responses": { "200": { "$ref": "#/components/responses/AdminSession" }, "default": { "$ref": "#/components/responses/Error" } } } },
+    "/summary": { "get": { "summary": "资源、注册状态与最近管理操作", "responses": { "200": { "description": "AdminSummary" }, "default": { "$ref": "#/components/responses/Error" } } } },
+    "/settings": {
+      "get": { "summary": "读取注册开关", "responses": { "200": { "description": "registrationEnabled" }, "default": { "$ref": "#/components/responses/Error" } } },
+      "patch": { "summary": "开放或停止注册", "requestBody": { "required": true, "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/Intent" }, { "type": "object", "properties": { "registrationEnabled": { "type": "boolean" } }, "required": ["registrationEnabled"] }] } } } }, "responses": { "200": { "description": "更新后的注册开关" }, "default": { "$ref": "#/components/responses/Error" } } }
+    },
+    "/accounts": { "get": { "summary": "按UID或昵称分页搜索账户", "parameters": [{ "$ref": "#/components/parameters/Page" }, { "$ref": "#/components/parameters/PageSize" }, { "name": "query", "in": "query", "schema": { "type": "string" } }, { "name": "status", "in": "query", "schema": { "enum": ["all", "active", "disabled"] } }], "responses": { "200": { "description": "AdminPage<AdminAccountSummary>" }, "default": { "$ref": "#/components/responses/Error" } } } },
+    "/accounts/{userId}": { "patch": { "summary": "修改昵称；有关联进行中对局时拒绝", "parameters": [{ "$ref": "#/components/parameters/UserId" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/Intent" }, { "type": "object", "properties": { "nickname": { "type": "string", "minLength": 2, "maxLength": 32 } }, "required": ["nickname"] }] } } } }, "responses": { "200": { "description": "更新后的Profile" }, "default": { "$ref": "#/components/responses/Error" } } } },
+    "/accounts/{userId}/disable": { "post": { "$ref": "#/components/pathItems/AccountAction", "summary": "停用并撤销全部会话" } },
+    "/accounts/{userId}/enable": { "post": { "$ref": "#/components/pathItems/AccountAction", "summary": "重新启用" } },
+    "/accounts/{userId}/revoke-sessions": { "post": { "$ref": "#/components/pathItems/AccountAction", "summary": "撤销全部玩家会话" } },
+    "/accounts/{userId}/clear-avatar": { "post": { "$ref": "#/components/pathItems/AccountAction", "summary": "清除头像" } },
+    "/accounts/{userId}/reset-password": { "post": { "summary": "管理员直接设置8至16位新密码", "parameters": [{ "$ref": "#/components/parameters/UserId" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/Intent" }, { "type": "object", "properties": { "password": { "type": "string", "minLength": 8, "maxLength": 16 } }, "required": ["password"] }] } } } }, "responses": { "200": { "description": "密码已重置且旧会话已撤销" }, "default": { "$ref": "#/components/responses/Error" } } } },
+    "/accounts/{userId}/delete": { "post": { "$ref": "#/components/pathItems/AccountAction", "summary": "永久删除无进行中对局的账号；保留完成对局历史" } },
+    "/avatars/{assetId}": { "get": { "summary": "管理员授权读取账户头像", "parameters": [{ "name": "assetId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "WebP头像", "content": { "image/webp": {} } }, "default": { "$ref": "#/components/responses/Error" } } } }
+  },
+  "components": {
+    "securitySchemes": { "adminCookie": { "type": "apiKey", "in": "cookie", "name": "td_admin_v2" } },
+    "parameters": { "Page": { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } }, "PageSize": { "name": "pageSize", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100 } }, "UserId": { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } } },
+    "schemas": { "Intent": { "type": "object", "properties": { "requestId": { "type": "string", "minLength": 1, "maxLength": 80 } }, "required": ["requestId"] }, "AdminSession": { "type": "object", "properties": { "authenticated": { "const": true }, "expiresAt": { "type": "integer" } }, "required": ["authenticated", "expiresAt"] }, "Error": { "type": "object", "properties": { "error": { "type": "object", "properties": { "code": { "type": "string" } }, "required": ["code"] } }, "required": ["error"] } },
+    "requestBodies": { "AdminPassword": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "password": { "type": "string" } }, "required": ["password"] } } } }, "Intent": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Intent" } } } } },
+    "responses": { "AdminSession": { "description": "管理员会话", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminSession" } } } }, "Error": { "description": "结构化错误", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } } },
+    "pathItems": { "AccountAction": { "parameters": [{ "$ref": "#/components/parameters/UserId" }], "requestBody": { "$ref": "#/components/requestBodies/Intent" }, "responses": { "200": { "description": "成功" }, "default": { "$ref": "#/components/responses/Error" } } } }
+  }
+}

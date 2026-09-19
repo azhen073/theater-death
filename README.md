@@ -1,49 +1,29 @@
-# 剧院死神（Theater Death）
+# 剧院死神：新版前端与账号协议 2.2
 
-13 人 9 身份的社交推理游戏**在线法官**：服务端持有真实状态并做全部裁决，纯规则引擎 + Socket.IO 实时推送 + 网页前端；支持「玩家电脑 / 第三方服务器」两种托管（同一 Docker 镜像）。
+13 人社交推理游戏在线法官。新版使用 `server/v2` 与 `web-v2`，规则版本 2.0，客户端契约 2.2。账号、席位控制、公共语音和管理入口由同一服务提供。
 
-- 玩法权威：`theater_death_rulebook_v1.1.md`（含 S3 裁定）
-- 工程规格：`theater_death_development_requirements_v1.1.md`
-- 进度与交接：`PROGRESS.md`
+## Docker 本地启动
 
-## 快速开始（Docker）
+在仓库根目录执行，先将 `.env.frontend-local.example` 复制为 `.env.frontend-local` 并设置管理员密码：
 
-宿主机只需 Docker（无需 Node.js）：
-
-```bash
-git clone https://github.com/azhen073/theater-death.git
-cd theater-death
-./deploy/install.sh          # Windows: deploy\install.ps1
+```sh
+docker build -f deploy/Dockerfile.dependencies -t theater-death-contract-deps:sharp0354-ajv820 .
+docker build -f deploy/Dockerfile.frontend-v2 -t theater-death-frontend-v2:local .
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml up -d --no-build app
 ```
 
-浏览器打开 `http://localhost:3000` → 创建房间 → 把房间码发给同伴。部署、公网入口、运维见 `deploy/RUNBOOK.md`。
+访问 http://localhost:5174，管理入口 `/admin`。默认关闭语音；账号库保存在命名数据卷中。
 
-## 更新
+## 技术文档
 
-```bash
-git pull
-./deploy/update.sh           # 拉取 CI 构建的镜像，约 1-2 分钟
-```
+- [本次 PR 说明](PR_DESCRIPTION.md)
+- [账号契约 2.2](docs/client-contract-2.2.md)
+- [API OpenAPI](docs/openapi-v2.2.json)
+- [管理功能](docs/frontend-v2-admin.md)
+- [公共语音与自托管部署](docs/frontend-v2-voice.md)
+- [房间退出规则](docs/frontend-v2-room-exit.md)
+- [游戏规则](docs/rules-v2-full.md)
 
-## 开发与测试
+`web/`、旧版服务与回归测试保留供兼容维护。默认旧版 release 工作流仍以旧部署入口为目标；新版上线需明确选择 `deploy/Dockerfile.frontend-v2`，不能把旧工作流产物当作新版候选。
 
-全部构筑 / 测试 / 运行都在容器内执行（与宿主机隔离）：
-
-```bash
-docker compose -f deploy/docker-compose.yml build   # 构建 = 类型检查 + 全部测试 + 前端打包
-docker compose -f deploy/docker-compose.yml up -d
-```
-
-推送代码到 `main` 后，GitHub Actions 会自动构建（镜像构建内含全部测试）并发布 `ghcr.io/azhen073/theater-death:latest`。
-
-## 目录结构
-
-| 目录 | 内容 |
-| --- | --- |
-| `engine/` | 纯规则引擎（状态 + 动作 → 状态 + 事件，无时钟/网络依赖） |
-| `visibility/` | 授权投影（先裁剪再发送，复盘视图） |
-| `server/` | 会话、房间、夜间/白天驱动、HTTP API、Socket.IO 实时 |
-| `rulesets/` | 板子配置与验证器（正式 / 实验模式） |
-| `web/` | React + Vite 前端（同镜像交付） |
-| `tests/` | Vitest 全量测试（166 用例） |
-| `deploy/` | Dockerfile、compose、安装/更新脚本、运行手册 |
+交付图片位于 `web-v2/public/assets`，是页面运行所需资源；美术原稿和外层素材库未包含。包内无真实环境配置、账号数据和依赖目录。

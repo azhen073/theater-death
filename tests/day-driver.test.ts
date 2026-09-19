@@ -71,7 +71,7 @@ describe('白天驱动：窗口排程与超时推进', () => {
     expect(driver.windows()[0]?.closesAt).toBe(75_000 + 60_000);
   });
 
-  it('夜间死亡天理移交在白天流程末尾；超时销毁并进入结算', () => {
+  it('夜间死亡天理先移交；超时销毁后继续发言、投票并结算入夜', () => {
     const clock = createFakeClock();
     const { driver, completions } = createDriver(clock);
     const state = withSheriff(
@@ -79,16 +79,14 @@ describe('白天驱动：窗口排程与超时推进', () => {
       'p_6',
     );
     driver.start(state);
-    expect(driver.snapshot()?.day?.step).toBe('speech_round');
-
-    clock.advance(45_000);
-    advanceToStep(clock, driver, 'vote');
-    clock.advance(60_000);
     expect(driver.snapshot()?.day?.step).toBe('handover');
     expect(driver.windows().map((window) => window.id)).toEqual(['handover']);
 
     clock.advance(45_000);
     expect(driver.snapshot()?.sheriff.holderId).toBeNull();
+    expect(driver.snapshot()?.day?.step).toBe('speech_round');
+    advanceToStep(clock, driver, 'vote');
+    clock.advance(60_000);
     expect(driver.done()).toBe(true);
     expect(completions[0]?.phase).toBe('night');
     expect(completions[0]?.dayNumber).toBe(3);

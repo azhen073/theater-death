@@ -1,0 +1,72 @@
+name: theater-death-frontend
+services:
+  test:
+    extends:
+      file: compose.v2.yml
+      service: test
+    environment:
+      WEB_V2_OUT_DIR: /tmp/web-v2-dist
+      VITE_CACHE_DIR: /tmp/theater-v2-vite
+    volumes:
+      - ../web-v2:/app/web-v2:ro
+      - ../vite.v2.config.ts:/app/vite.v2.config.ts:ro
+  api:
+    extends:
+      service: test
+    profiles: [dev]
+    command: [node, server/v2/index.ts]
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATA_DIR: /app/data-frontend-v2
+      PUBLIC_BASE_URL: http://localhost:5173
+      ACCOUNT_COOKIE_NAME: td_account_frontend_v2
+      VOICE_ENABLED: 'false'
+    volumes:
+      - ../data-frontend-v2:/app/data-frontend-v2
+    healthcheck:
+      test: [CMD, node, -e, 'fetch("http://localhost:3000/healthz").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  web:
+    extends:
+      service: test
+    profiles: [dev]
+    command: [npm, run, 'dev:web:v2']
+    environment:
+      API_PROXY_TARGET: http://api:3000
+    ports: ['127.0.0.1:5173:5173']
+    depends_on:
+      api:
+        condition: service_healthy
+  seed:
+    extends:
+      service: test
+    profiles: [browser]
+    command: [node, scripts/seed-frontend-v2.ts]
+    environment:
+      DATA_DIR: /app/data-frontend-v2
+    volumes:
+      - ../data-frontend-v2:/app/data-frontend-v2
+      - frontend-test-access:/test-access
+  browser:
+    image: theater-death-frontend-e2e:pw1630-ts
+    profiles: [browser]
+    network_mode: service:web
+    command: [npx, playwright, test, --config=playwright.v2.config.ts]
+    volumes:
+      - ../e2e/specs-v2:/e2e/specs-v2:ro
+      - ../e2e/helpers-v2:/e2e/helpers-v2:ro
+      - ../e2e/playwright.v2.config.ts:/e2e/playwright.v2.config.ts:ro
+      - ../e2e/tsconfig.v2.json:/e2e/tsconfig.v2.json:ro
+      - ../tests/fixtures/contract-2.1:/contract-fixtures:ro
+      - ../contracts:/contracts:ro
+      - ../rulesets:/rulesets:ro
+      - ../test-results-frontend-v2:/results
+      - frontend-test-access:/test-access:ro
+    depends_on:
+      web:
+        condition: service_started
+volumes:
+  frontend-test-access:

@@ -17,6 +17,7 @@ import type { GameState } from '../engine/types.ts';
  * - game_not_started / game_ended：流程外
  */
 export type VoicePermissionReason =
+  | 'preparing_speech'
   | 'speaker'
   | 'dead_listener'
   | 'night_silence'
@@ -29,12 +30,6 @@ export type VoicePermissionReason =
 export interface VoicePermission {
   readonly canPublish: boolean;
   readonly reason: VoicePermissionReason;
-}
-
-/** 推送给单个玩家的语音许可载荷：权限发生变化时附带新 token（获得=发布凭证，失去=订阅凭证） */
-export interface VoicePermissionPush {
-  readonly permission: VoicePermission;
-  readonly token?: string;
 }
 
 /** 观战者固定许可：只听不说（不进入玩家动态授权策略） */
@@ -69,6 +64,7 @@ export function voicePermission(state: GameState, playerId: string): VoicePermis
     return denied('game_not_started');
   }
   const day = state.day;
+  if (day?.speechPreparing) return denied('preparing_speech');
   if (day === null) {
     return denied('game_not_started');
   }

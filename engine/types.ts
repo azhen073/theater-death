@@ -86,6 +86,7 @@ export interface RescueSelection {
 }
 
 export interface NightContext {
+  readonly eligibleAtStart?: readonly string[];
   readonly nightNumber: number;
   readonly guardSelections: readonly GuardSelection[];
   readonly attacks: readonly AttackEvent[];
@@ -99,6 +100,7 @@ export interface NightContext {
 }
 
 export type DayStep =
+  | 'morning_announcement'
   | 'first_night_last_words'
   | 'election'
   | 'speech_round'
@@ -141,6 +143,8 @@ export interface BallotState {
 }
 
 export interface HandoverState {
+  readonly cause?: 'night_death' | 'day_elimination';
+  readonly resumeStep?: 'speech_round' | 'settle';
   readonly deadSheriffId: string;
   readonly resolved: boolean;
   readonly heirId: string | null;
@@ -152,6 +156,7 @@ export interface PacedQueue {
 }
 
 export interface DayContext {
+  readonly speechPreparing?: boolean;
   readonly dayNumber: number;
   readonly step: DayStep;
   readonly lastWordsScope: 'first_night' | 'elimination' | null;
@@ -170,6 +175,8 @@ export interface WinResult {
 }
 
 export interface GameState {
+  readonly preAnnouncementElection?: boolean;
+  readonly firstDayElectionDone?: boolean;
   readonly gameId: string;
   readonly ruleset: RulesetConfig;
   readonly seed: number;

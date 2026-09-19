@@ -28,6 +28,8 @@ export type EliminationGroup = 'deity' | 'civilian' | 'researcher' | 'none';
 export type RulesetMode = 'formal' | 'experimental';
 
 export interface TimersSeconds {
+  readonly speechPrepare?: number;
+  readonly speechOrder?: number;
   readonly faction: number;
   readonly ability: number;
   readonly vote: number;
@@ -63,7 +65,7 @@ export interface RulesetConfig {
   readonly timersSeconds: TimersSeconds;
   readonly sheriff: SheriffConfig;
   readonly lastWords: LastWordsConfig;
-  readonly teamConfirm: 'unanimous_by_revision';
+  readonly teamConfirm: 'unanimous_by_revision' | 'unanimous_or_latest';
   readonly duplicateTargetPolicy: 'allow' | 'forbid';
   readonly attackOrder: 'seat_asc_then_source_priority';
   readonly researcherAnnouncement: ResearcherAnnouncementConfig;

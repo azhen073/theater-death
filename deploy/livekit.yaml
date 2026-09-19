@@ -20,3 +20,8 @@ rtc:
 
 logging:
   level: info
+
+webhook:
+  api_key: devkey
+  urls:
+    - http://app:3000/api/v2/voice/webhook

@@ -30,7 +30,7 @@ const VOTE_UNITS_PER_VOTE = 2;
 
 /** 投票资格：死者不可投；莱莱可翻牌且处一阶段禁投（持天理时票权同步冻结，R-44、R-16） */
 export function voteEligibility(state: GameState, playerId: string): VoteEligibility {
-  const player = state.players.find((item) => item.playerId === playerId);
+  const player = playerOf(state, playerId);
   if (player === undefined) {
     return 'unknown';
   }
@@ -90,7 +90,9 @@ export function currentTieSpeechSpeaker(state: GameState): string | null {
 }
 
 function playerOf(state: GameState, playerId: string): PlayerState | undefined {
-  return state.players.find((item) => item.playerId === playerId);
+  const player = state.players.find((item) => item.playerId === playerId);
+  if (player && state.preAnnouncementElection) return { ...player, life: state.night?.eligibleAtStart?.includes(playerId) ? 'alive' : 'dead', revealed: false, voteFrozen: false };
+  return player;
 }
 
 function seatOf(state: GameState, playerId: string): number {
@@ -102,7 +104,7 @@ function seatOf(state: GameState, playerId: string): number {
 }
 
 function aliveSorted(state: GameState): readonly PlayerState[] {
-  return [...state.players].filter((player) => player.life !== 'dead').sort((a, b) => a.seat - b.seat);
+  return state.players.map((p) => playerOf(state, p.playerId)!).filter((player) => player.life !== 'dead').sort((a, b) => a.seat - b.seat);
 }
 
 function eligibleVoters(state: GameState): readonly string[] {
@@ -169,7 +171,7 @@ function requireStep(state: GameState, step: DayStep): DayValidationIssue | null
 }
 
 /** 卸任天理已死且尚未移交时建立移交待办（R-46） */
-function handoverAfterDeath(state: GameState, players: readonly PlayerState[]): HandoverState | null {
+function handoverAfterDeath(state: GameState, players: readonly PlayerState[], cause: 'night_death' | 'day_elimination' = 'night_death'): HandoverState | null {
   if (!state.ruleset.sheriff.enabled) {
     return null;
   }
@@ -179,7 +181,7 @@ function handoverAfterDeath(state: GameState, players: readonly PlayerState[]): 
   }
   const holder = players.find((player) => player.playerId === holderId);
   if (holder !== undefined && holder.life === 'dead') {
-    return { deadSheriffId: holderId, resolved: false, heirId: null };
+    return { deadSheriffId: holderId, resolved: false, heirId: null, cause, resumeStep: cause === 'night_death' ? 'speech_round' : 'settle' };
   }
   return null;
 }
@@ -211,7 +213,7 @@ function enterElectionOrSpeech(
   state: GameState,
   emitter: EventCollector,
 ): { step: DayStep; election: ElectionState | null } {
-  if (state.dayNumber === 1 && state.ruleset.sheriff.enabled) {
+  if (state.dayNumber === 1 && state.ruleset.sheriff.enabled && !state.firstDayElectionDone) {
     emitter.emit('election_started', { phase: 'signup' }, { kind: 'public' });
     return { step: 'election', election: makeElection(state) };
   }
@@ -249,9 +251,9 @@ export function beginDay(state: GameState): { state: GameState; events: GameEven
   }
   const emitter = emitterFor(state);
 
-  const handover = handoverAfterDeath(state, state.players);
+  const handover = state.preAnnouncementElection ? null : handoverAfterDeath(state, state.players);
   const firstNightDeaths =
-    state.dayNumber === 1 && state.night !== null ? state.night.deaths : ([] as readonly string[]);
+    !state.preAnnouncementElection && state.dayNumber === 1 && state.night !== null ? state.night.deaths.filter((id) => playerOf(state, id)?.life === 'dead') : ([] as readonly string[]);
 
   let step: DayStep;
   let lastWords: PacedQueue | null = null;
@@ -269,6 +271,9 @@ export function beginDay(state: GameState): { state: GameState; events: GameEven
       { scope: 'first_night', seat: seatOf(state, queue[0]) },
       { kind: 'public' },
     );
+  } else if (handover !== null) {
+    step = 'handover';
+    emitter.emit('sheriff_handover_started', { fromSeat: seatOf(state, handover.deadSheriffId) }, { kind: 'public' });
   } else {
     const next = enterElectionOrSpeech(state, emitter);
     step = next.step;
@@ -330,9 +335,13 @@ export function endLastWords(
       { kind: 'public' },
     );
   } else if (scope === 'first_night') {
-    const next = enterElectionOrSpeech(state, emitter);
-    step = next.step;
-    election = next.election;
+    if (day.handover !== null && !day.handover.resolved) {
+      step = enterHandoverOrSettle(state, day, emitter);
+    } else {
+      const next = enterElectionOrSpeech(state, emitter);
+      step = next.step;
+      election = next.election;
+    }
   } else {
     step = enterHandoverOrSettle(state, day, emitter);
   }
@@ -439,7 +448,7 @@ function finishElection(
     { winnerSeat: winnerId === null ? null : seatOf(state, winnerId), reason },
     { kind: 'public' },
   );
-  const next = enterSpeechRound(nextState, emitter);
+  const next = state.preAnnouncementElection ? { step: 'morning_announcement' as const } : enterSpeechRound(nextState, emitter);
   return {
     state: nextState,
     step: next.step,
@@ -995,9 +1004,24 @@ export function settleDayVote(state: GameState): { state: GameState; events: Gam
     );
     emitter.emit('elimination_announced', { seat: seatOf(state, eliminatedId) }, { kind: 'public' });
 
+    if (state.ruleset.version === '2.0') {
+      const revealed = applyReveals(players, emitter);
+      players = revealed.players;
+      if (revealed.researcherRevealed) announceResearcherCount(state, players, emitter);
+      const transition = applyStageTransition(state, players, detectStageTrigger(players), emitter);
+      players = transition.players;
+      state = { ...state, players, stage: transition.stage, factionRoom: transition.factionRoom };
+      const win = checkVictory(state);
+      if (win !== null) {
+        emitter.emit('game_ended', { winner: win.winner, reason: win.reason, dayNumber: win.dayNumber }, { kind: 'public' });
+        const { events, eventSeq } = emitter.result();
+        return { state: { ...state, day: null, phase: 'ended', win, eventSeq }, events };
+      }
+    }
+
     const dayWithHandover: DayContext = {
       ...day,
-      handover: handoverAfterDeath(state, players),
+      handover: handoverAfterDeath(state, players, 'day_elimination'),
     };
     const elimination = afterElimination(state, dayWithHandover, eliminatedId, emitter);
     updatedDay = {
@@ -1195,9 +1219,10 @@ function performHandover(
   };
   const updated: DayContext = {
     ...day,
-    step: 'settle',
+    step: handover.resumeStep ?? 'settle',
     handover: { ...handover, resolved: true, heirId: targetId },
   };
+  if (updated.step === 'speech_round') enterSpeechRound(nextState, emitter);
   return result(nextState, updated, emitter);
 }
 

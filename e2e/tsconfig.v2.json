@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["specs-v2/**/*.ts", "helpers-v2/**/*.ts", "playwright.v2.config.ts"]
+}

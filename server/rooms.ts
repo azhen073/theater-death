@@ -3,12 +3,13 @@ import type { GameEvent } from '../engine/events.ts';
 import { createGame } from '../engine/setup.ts';
 import type { GameState } from '../engine/types.ts';
 import { ROLE_IDS, type RulesetConfig } from '../rulesets/types.ts';
-import { voicePermission, type VoicePermissionPush } from '../voice/policy.ts';
-import type { VoiceService } from '../voice/agora.ts';
+import { voicePermission } from '../voice/policy.ts';
+import type { VoiceService } from '../voice/livekit.ts';
 import type { Clock } from './clock.ts';
 import { createDayDriver, type DayDriver } from './day-driver.ts';
 import type { LogStore, StoredMessage } from './log-store.ts';
 import { createNightDriver, type NightDriver } from './night-driver.ts';
+import { queuedClock } from './queued-clock.ts';
 import type { Broadcaster } from './realtime.ts';
 
 export type GameDriver = NightDriver | DayDriver;
@@ -26,8 +27,6 @@ export interface RoomSpectator {
   readonly nickname: string;
   readonly bindPlayerId: string;
   readonly joinedAt: number;
-  /** 声网 uid（1000 起），用于签发语音凭证与移出语音 */
-  readonly uid: number;
 }
 
 export interface ChatMessage extends StoredMessage {
@@ -91,15 +90,15 @@ export class Room {
   nextMessageId = 1;
   readonly receipts = new Map<string, CommandReceipt>();
   voiceClosed = false;
-  /** 当前持有发布授权（已下发发布凭证）的玩家，用于识别权限变化 */
-  readonly voiceGranted = new Set<string>();
   #queue: Promise<unknown> = Promise.resolve();
+  /** v2 persistent rooms share their queue with every match and timer. */
+  queueOwner: { enqueue<T>(task: () => T | Promise<T>): Promise<T> } | null = null;
 
   constructor(code: string, gameId: string, host: RoomMember, ruleset: RulesetConfig) {
     this.code = code;
     this.gameId = gameId;
     this.hostPlayerId = host.playerId;
-    this.ruleset = ruleset;
+    this.ruleset = structuredClone(ruleset);
     this.members.push(host);
   }
 
@@ -108,6 +107,7 @@ export class Room {
   }
 
   enqueue<T>(task: () => T | Promise<T>): Promise<T> {
+    if (this.queueOwner) return this.queueOwner.enqueue(task);
     const result = this.#queue.then(task, task);
     this.#queue = result.then(
       () => undefined,
@@ -118,6 +118,7 @@ export class Room {
 }
 
 export interface RoomDeps {
+  readonly strictWindows?: boolean;
   readonly clock: Clock;
   readonly ruleset: RulesetConfig;
   readonly logStore: LogStore;
@@ -133,6 +134,19 @@ export class RoomRegistry {
 
   constructor(deps: RoomDeps) {
     this.#deps = deps;
+  }
+
+  /** A single-game runtime under a stable v2 room; legacy room lifecycle is unchanged. */
+  createMatch(code: string, players: readonly { nickname: string }[], ruleset: RulesetConfig, queueOwner: Room['queueOwner']): Room {
+    if (players.length === 0 || this.#roomsByCode.has(code)) throw new Error('Match room unavailable');
+    const members = players.map((p) => this.#makeMember(p.nickname));
+    const room = new Room(code, `g_${randomBytes(16).toString('hex')}`, members[0]!, ruleset);
+    room.members.push(...members.slice(1));
+    room.queueOwner = queueOwner;
+    this.#roomsByCode.set(code, room);
+    this.#roomsByGameId.set(room.gameId, room);
+    this.#deps.logStore.recordRoom({ gameId: room.gameId, code, createdAt: this.#deps.clock.now(), ruleset });
+    return room;
   }
 
   createRoom(
@@ -196,20 +210,9 @@ export class RoomRegistry {
       nickname,
       bindPlayerId,
       joinedAt: this.#deps.clock.now(),
-      uid: this.#nextSpectatorUid(room),
     };
     room.spectators.push(spectator);
     return { ok: true, room, spectator };
-  }
-
-  /** 观战者 uid 从 1000 起顺序分配（与玩家座位号 1-13 区隔，稳定用于签发凭证与移出语音） */
-  #nextSpectatorUid(room: Room): number {
-    const used = new Set(room.spectators.map((item) => item.uid));
-    let uid = 1000;
-    while (used.has(uid)) {
-      uid += 1;
-    }
-    return uid;
   }
 
   removeSpectator(room: Room, spectatorId: string): boolean {
@@ -221,17 +224,11 @@ export class RoomRegistry {
     return true;
   }
 
-  /**
-   * 离开房间。大厅：普通成员释放席位、房主解散整房。
-   * 终局后：任何人（含房主）都只释放自己的席位，房主先走不会夺走其他人的复盘；
-   * 移除后房间空了才销毁（避免终局房间常驻内存）。对局进行中一律拒绝。
-   */
   leaveRoom(room: Room, playerId: string): LeaveResult {
-    const ended = room.state !== null && room.state.phase === 'ended';
-    if (room.state !== null && !ended) {
+    if (room.state !== null) {
       return { ok: false, status: 409, code: 'game_started', message: '对局已经开始，不能退出' };
     }
-    if (!ended && playerId === room.hostPlayerId) {
+    if (playerId === room.hostPlayerId) {
       this.#roomsByCode.delete(room.code);
       this.#roomsByGameId.delete(room.gameId);
       return { ok: true, dissolved: true };
@@ -241,11 +238,6 @@ export class RoomRegistry {
       return { ok: false, status: 404, code: 'not_a_member', message: '你不在这个房间里' };
     }
     this.#removeMemberWithSpectator(room, playerId);
-    if (ended && room.members.length === 0) {
-      this.#roomsByCode.delete(room.code);
-      this.#roomsByGameId.delete(room.gameId);
-      return { ok: true, dissolved: true };
-    }
     return { ok: true, dissolved: false };
   }
 
@@ -318,60 +310,43 @@ export class RoomRegistry {
     this.#afterStep(room);
   }
 
-  /**
-   * 每次状态推进后：广播每人自己的语音许可。
-   * 声网模式下发布权编码在短期 token 中：获得发言权时附带发布凭证、
-   * 失去时附带订阅凭证（前端 renewToken 即时降权），token 到期自动兜底收回。
-   */
+  /** 每次状态推进后：广播每人自己的语音许可，并把发布权同步到媒体服务（失败只记日志） */
   #afterStep(room: Room): void {
     const state = room.state;
     if (state === null) {
       return;
     }
-    const voice = this.#deps.voice ?? null;
+    const permissions = new Map(
+      state.players.map((player) => [player.playerId, voicePermission(state, player.playerId)]),
+    );
+    this.#deps.broadcaster?.emitVoicePermission(room.gameId, permissions);
 
+    const voice = this.#deps.voice ?? null;
+    if (voice === null) {
+      return;
+    }
     if (state.win !== null) {
-      if (voice !== null && !room.voiceClosed) {
+      if (!room.voiceClosed) {
         room.voiceClosed = true;
         void voice.closeRoom(room.gameId).catch((error: unknown) => {
           console.warn(`[theater-death] 关闭语音房间失败：${String(error)}`);
         });
       }
-      room.voiceGranted.clear();
-      const finalPushes = new Map<string, VoicePermissionPush>();
-      for (const player of state.players) {
-        finalPushes.set(player.playerId, {
-          permission: voicePermission(state, player.playerId),
-        });
-      }
-      this.#deps.broadcaster?.emitVoicePermission(room.gameId, finalPushes);
       return;
     }
-
-    const pushes = new Map<string, VoicePermissionPush>();
-    for (const player of state.players) {
-      const permission = voicePermission(state, player.playerId);
-      const granted = room.voiceGranted.has(player.playerId);
-      if (voice === null || permission.canPublish === granted) {
-        pushes.set(player.playerId, { permission });
-        continue;
-      }
-      const token = permission.canPublish
-        ? voice.issuePublishGrant({ roomName: room.gameId, uid: player.seat }).token
-        : voice.issueSubscriberGrant({ roomName: room.gameId, uid: player.seat }).token;
-      if (permission.canPublish) {
-        room.voiceGranted.add(player.playerId);
-      } else {
-        room.voiceGranted.delete(player.playerId);
-      }
-      pushes.set(player.playerId, { permission, token });
+    const canPublish = new Map<string, boolean>();
+    for (const [playerId, permission] of permissions) {
+      canPublish.set(playerId, permission.canPublish);
     }
-    this.#deps.broadcaster?.emitVoicePermission(room.gameId, pushes);
+    void voice.syncRoom({ roomName: room.gameId, permissions: canPublish }).catch((error: unknown) => {
+      console.warn(`[theater-death] 同步语音许可失败：${String(error)}`);
+    });
   }
 
   #startNight(room: Room, state: GameState): void {
     const driver = createNightDriver({
-      clock: this.#deps.clock,
+      strictWindows: this.#deps.strictWindows,
+      clock: this.#deps.strictWindows ? queuedClock(this.#deps.clock, (task) => room.enqueue(task)) : this.#deps.clock,
       onStep: (step) => this.#step(room, step),
       onComplete: (next) => {
         if (next.phase === 'day') {
@@ -379,13 +354,14 @@ export class RoomRegistry {
         }
       },
     });
-    driver.start(state);
     room.driver = driver;
+    driver.start(state);
   }
 
   #startDay(room: Room, state: GameState): void {
     const driver = createDayDriver({
-      clock: this.#deps.clock,
+      strictWindows: this.#deps.strictWindows,
+      clock: this.#deps.strictWindows ? queuedClock(this.#deps.clock, (task) => room.enqueue(task)) : this.#deps.clock,
       onStep: (step) => this.#step(room, step),
       onComplete: (next) => {
         if (next.phase === 'night') {
@@ -393,8 +369,8 @@ export class RoomRegistry {
         }
       },
     });
-    driver.start(state);
     room.driver = driver;
+    driver.start(state);
   }
 
   logMessage(room: Room, message: ChatMessage): void {
@@ -403,6 +379,15 @@ export class RoomRegistry {
 
   getByCode(code: string): Room | null {
     return this.#roomsByCode.get(code) ?? null;
+  }
+
+  /** Called by v2 lifecycle policy only after it has selected an eligible idle/ended room. Audit rows stay intact. */
+  disposeRoom(gameId: string): void {
+    const room = this.#roomsByGameId.get(gameId);
+    if (!room) return;
+    room.driver?.dispose();
+    this.#roomsByCode.delete(room.code);
+    this.#roomsByGameId.delete(gameId);
   }
 
   getByGameId(gameId: string): Room | null {

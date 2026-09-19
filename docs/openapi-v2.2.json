@@ -1,0 +1,5132 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "剧院死神后端",
+    "version": "2.2",
+    "description": "数字UID登录、可改昵称、直接注册与管理员账号管理契约。API版本2、玩法规则2.0。"
+  },
+  "servers": [
+    {
+      "url": "/api/v2"
+    }
+  ],
+  "security": [
+    {
+      "accountCookie": []
+    }
+  ],
+  "paths": {
+    "/bootstrap": {
+      "parameters": [],
+      "get": {
+        "summary": "客户端约束与实际功能开关",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Bootstrap"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog": {
+      "parameters": [],
+      "get": {
+        "summary": "角色、正式预设、实验限制和完整规则章节",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "parameters": [],
+      "post": {
+        "summary": "直接注册、分配数字UID并设置会话Cookie",
+        "description": "相同requestId、昵称和密码可恢复已完成注册；不同载荷复用ID被拒绝。",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "type": "string"
+                  },
+                  "nickname": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "nickname",
+                  "password"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMe"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "parameters": [],
+      "post": {
+        "summary": "登录（不自动接管房间）",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "uid": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "uid",
+                  "password"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMe"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "parameters": [],
+      "get": {
+        "summary": "读取账号与资料",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMe"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "parameters": [],
+      "post": {
+        "summary": "注销当前会话；控制会话注销时离开房间",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "loggedOut": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "loggedOut"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/profile": {
+      "patch": {
+        "summary": "修改昵称；有关联进行中对局时拒绝",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "nickname": { "type": "string", "minLength": 2, "maxLength": 32 } }, "required": ["nickname"] } } } },
+        "responses": { "200": { "description": "更新后的Profile" }, "default": { "description": "失败", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } } }
+      }
+    },
+    "/auth/change-password": {
+      "parameters": [],
+      "post": {
+        "summary": "修改密码并撤销该账号的全部旧会话",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "currentPassword",
+                  "password"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "changed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "changed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms": {
+      "parameters": [],
+      "post": {
+        "summary": "创建冻结配置的持续房间",
+        "description": "roles存在时标记experimental；不传则为默认13人正式预设。playerCount若提供必须等于角色总数。显示名来自账号，无nickname输入。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "presetId": {
+                    "type": "string",
+                    "enum": [
+                      "default-13"
+                    ]
+                  },
+                  "roles": {
+                    "$ref": "#/components/schemas/Roles"
+                  },
+                  "playerCount": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 64
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomEntry"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/rooms": {
+      "parameters": [],
+      "get": {
+        "summary": "本人当前房间及可恢复原局",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currentRoomId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "rooms": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roomId": {
+                            "type": "string"
+                          },
+                          "roomCode": {
+                            "type": "string"
+                          },
+                          "gameId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "phase": {
+                            "type": "string",
+                            "enum": [
+                              "lobby",
+                              "playing",
+                              "review"
+                            ]
+                          },
+                          "memberId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "formal",
+                                  "public_spectator",
+                                  "private_spectator"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "playerId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "activeHere": {
+                            "type": "boolean",
+                            "description": "当前会话可以访问此成员身份，含只读观众。"
+                          },
+                          "controlling": {
+                            "type": "boolean"
+                          },
+                          "canRecover": {
+                            "type": "boolean"
+                          },
+                          "requiresTakeover": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "roomId",
+                          "roomCode",
+                          "gameId",
+                          "phase",
+                          "memberId",
+                          "kind",
+                          "playerId",
+                          "activeHere",
+                          "controlling",
+                          "canRecover",
+                          "requiresTakeover"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "currentRoomId",
+                    "rooms"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/enter": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "原子进入、恢复或要求显式接管",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomEntry"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/takeover": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "显式接管本人房间控制",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomEntry"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/promote": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "大厅观众自愿转正式",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomEntry"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/leave": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "离开房间但保持账号登录；房间存在时可恢复当前局身份",
+        "description": "局中为暂离，计时继续。终局无正式成员时立即关闭房间并移出剩余观众，最终退出响应seatRetained=false；离线正式成员仍计入房间。大厅与局中无正式成员按5分钟清理。相同requestId重试可读取原成功回执。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "left": {
+                      "type": "boolean"
+                    },
+                    "seatRetained": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "left",
+                    "seatRetained"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/ready": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "准备或取消准备",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "ready": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "ready"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ready": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ready"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/start": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "房主发起独立新局",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "started": {
+                      "type": "boolean"
+                    },
+                    "roomId": {
+                      "type": "string"
+                    },
+                    "gameId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "started",
+                    "roomId",
+                    "gameId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/transfer-host": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "转给在线正式成员，各阶段有效",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "memberId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "memberId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "hostMemberId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "hostMemberId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/kick": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "移出成员：正式仅大厅，观众各阶段",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "memberId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "memberId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "removed": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "removed"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/dissolve": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "房主主动解散大厅",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  }
+                },
+                "required": [
+                  "requestId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dissolved": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "dissolved"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/end-review": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "房主结束当前复盘，回原大厅",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "gameId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "gameId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "roomId": {
+                      "type": "string"
+                    },
+                    "roomCode": {
+                      "type": "string"
+                    },
+                    "gameId": {
+                      "type": "null"
+                    },
+                    "endedGameId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "roomId",
+                    "roomCode",
+                    "gameId",
+                    "endedGameId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/view": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "完整授权快照",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomSnapshot"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/review": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "仅当前终局的公开复盘",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "review": {
+                      "$ref": "#/components/schemas/Review"
+                    }
+                  },
+                  "required": [
+                    "review"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/command": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "提交当前局、当前窗口的动作意图",
+        "description": "所有参数见client-contract-2.1-actions.md。身份来自会话；忽略客户端的角色/座位推断。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Command"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandReceipt"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/games/{gameId}/receipts/{requestId}": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "gameId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "requestId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "查询本人的命令回执，不执行动作",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptLookup"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/chat": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "发送文字并返回稳定消息确认",
+        "description": "clientMessageId按对局+发送者去重；同ID不同内容拒绝。text按纯文本渲染。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "gameId": {
+                    "type": "string"
+                  },
+                  "clientMessageId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "faction"
+                    ]
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "gameId",
+                  "clientMessageId",
+                  "channel",
+                  "text"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "gameId": {
+                      "type": "string"
+                    },
+                    "channel": {
+                      "type": "string",
+                      "enum": [
+                        "public",
+                        "faction"
+                      ]
+                    },
+                    "message": {
+                      "$ref": "#/components/schemas/ChatMessage"
+                    }
+                  },
+                  "required": [
+                    "gameId",
+                    "channel",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/second-screen/invitations": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "本人签发一次性第二屏邀请",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "gameId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "gameId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "integer"
+                    },
+                    "gameId": {
+                      "type": "string"
+                    },
+                    "subjectPlayerId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "expiresAt",
+                    "gameId",
+                    "subjectPlayerId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/second-screen/redeem": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "原子进入/升级私人第二屏",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "gameId": {
+                    "type": "string"
+                  },
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "gameId",
+                  "token"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "memberId": {
+                      "type": "string"
+                    },
+                    "gameId": {
+                      "type": "string"
+                    },
+                    "subjectPlayerId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "private_spectator"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "memberId",
+                    "gameId",
+                    "subjectPlayerId",
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/second-screen/revoke": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "撤销本人签发的私有授权和未用邀请",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "gameId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "gameId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revoked": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "revoked"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/voice/token": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "按当前身份获取公共语音凭证",
+        "description": "voice关闭返回voice_disabled。凭证仅授权加入公共语音房；发布权限由服务端同步，第二屏不能开麦。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "gameId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "gameId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "roomName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "token",
+                    "roomName"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rooms/{code}/voice/sync": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "请求服务端重新同步语音权限",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "gameId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "gameId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "synced": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "synced"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "状态或幂等冲突，包括 stale_game、request_id_reused。相同ID重试保持完整载荷；命令入队后的拒绝另见200回执。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/diagnostics": {
+      "parameters": [],
+      "get": {
+        "summary": "认证后的服务诊断",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rooms": {
+                      "type": "integer"
+                    },
+                    "playingRooms": {
+                      "type": "integer"
+                    },
+                    "connections": {
+                      "type": "integer"
+                    },
+                    "rss": {
+                      "type": "number"
+                    },
+                    "eventLoopP99Ms": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "rooms",
+                    "playingRooms",
+                    "connections",
+                    "rss",
+                    "eventLoopP99Ms"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/voice/webhook": {
+      "post": {
+        "summary": "LiveKit签名事件回调",
+        "description": "仅启用媒体验证器时开放；签名校验失败401。未知或已撤销媒体身份加入后会被移除。不是浏览器房间操作。",
+        "security": [
+          {
+            "livekitSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/webhook+json": {
+              "schema": {
+                "type": "string",
+                "maxLength": 65536
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "签名事件已处理"
+          },
+          "401": {
+            "description": "invalid_webhook",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/avatar": {
+      "parameters": [],
+      "put": {
+        "summary": "上传已裁剪的静态正方形图片",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "maxLength": 2097152
+              }
+            },
+            "image/png": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "maxLength": 2097152
+              }
+            },
+            "image/webp": {
+              "schema": {
+                "type": "string",
+                "format": "binary",
+                "maxLength": 2097152
+              }
+            }
+          }
+        },
+        "description": "至多2MiB、边长4096、拒绝动画/SVG/格式伪装；服务器重编码256×256 WebP。失败保留旧头像。"
+      }
+    },
+    "/avatars/{assetId}": {
+      "parameters": [
+        {
+          "name": "assetId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "登录后读取规范化头像",
+        "responses": {
+          "200": {
+            "description": "静态WebP",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "缓存仍有效"
+          },
+          "default": {
+            "description": "无权限或资源不存在",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "livekitSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "LiveKit服务端签名；SDK验证原始body。"
+      },
+      "accountCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "td_account_v2",
+        "description": "HttpOnly会话，浏览器自动携带。隔离开发3003使用td_account_contract_21，按服务配置区分。"
+      }
+    },
+    "schemas": {
+      "JsonValue": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            }
+          }
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "RequestId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80,
+        "description": "一次意图的稳定编号，建议UUID。同ID重试必须保持完全相同载荷。"
+      },
+      "RoleId": {
+        "type": "string",
+        "enum": [
+          "laike",
+          "door",
+          "water",
+          "descender",
+          "researcher",
+          "civilian",
+          "death",
+          "spirit",
+          "mourner"
+        ]
+      },
+      "CommandAction": {
+        "type": "string",
+        "enum": [
+          "SUBMIT_GUARD",
+          "SUBMIT_LAIKE",
+          "EDIT_PROPOSAL",
+          "CONFIRM_PROPOSAL",
+          "SUBMIT_CHECK",
+          "SUBMIT_RESCUE",
+          "SUBMIT_REVIVE",
+          "REGISTER_CANDIDACY",
+          "WITHDRAW_CANDIDACY",
+          "START_SPEECH",
+          "END_ELECTION_SPEECH",
+          "SUBMIT_ELECTION_VOTE",
+          "DESIGNATE_SPEECH",
+          "END_SPEECH",
+          "SUBMIT_DAY_VOTE",
+          "END_TIE_SPEECH",
+          "END_LAST_WORDS",
+          "SUBMIT_HANDOVER"
+        ]
+      },
+      "Presence": {
+        "type": "string",
+        "enum": [
+          "online",
+          "reconnecting",
+          "offline"
+        ]
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profileVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "userId",
+          "uid",
+          "nickname",
+          "avatarUrl",
+          "profileVersion"
+        ],
+        "additionalProperties": false
+      },
+      "AuthMe": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profileVersion": {
+            "type": "integer"
+          },
+          "expiresAt": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "userId",
+          "uid",
+          "nickname",
+          "avatarUrl",
+          "profileVersion",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "Permission": {
+        "type": "object",
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "allowed",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Roles": {
+        "type": "object",
+        "properties": {
+          "laike": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "door": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "water": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "descender": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "researcher": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "civilian": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "death": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "spirit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "mourner": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          }
+        },
+        "required": [
+          "laike",
+          "door",
+          "water",
+          "descender",
+          "researcher",
+          "civilian",
+          "death",
+          "spirit",
+          "mourner"
+        ],
+        "additionalProperties": false
+      },
+      "Ruleset": {
+        "type": "object",
+        "properties": {
+          "rulesetId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "formal",
+              "experimental"
+            ]
+          },
+          "roles": {
+            "$ref": "#/components/schemas/Roles"
+          },
+          "timersSeconds": {
+            "type": "object",
+            "properties": {
+              "faction": {
+                "type": "number"
+              },
+              "ability": {
+                "type": "number"
+              },
+              "vote": {
+                "type": "number"
+              },
+              "speech": {
+                "type": "number"
+              },
+              "election": {
+                "type": "number"
+              },
+              "handover": {
+                "type": "number"
+              },
+              "lastWords": {
+                "type": "number"
+              },
+              "tieSpeech": {
+                "type": "number"
+              },
+              "speechPrepare": {
+                "type": "number"
+              },
+              "speechOrder": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "faction",
+              "ability",
+              "vote",
+              "speech",
+              "election",
+              "handover",
+              "lastWords",
+              "tieSpeech",
+              "speechPrepare",
+              "speechOrder"
+            ],
+            "additionalProperties": false
+          },
+          "sheriff": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "voteWeight": {
+                "type": "number"
+              },
+              "handover": {
+                "type": "string",
+                "enum": [
+                  "designate_or_destroy"
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "voteWeight",
+              "handover"
+            ],
+            "additionalProperties": false
+          },
+          "lastWords": {
+            "type": "object",
+            "properties": {
+              "firstNight": {
+                "type": "boolean"
+              },
+              "dayEliminated": {
+                "type": "boolean"
+              },
+              "otherNights": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "firstNight",
+              "dayEliminated",
+              "otherNights"
+            ],
+            "additionalProperties": false
+          },
+          "teamConfirm": {
+            "type": "string",
+            "enum": [
+              "unanimous_or_latest"
+            ]
+          },
+          "duplicateTargetPolicy": {
+            "type": "string",
+            "enum": [
+              "allow"
+            ]
+          },
+          "attackOrder": {
+            "type": "string",
+            "enum": [
+              "seat_asc_then_source_priority"
+            ]
+          },
+          "researcherAnnouncement": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "string",
+                "enum": [
+                  "alive_at_announcement"
+                ]
+              },
+              "includesMourner": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "count",
+              "includesMourner"
+            ],
+            "additionalProperties": false
+          },
+          "stageTriggerSnapshot": {
+            "type": "string",
+            "enum": [
+              "death_event"
+            ]
+          },
+          "replayDisclosure": {
+            "type": "string",
+            "enum": [
+              "all_chat_and_action_log"
+            ]
+          },
+          "stage1SpiritQuota": {
+            "type": "string",
+            "enum": [
+              "eligibleLivingSpiritCount"
+            ]
+          },
+          "stage1DeathQuota": {
+            "type": "integer"
+          },
+          "stage1OverkillThreshold": {
+            "type": "string",
+            "enum": [
+              "initialSpiritCount"
+            ]
+          },
+          "stage2JointQuota": {
+            "type": "integer"
+          },
+          "guardTargets": {
+            "type": "integer"
+          },
+          "guardBlocksPerTarget": {
+            "type": "integer"
+          },
+          "simultaneousWinPriority": {
+            "type": "string",
+            "enum": [
+              "death_faction"
+            ]
+          },
+          "researcherCondition": {
+            "type": "string",
+            "enum": [
+              "currently_dead"
+            ]
+          }
+        },
+        "required": [
+          "rulesetId",
+          "version",
+          "mode",
+          "roles",
+          "timersSeconds",
+          "sheriff",
+          "lastWords",
+          "teamConfirm",
+          "duplicateTargetPolicy",
+          "attackOrder",
+          "researcherAnnouncement",
+          "stageTriggerSnapshot",
+          "replayDisclosure",
+          "stage1SpiritQuota",
+          "stage1DeathQuota",
+          "stage1OverkillThreshold",
+          "stage2JointQuota",
+          "guardTargets",
+          "guardBlocksPerTarget",
+          "simultaneousWinPriority",
+          "researcherCondition"
+        ],
+        "additionalProperties": false
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profileVersion": {
+            "type": "integer"
+          },
+          "memberId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "formal",
+              "public_spectator",
+              "private_spectator"
+            ]
+          },
+          "playerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ready": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "presence": {
+            "$ref": "#/components/schemas/Presence"
+          },
+          "joinedAt": {
+            "type": "integer"
+          },
+          "isHost": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "userId",
+          "uid",
+          "nickname",
+          "avatarUrl",
+          "profileVersion",
+          "memberId",
+          "kind",
+          "playerId",
+          "ready",
+          "presence",
+          "joinedAt",
+          "isHost"
+        ],
+        "additionalProperties": false
+      },
+      "Seat": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "profileVersion": {
+            "type": "integer"
+          },
+          "playerId": {
+            "type": "string"
+          },
+          "memberId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seat": {
+            "type": "integer"
+          },
+          "alive": {
+            "type": "boolean"
+          },
+          "revealedRoleId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoleId"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "presence": {
+            "type": "string",
+            "enum": [
+              "online",
+              "reconnecting",
+              "offline",
+              "left"
+            ]
+          },
+          "isHost": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "userId",
+          "uid",
+          "nickname",
+          "avatarUrl",
+          "profileVersion",
+          "playerId",
+          "memberId",
+          "seat",
+          "alive",
+          "revealedRoleId",
+          "presence",
+          "isHost"
+        ],
+        "additionalProperties": false
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "dayNumber": {
+            "type": "integer"
+          },
+          "stage": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "payload": {
+            "$ref": "#/components/schemas/JsonValue"
+          }
+        },
+        "required": [
+          "cursor",
+          "type",
+          "dayNumber",
+          "stage",
+          "payload"
+        ],
+        "additionalProperties": false
+      },
+      "Window": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "instanceId": {
+            "type": "string"
+          },
+          "closesAt": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "instanceId",
+          "closesAt"
+        ],
+        "additionalProperties": false
+      },
+      "TargetSelection": {
+        "type": "object",
+        "properties": {
+          "playerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxTargets": {
+            "type": "integer"
+          },
+          "allowRepeated": {
+            "type": "boolean"
+          },
+          "canSkip": {
+            "type": "boolean"
+          },
+          "forbiddenPairs": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "playerIds",
+          "maxTargets",
+          "allowRepeated",
+          "canSkip",
+          "forbiddenPairs"
+        ],
+        "additionalProperties": false
+      },
+      "Submission": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/CommandAction"
+          },
+          "windowInstanceId": {
+            "type": "string"
+          },
+          "requestId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptedAt": {
+            "type": "integer"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "asc",
+                  "desc"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "action",
+          "windowInstanceId",
+          "requestId",
+          "acceptedAt",
+          "targets",
+          "revision",
+          "direction"
+        ],
+        "additionalProperties": false
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/CommandAction"
+          },
+          "windowInstanceId": {
+            "type": "string"
+          },
+          "closesAt": {
+            "type": "integer"
+          },
+          "targets": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "action",
+          "windowInstanceId",
+          "closesAt",
+          "targets"
+        ],
+        "additionalProperties": false
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string"
+          },
+          "clientMessageId": {
+            "type": "string"
+          },
+          "cursor": {
+            "type": "integer"
+          },
+          "senderId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "at": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "messageId",
+          "clientMessageId",
+          "cursor",
+          "senderId",
+          "text",
+          "at"
+        ],
+        "additionalProperties": false
+      },
+      "Win": {
+        "type": "object",
+        "properties": {
+          "winner": {
+            "type": "string",
+            "enum": [
+              "human",
+              "death_faction"
+            ]
+          },
+          "dayNumber": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "winner",
+          "dayNumber",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Day": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": [
+              "morning_announcement",
+              "first_night_last_words",
+              "election",
+              "speech_round",
+              "vote",
+              "elimination_last_words",
+              "handover",
+              "settle"
+            ]
+          },
+          "speechPreparing": {
+            "type": "boolean"
+          },
+          "currentSpeakerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "election": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string",
+                    "enum": [
+                      "signup",
+                      "speech",
+                      "vote",
+                      "revote",
+                      "done"
+                    ]
+                  },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "withdrawn": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "speechOrder": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "round": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2
+                    ]
+                  },
+                  "votedCount": {
+                    "type": "integer"
+                  },
+                  "eligibleCount": {
+                    "type": "integer"
+                  },
+                  "tiedIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "winnerId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "phase",
+                  "candidates",
+                  "withdrawn",
+                  "speechOrder",
+                  "round",
+                  "votedCount",
+                  "eligibleCount",
+                  "tiedIds",
+                  "winnerId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ballot": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "phase": {
+                    "type": "string",
+                    "enum": [
+                      "vote",
+                      "tie_speech",
+                      "revote",
+                      "done"
+                    ]
+                  },
+                  "round": {
+                    "type": "integer",
+                    "enum": [
+                      1,
+                      2
+                    ]
+                  },
+                  "votedCount": {
+                    "type": "integer"
+                  },
+                  "eligibleCount": {
+                    "type": "integer"
+                  },
+                  "tiedIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "eliminatedId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "phase",
+                  "round",
+                  "votedCount",
+                  "eligibleCount",
+                  "tiedIds",
+                  "eliminatedId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "speechRound": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "order": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "index": {
+                    "type": "integer"
+                  },
+                  "designatedBy": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "startSeat": {
+                    "type": "integer"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "asc",
+                      "desc"
+                    ]
+                  }
+                },
+                "required": [
+                  "order",
+                  "index",
+                  "designatedBy",
+                  "startSeat",
+                  "direction"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastWords": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "queue": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "index": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "queue",
+                  "index"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "handover": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "deadSheriffId": {
+                    "type": "string"
+                  },
+                  "resolved": {
+                    "type": "boolean"
+                  },
+                  "heirId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "deadSheriffId",
+                  "resolved",
+                  "heirId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "step",
+          "speechPreparing",
+          "currentSpeakerId",
+          "election",
+          "ballot",
+          "speechRound",
+          "lastWords",
+          "handover"
+        ],
+        "additionalProperties": false
+      },
+      "Self": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "string"
+          },
+          "seat": {
+            "type": "integer"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "roleId": {
+            "$ref": "#/components/schemas/RoleId"
+          },
+          "life": {
+            "type": "string",
+            "enum": [
+              "alive",
+              "dying",
+              "dead"
+            ]
+          },
+          "revealed": {
+            "type": "boolean"
+          },
+          "voteFrozen": {
+            "type": "boolean"
+          },
+          "abilities": {
+            "type": "object",
+            "properties": {
+              "laikeBladeUsed": {
+                "type": "boolean"
+              },
+              "waterRescueUsed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "laikeBladeUsed",
+              "waterRescueUsed"
+            ],
+            "additionalProperties": false
+          },
+          "guardHistory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nightNumber": {
+                  "type": "integer"
+                },
+                "targetPlayerIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "nightNumber",
+                "targetPlayerIds"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "playerId",
+          "seat",
+          "nickname",
+          "roleId",
+          "life",
+          "revealed",
+          "voteFrozen",
+          "abilities",
+          "guardHistory"
+        ],
+        "additionalProperties": false
+      },
+      "PrivateGame": {
+        "type": "object",
+        "properties": {
+          "self": {
+            "$ref": "#/components/schemas/Self"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          },
+          "factionRoom": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "roomId": {
+                    "type": "string"
+                  },
+                  "readOnly": {
+                    "type": "boolean"
+                  },
+                  "canWrite": {
+                    "type": "boolean"
+                  },
+                  "members": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "playerId": {
+                          "type": "string"
+                        },
+                        "seat": {
+                          "type": "integer"
+                        },
+                        "readOnly": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "playerId",
+                        "seat",
+                        "readOnly"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "roomId",
+                  "readOnly",
+                  "canWrite",
+                  "members"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "targets": {
+            "type": "object",
+            "properties": {
+              "SUBMIT_GUARD": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "SUBMIT_LAIKE": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "EDIT_PROPOSAL": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "CONFIRM_PROPOSAL": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "SUBMIT_CHECK": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "SUBMIT_RESCUE": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "SUBMIT_REVIVE": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "REGISTER_CANDIDACY": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "WITHDRAW_CANDIDACY": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "START_SPEECH": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "END_ELECTION_SPEECH": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "SUBMIT_ELECTION_VOTE": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "DESIGNATE_SPEECH": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "END_SPEECH": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "SUBMIT_DAY_VOTE": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "END_TIE_SPEECH": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "END_LAST_WORDS": {
+                "$ref": "#/components/schemas/TargetSelection"
+              },
+              "SUBMIT_HANDOVER": {
+                "$ref": "#/components/schemas/TargetSelection"
+              }
+            },
+            "additionalProperties": false
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "pool": {
+                    "type": "string",
+                    "enum": [
+                      "death",
+                      "spirit",
+                      "joint"
+                    ]
+                  },
+                  "activeMemberIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "revision": {
+                    "type": "integer"
+                  },
+                  "targetPlayerIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "confirmedBy": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "locked": {
+                    "type": "boolean"
+                  },
+                  "effective": {
+                    "type": "object",
+                    "properties": {
+                      "revision": {
+                        "type": [
+                          "integer",
+                          "null"
+                        ]
+                      },
+                      "targetPlayerIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "basis": {
+                        "type": "string",
+                        "enum": [
+                          "unanimous",
+                          "latest_legal",
+                          "empty"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "revision",
+                      "targetPlayerIds",
+                      "basis"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "pool",
+                  "activeMemberIds",
+                  "revision",
+                  "targetPlayerIds",
+                  "confirmedBy",
+                  "locked",
+                  "effective"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "self",
+          "events",
+          "factionRoom",
+          "targets",
+          "proposal"
+        ],
+        "additionalProperties": false
+      },
+      "PublicGame": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "type": "string",
+            "enum": [
+              "night",
+              "morning",
+              "day",
+              "ended"
+            ]
+          },
+          "dayNumber": {
+            "type": "integer"
+          },
+          "stage": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "sheriff": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "holderId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "enabled",
+              "holderId"
+            ],
+            "additionalProperties": false
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Seat"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            }
+          },
+          "day": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Day"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Win"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startedAt": {
+            "type": "integer"
+          },
+          "endedAt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "phase",
+          "dayNumber",
+          "stage",
+          "sheriff",
+          "seats",
+          "events",
+          "day",
+          "result",
+          "startedAt",
+          "endedAt"
+        ],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "canPostPublic": {
+            "type": "boolean"
+          },
+          "canPostFaction": {
+            "type": "boolean"
+          },
+          "canPublishVoice": {
+            "type": "boolean"
+          },
+          "canVote": {
+            "type": "boolean"
+          },
+          "allowedCommands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CommandAction"
+            }
+          },
+          "commandReasons": {
+            "type": "object",
+            "properties": {
+              "SUBMIT_GUARD": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "SUBMIT_LAIKE": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "EDIT_PROPOSAL": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "CONFIRM_PROPOSAL": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "SUBMIT_CHECK": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "SUBMIT_RESCUE": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "SUBMIT_REVIVE": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "REGISTER_CANDIDACY": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "WITHDRAW_CANDIDACY": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "START_SPEECH": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "END_ELECTION_SPEECH": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "SUBMIT_ELECTION_VOTE": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "DESIGNATE_SPEECH": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "END_SPEECH": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "SUBMIT_DAY_VOTE": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "END_TIE_SPEECH": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "END_LAST_WORDS": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "SUBMIT_HANDOVER": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "SUBMIT_GUARD",
+              "SUBMIT_LAIKE",
+              "EDIT_PROPOSAL",
+              "CONFIRM_PROPOSAL",
+              "SUBMIT_CHECK",
+              "SUBMIT_RESCUE",
+              "SUBMIT_REVIVE",
+              "REGISTER_CANDIDACY",
+              "WITHDRAW_CANDIDACY",
+              "START_SPEECH",
+              "END_ELECTION_SPEECH",
+              "SUBMIT_ELECTION_VOTE",
+              "DESIGNATE_SPEECH",
+              "END_SPEECH",
+              "SUBMIT_DAY_VOTE",
+              "END_TIE_SPEECH",
+              "END_LAST_WORDS",
+              "SUBMIT_HANDOVER"
+            ],
+            "additionalProperties": false
+          },
+          "room": {
+            "type": "object",
+            "properties": {
+              "ready": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "start": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "promote": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "leave": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "transferHost": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "dissolve": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "endReview": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "kickFormal": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "kickSpectator": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "inviteSecondScreen": {
+                "$ref": "#/components/schemas/Permission"
+              },
+              "revokeSecondScreen": {
+                "$ref": "#/components/schemas/Permission"
+              }
+            },
+            "required": [
+              "ready",
+              "start",
+              "promote",
+              "leave",
+              "transferHost",
+              "dissolve",
+              "endReview",
+              "kickFormal",
+              "kickSpectator",
+              "inviteSecondScreen",
+              "revokeSecondScreen"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "canPostPublic",
+          "canPostFaction",
+          "canPublishVoice",
+          "canVote",
+          "allowedCommands",
+          "commandReasons",
+          "room"
+        ],
+        "additionalProperties": false
+      },
+      "RoomSnapshot": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "enum": [
+              "2.2"
+            ]
+          },
+          "rulesVersion": {
+            "type": "string"
+          },
+          "roomId": {
+            "type": "string"
+          },
+          "gameId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "serverTime": {
+            "type": "integer"
+          },
+          "viewVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "viewer": {
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string"
+              },
+              "memberId": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "formal",
+                  "public_spectator",
+                  "private_spectator"
+                ]
+              },
+              "subjectPlayerId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "readOnly": {
+                "type": "boolean"
+              },
+              "isHost": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "userId",
+              "memberId",
+              "kind",
+              "subjectPlayerId",
+              "readOnly",
+              "isHost"
+            ],
+            "additionalProperties": false
+          },
+          "room": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string",
+                "enum": [
+                  "lobby",
+                  "playing",
+                  "review"
+                ]
+              },
+              "config": {
+                "$ref": "#/components/schemas/Ruleset"
+              },
+              "requiredPlayers": {
+                "type": "integer"
+              },
+              "hostMemberId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "formalMembers": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              },
+              "spectators": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              },
+              "emptyDeadline": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "code",
+              "phase",
+              "config",
+              "requiredPlayers",
+              "hostMemberId",
+              "formalMembers",
+              "spectators",
+              "emptyDeadline"
+            ],
+            "additionalProperties": false
+          },
+          "public": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicGame"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "private": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivateGame"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
+          },
+          "windows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Window"
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Task"
+            }
+          },
+          "submissionState": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Submission"
+            }
+          },
+          "chat": {
+            "type": "object",
+            "properties": {
+              "public": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ChatMessage"
+                }
+              },
+              "faction": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ChatMessage"
+                }
+              }
+            },
+            "required": [
+              "public",
+              "faction"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "rulesVersion",
+          "roomId",
+          "gameId",
+          "serverTime",
+          "viewVersion",
+          "viewer",
+          "room",
+          "public",
+          "private",
+          "capabilities",
+          "windows",
+          "tasks",
+          "submissionState",
+          "chat"
+        ],
+        "additionalProperties": false
+      },
+      "CommandReceipt": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "rejected"
+            ]
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "requestId",
+          "status",
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ReceiptLookup": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CommandReceipt"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "requestId": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_seen",
+                  "pending"
+                ]
+              }
+            },
+            "required": [
+              "requestId",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "RoomEntry": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string"
+          },
+          "roomCode": {
+            "type": "string"
+          },
+          "gameId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "memberId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "formal",
+              "public_spectator",
+              "private_spectator"
+            ]
+          },
+          "playerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "roomId",
+          "roomCode",
+          "gameId",
+          "memberId",
+          "kind",
+          "playerId"
+        ],
+        "additionalProperties": false
+      },
+      "Control": {
+        "type": "object",
+        "properties": {
+          "roomId": {
+            "type": "string"
+          },
+          "gameId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "kicked",
+              "dissolved",
+              "taken_over",
+              "session_expired",
+              "host_changed",
+              "review_ended",
+              "left",
+              "screen_revoked"
+            ]
+          }
+        },
+        "required": [
+          "roomId",
+          "gameId",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Command": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "$ref": "#/components/schemas/RequestId"
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "windowInstanceId": {
+            "type": "string"
+          },
+          "action": {
+            "$ref": "#/components/schemas/CommandAction"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ]
+          }
+        },
+        "required": [
+          "requestId",
+          "gameId",
+          "windowInstanceId",
+          "action"
+        ],
+        "additionalProperties": true
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string"
+          },
+          "winner": {
+            "type": "string",
+            "enum": [
+              "human",
+              "death_faction"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "endedAtDay": {
+            "type": "integer"
+          },
+          "startedAt": {
+            "type": "integer"
+          },
+          "endedAt": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "players": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "playerId": {
+                  "type": "string"
+                },
+                "seat": {
+                  "type": "integer"
+                },
+                "uid": {
+                  "type": "string"
+                },
+                "nickname": {
+                  "type": "string"
+                },
+                "avatarUrl": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "roleId": {
+                  "$ref": "#/components/schemas/RoleId"
+                },
+                "life": {
+                  "type": "string",
+                  "enum": [
+                    "alive",
+                    "dead"
+                  ]
+                },
+                "revealed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "playerId",
+                "seat",
+                "uid",
+                "nickname",
+                "avatarUrl",
+                "roleId",
+                "life",
+                "revealed"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dayNumber": {
+                  "type": "integer"
+                },
+                "stage": {
+                  "type": "integer",
+                  "enum": [
+                    1,
+                    2
+                  ]
+                },
+                "type": {
+                  "type": "string"
+                },
+                "payload": {
+                  "$ref": "#/components/schemas/JsonValue"
+                }
+              },
+              "required": [
+                "dayNumber",
+                "stage",
+                "type",
+                "payload"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "chat": {
+            "type": "object",
+            "properties": {
+              "public": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "senderId": {
+                      "type": "string"
+                    },
+                    "senderSeat": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "at": {
+                      "type": "integer"
+                    },
+                    "messageId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "senderId",
+                    "senderSeat",
+                    "text",
+                    "at",
+                    "messageId"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "faction": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "senderId": {
+                      "type": "string"
+                    },
+                    "senderSeat": {
+                      "anyOf": [
+                        {
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "at": {
+                      "type": "integer"
+                    },
+                    "messageId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "senderId",
+                    "senderSeat",
+                    "text",
+                    "at",
+                    "messageId"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "public",
+              "faction"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "gameId",
+          "winner",
+          "reason",
+          "endedAtDay",
+          "startedAt",
+          "endedAt",
+          "durationMs",
+          "players",
+          "timeline",
+          "chat"
+        ],
+        "additionalProperties": false
+      },
+      "Bootstrap": {
+        "type": "object",
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "enum": [
+              "2.2"
+            ]
+          },
+          "rulesVersion": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "auth": {
+            "type": "object",
+            "properties": {
+              "registration": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "closed"
+                ]
+              },
+              "uid": {
+                "type": "object",
+                "properties": {
+                  "minLength": {
+                    "type": "integer"
+                  },
+                  "maxLength": {
+                    "type": "integer"
+                  },
+                  "pattern": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "minLength",
+                  "maxLength",
+                  "pattern"
+                ],
+                "additionalProperties": false
+              },
+              "nickname": {
+                "type": "object",
+                "properties": {
+                  "minLength": { "type": "integer" },
+                  "maxLength": { "type": "integer" }
+                },
+                "required": ["minLength", "maxLength"],
+                "additionalProperties": false
+              },
+              "password": {
+                "type": "object",
+                "properties": {
+                  "minLength": {
+                    "type": "integer"
+                  },
+                  "maxLength": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "minLength",
+                  "maxLength"
+                ],
+                "additionalProperties": false
+              },
+              "sessionMaxAgeSeconds": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "registration",
+              "uid",
+              "nickname",
+              "password",
+              "sessionMaxAgeSeconds"
+            ],
+            "additionalProperties": false
+          },
+          "avatar": {
+            "type": "object",
+            "properties": {
+              "maxBytes": {
+                "type": "integer"
+              },
+              "maxDimension": {
+                "type": "integer"
+              },
+              "outputSize": {
+                "type": "integer"
+              },
+              "formats": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "maxBytes",
+              "maxDimension",
+              "outputSize",
+              "formats"
+            ],
+            "additionalProperties": false
+          },
+          "features": {
+            "type": "object",
+            "properties": {
+              "voice": {
+                "type": "boolean"
+              },
+              "avatars": {
+                "type": "boolean"
+              },
+              "customBoards": {
+                "type": "boolean"
+              },
+              "secondScreens": {
+                "type": "boolean"
+              },
+              "persistentAccounts": {
+                "type": "boolean"
+              },
+              "gameRecovery": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "voice",
+              "avatars",
+              "customBoards",
+              "secondScreens",
+              "persistentAccounts",
+              "gameRecovery"
+            ],
+            "additionalProperties": false
+          },
+          "socket": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "pingIntervalMs": {
+                "type": "integer"
+              },
+              "pingTimeoutMs": {
+                "type": "integer"
+              },
+              "disconnectGraceMs": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "pingIntervalMs",
+              "pingTimeoutMs",
+              "disconnectGraceMs"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "contractVersion",
+          "rulesVersion",
+          "auth",
+          "avatar",
+          "features",
+          "socket"
+        ],
+        "additionalProperties": false
+      },
+      "Catalog": {
+        "type": "object",
+        "properties": {
+          "rulesVersion": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "roleId": {
+                  "$ref": "#/components/schemas/RoleId"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "faction": {
+                  "type": "string",
+                  "enum": [
+                    "human",
+                    "death_faction"
+                  ]
+                }
+              },
+              "required": [
+                "roleId",
+                "name",
+                "description",
+                "faction"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "presets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "presetId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "playerCount": {
+                  "type": "integer"
+                },
+                "config": {
+                  "$ref": "#/components/schemas/Ruleset"
+                }
+              },
+              "required": [
+                "presetId",
+                "name",
+                "playerCount",
+                "config"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "constraints": {
+            "type": "object",
+            "properties": {
+              "minPlayers": {
+                "type": "integer"
+              },
+              "maxPlayers": {
+                "type": "integer"
+              },
+              "repeatableRoleIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RoleId"
+                }
+              },
+              "requiredRoleIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RoleId"
+                }
+              },
+              "requiresAnyOf": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RoleId"
+                }
+              }
+            },
+            "required": [
+              "minPlayers",
+              "maxPlayers",
+              "repeatableRoleIds",
+              "requiredRoleIds",
+              "requiresAnyOf"
+            ],
+            "additionalProperties": false
+          },
+          "rulebook": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "chapters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "markdown": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "markdown"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "version",
+              "title",
+              "chapters"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "rulesVersion",
+          "roles",
+          "presets",
+          "constraints",
+          "rulebook"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "x-socketio": {
+    "path": "/api/v2/socket.io",
+    "auth": {
+      "roomId": "持续房间ID"
+    },
+    "serverEvents": {
+      "view_updated": {
+        "$ref": "#/components/schemas/RoomSnapshot"
+      },
+      "control": {
+        "$ref": "#/components/schemas/Control"
+      },
+      "sync_error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "snapshot_unavailable"
+            ]
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "notes": "逐帧重新授权；gameId变化清理旧局缓存，连接本身不变。viewVersion按账号+房间变化，serverTime独立校准。"
+  }
+}

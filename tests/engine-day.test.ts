@@ -386,31 +386,32 @@ describe('白天流程：出局遗言与天理移交（R-45、R-46）', () => {
     expect(afterWords.day?.step).toBe('settle');
   });
 
-  it('T-40：天理夜间死亡在白天流程的移交步办理；无效指定拒绝、超时销毁、不重选', () => {
+  it('T-40：天理夜间死亡先移交；完成或超时销毁后继续发言、投票与结算', () => {
     // 简化构造：以夜 1 晨间充当第 2 日，天理 p_6 于夜间死亡（首个白天之前无天理，竞选仅在首日）
     const deadSheriff = withSheriff(
       { ...morningState({ stage1DeathTargetIds: ['p_6'] }), dayNumber: 2 },
       'p_6',
     );
     const begunState = beginDay(deadSheriff).state;
-    expect(begunState.day?.step).toBe('speech_round');
+    expect(begunState.day?.step).toBe('handover');
     expect(begunState.day?.handover?.deadSheriffId).toBe('p_6');
 
-    const voting = advanceToVote(startDefaultSpeechRound(begunState).state);
-    const handover = settleDayVote(voting).state;
-    expect(handover.day?.step).toBe('handover');
-    expect(submitHandoverIssue(handover, 'p_7', 'p_8')?.code).toBe('not_sheriff');
-    expect(submitHandoverIssue(handover, 'p_6', 'p_6')?.code).toBe('target_dead');
-    expect(submitHandoverIssue(handover, 'p_6', 'p_999')?.code).toBe('unknown_target');
+    expect(submitHandoverIssue(begunState, 'p_7', 'p_8')?.code).toBe('not_sheriff');
+    expect(submitHandoverIssue(begunState, 'p_6', 'p_6')?.code).toBe('target_dead');
+    expect(submitHandoverIssue(begunState, 'p_6', 'p_999')?.code).toBe('unknown_target');
 
-    const inherited = submitHandover(handover, 'p_6', 'p_7');
+    const inherited = submitHandover(begunState, 'p_6', 'p_7');
     expect(inherited.state.sheriff.holderId).toBe('p_7');
-    expect(inherited.state.day?.step).toBe('settle');
+    expect(inherited.state.day?.step).toBe('speech_round');
     expect(inherited.events.some((event) => event.type === 'sheriff_handover')).toBe(true);
+    const voting = advanceToVote(startDefaultSpeechRound(inherited.state).state);
+    const settled = settleDayVote(voting).state;
+    expect(settled.day?.step).toBe('settle');
+    expect(resolveDaySettle(settled).state.phase).toBe('night');
 
-    const destroyed = resolveHandover(handover);
+    const destroyed = resolveHandover(begunState);
     expect(destroyed.state.sheriff.holderId).toBeNull();
-    expect(destroyed.state.day?.step).toBe('settle');
+    expect(destroyed.state.day?.step).toBe('speech_round');
     expect(destroyed.events.some((event) => event.type === 'sheriff_handover')).toBe(true);
   });
 
