@@ -214,3 +214,43 @@ test('创建请求重试与同账号接管：保留原意图、taken_over 清旧
     await other.context.close();
   }
 });
+
+test('房主在大厅退出即解散整房：本人与其余成员都回入口页、房间码失效', async ({ browser }, testInfo) => {
+  test.setTimeout(120_000);
+  const accounts = loadRoomAccounts(testInfo.project.name);
+  const host = await createPage(browser, accounts[0]!);
+  const joiner = await createPage(browser, accounts[1]!);
+  try {
+    await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await expect(host.page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
+    await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await waitRoom(host.page);
+    const code = (await host.page.locator('.room-code strong').innerText()).trim();
+    expect(code).toMatch(/^[A-Z2-9]{6}$/);
+    await enterRoom(joiner.page, code);
+    await expect(memberCard(host.page, accounts[1]!.username)).toBeVisible();
+
+    // 房主用「离开房间」（不是「解散房间」）退出：大厅阶段语义就是解散整房。
+    await host.page.getByRole('button', { name: '离开房间', exact: true }).click();
+    const dialog = host.page.getByRole('dialog', { name: '离开房间？' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('解散');
+    await host.page.screenshot({ path: `/results/rooms-host-leave-confirm-${testInfo.project.name}.png` });
+    await dialog.getByRole('button', { name: '确认操作' }).click();
+
+    await expect(host.page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible({ timeout: 20_000 });
+    await host.page.screenshot({ path: `/results/rooms-host-leave-dissolve-${testInfo.project.name}.png` });
+
+    // 其余成员一并被解散（实时 control{dissolved}），且房间码失效。
+    await expect(joiner.page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible({ timeout: 25_000 });
+    await expect(joiner.page.getByText('房间已解散。')).toBeVisible();
+    await joiner.page.getByRole('button', { name: '加入房间', exact: true }).click();
+    await joiner.page.getByLabel('房间码').fill(code);
+    await joiner.page.getByRole('button', { name: '进入房间', exact: true }).click();
+    await expect(joiner.page.getByRole('alert')).toContainText('房间不存在或已结束');
+    await noHorizontalOverflow(host.page);
+  } finally {
+    await host.context.close();
+    await joiner.context.close();
+  }
+});
