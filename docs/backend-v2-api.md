@@ -29,7 +29,7 @@
 | POST /api/v2/rooms/:code/ready | ready布尔值 |
 | POST /api/v2/rooms/:code/start | {}；房主且满员、全员准备 |
 | POST /api/v2/rooms/:code/takeover | {}；显式接管本人席位，旧设备停止私有读取/操作/推送/语音 |
-| POST /api/v2/rooms/:code/leave | {}；房主在大厅/复盘退出即解散整房，对局中退出保留席位、角色与计时，能再次接管 |
+| POST /api/v2/rooms/:code/leave | {}；房主在**大厅**退出即解散整房；**复盘**阶段按普通离开（房间保留、房主由其他在线正式成员继任）；对局中退出保留席位、角色与计时，能再次接管 |
 | GET /api/v2/rooms/:code/view | 完整授权快照，见下文 |
 | POST /api/v2/rooms/:code/command | requestId、windowInstanceId、action；按需targets、revision、direction |
 | POST /api/v2/rooms/:code/chat | channel=public或faction，text=1–500字符 |

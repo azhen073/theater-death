@@ -334,7 +334,7 @@ theater_death/
 - **前端**：`web/src/game.tsx` 终局卡片改为「查看复盘 / 退出房间」两按钮（观战者不显示后者，走既有「退出观战」）；`web/src/app.tsx` 新增 `leaveRoom` 回调（镜像 `leaveSpectate`：调 `api.leaveRoom(roomCode)` → 清 session/事件/聊天/复盘/语音 → 回入口页）
 - **测试**：`tests/server-api.test.ts` +3 例（终局后成员退出且他人复盘保留 / 房主退出不解散 / 最后一人退出销毁房间），该文件 24→27 例；E2E `10-end-exit.spec.ts` 2 例（对局中退出被拒 409；终局退出回入口页 + 他人复盘保留，含 13 机器人快进）
 - **真实运行（2026-09-18）**：容器内 `docker compose -f deploy/docker-compose.yml build` exit 0（typecheck + typecheck:web + 18 文件 207 例全过 + vite build，镜像 sha256 `ff8ec7dc…`）；增量 E2E 只跑 `specs/10-end-exit.spec.ts` → **2 passed (3.2m)**；其余用例未跑（按测试策略）
-- **E2E 用例口径提醒**：静态清点为 17 个 `test()`（chromium 全跑 17 + webkit 匹配 04/05 各 2 = **21 次运行**）；`AGENTS.md` 此前记的「18/18」与静态清点差 1，未跑全量故未定论，需要时以一次全量运行核对
+- **E2E 用例口径提醒**：静态清点为 17 个 `test()`（chromium 全跑 17 + webkit 匹配 04/05 各 2 = **21 次运行**）；`AGENTS.md` 此前记的「18/18」与静态清点差 1，未跑全量故未定论，需要时以一次全量运行核对。**（2026-09-20 结论）** 口径已核实：本节当时确实是 17 个 `test()` / 21 次运行；其后新增 `specs/11-dissolve.spec.ts`，v1 入口现为 **18 个 `test()` / 22 次运行（chromium 18 + webkit 4）**，v2 入口为 16 个 spec / 42 例，`AGENTS.md` 已按此更新。
 
 ## 提醒事项（踩坑记录）
 
