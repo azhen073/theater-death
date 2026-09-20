@@ -25,7 +25,10 @@ export function Stage({
 }) {
   const seats = view.public?.seats ?? [];
   const selectable = task?.targets;
-  const ring = seats.length <= 13;
+  // Taller task/observation content needs its own row rather than covering ring seats.
+  const needsFlowLayout = view.viewer.readOnly || !!task &&
+    ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL', 'DESIGNATE_SPEECH'].includes(task.action);
+  const ring = seats.length <= 13 && !needsFlowLayout;
   return (
     <section
       className={`theater-stage ${ring ? 'theater-stage--ring' : 'theater-stage--grid'} ${

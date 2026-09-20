@@ -228,6 +228,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .stage-seat--unavailable .seat-main { background: #e7ebf0b0; color: #788393; }
 .stage-seat--dead .avatar { filter: grayscale(1); opacity: .65; }
 .stage-seat--dead .seat-status { color: #874c57; }
+.stage-seat--speaking .seat-main { outline: 2px solid #a4936f; outline-offset: 3px; }
 .hud-room-code { font-size: 11px; color: var(--muted); padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
 .stage-action-slot { position: relative; z-index: 2; margin: 16px; }
 .theater-stage--grid .stage-seats { margin-top: 0; }
