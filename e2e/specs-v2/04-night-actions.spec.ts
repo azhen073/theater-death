@@ -62,7 +62,8 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     expect(doorCommands).toBe(0);
     const doorRequest = door.waitForRequest(request => request.method() === 'POST' && request.url().endsWith('/command'));
     const doorResponse = door.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/command'));
-    await door.getByRole('button', { name: '确认提交', exact: true }).click();
+    await expect(door.getByTestId('stage-submit')).toHaveAccessibleName('确认守护');
+    await door.getByTestId('stage-submit').click();
     const doorBody = await (await doorRequest).postDataJSON() as Record<string, any>;
     const doorReceipt = await (await doorResponse).json() as Record<string, any>;
     expect(doorReceipt).toMatchObject({ requestId: doorBody.requestId, status: 'accepted' });
@@ -91,7 +92,8 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     await expect(death.getByText(/2 \/ 2/)).toBeVisible();
     const deathRequest = death.waitForRequest(request => request.method() === 'POST' && request.url().endsWith('/command'));
     const deathResponse = death.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/command'));
-    await death.getByRole('button', { name: '确认提交', exact: true }).click();
+    await expect(death.getByTestId('stage-submit')).toHaveAccessibleName('发布方案');
+    await death.getByTestId('stage-submit').click();
     const deathBody = await (await deathRequest).postDataJSON() as Record<string, any>;
     const deathReceipt = await (await deathResponse).json() as Record<string, any>;
     expect(deathReceipt).toMatchObject({ requestId: deathBody.requestId, status: 'accepted' });

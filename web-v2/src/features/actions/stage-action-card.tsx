@@ -14,6 +14,7 @@ export interface StageActionCardProps {
   draft: ActionDraft;
   availableTasks: TaskDTO[];
   countdown?: string;
+  targetChanged?: boolean;
   children?: ReactNode;
   onSelectTask: (key: string) => void;
   onDraftChange: (draft: ActionDraft) => void;
@@ -21,6 +22,7 @@ export interface StageActionCardProps {
   onSubmitEmpty: () => void;
   onRetry: (requestId: string) => void;
   onQuery: (requestId: string) => void;
+  onRefresh: () => void;
 }
 
 export function StageActionCard({
@@ -30,6 +32,7 @@ export function StageActionCard({
   draft,
   availableTasks,
   countdown,
+  targetChanged,
   children,
   onSelectTask,
   onDraftChange,
@@ -37,6 +40,7 @@ export function StageActionCard({
   onSubmitEmpty,
   onRetry,
   onQuery,
+  onRefresh,
 }: StageActionCardProps) {
   const isReadOnly = presentation.mode === 'readonly';
   const ariaLabel = isReadOnly ? '观察玩家当前行动' : '舞台行动';
@@ -125,6 +129,11 @@ export function StageActionCard({
           )}
 
           <div className="feedback" role="status" aria-label="行动反馈" aria-live="polite">
+            {targetChanged && (
+              <Notice>
+                可选目标已更新，不再允许的选择已移除。请核对当前目标后再确认。
+              </Notice>
+            )}
             {presentation.disabledReason && (
               <Notice error={presentation.status === 'rejected'}>
                 {presentation.disabledReason}
@@ -143,6 +152,7 @@ export function StageActionCard({
                 <button
                   type="button"
                   className="button"
+                  disabled={presentation.status === 'offline' || presentation.queryDisabled}
                   onClick={() => onQuery(presentation.queryRequestId!)}
                 >
                   查询结果
@@ -152,13 +162,19 @@ export function StageActionCard({
                 <button
                   type="button"
                   className="button"
-                  disabled={presentation.status === 'offline' || presentation.status === 'expired'}
+                  disabled={presentation.status === 'offline' || presentation.status === 'expired' || presentation.queryDisabled}
                   onClick={() => onRetry(presentation.retryRequestId!)}
                 >
                   用原目标与请求重试
                 </button>
               )}
             </div>
+          )}
+
+          {presentation.canRefreshRecord && (
+            <button type="button" className="text-button" onClick={onRefresh}>
+              刷新记录
+            </button>
           )}
 
           <div className="button-row">
@@ -185,37 +201,53 @@ export function StageActionCard({
                 </button>
               )
             ) : (
-              presentation.primary && (
-                <button
-                  type="button"
-                  className="button button--primary"
-                  data-testid="stage-submit"
-                  disabled={presentation.primary.disabled}
-                  onClick={onSubmit}
-                >
-                  {presentation.primary.label}
-                </button>
-              )
+              <>
+                {presentation.emptyAction && (
+                  <button
+                    type="button"
+                    className="button"
+                    data-testid="stage-skip"
+                    disabled={presentation.emptyAction.disabled}
+                    onClick={onSubmitEmpty}
+                  >
+                    {presentation.emptyAction.label}
+                  </button>
+                )}
+                {presentation.primary && (
+                  <button
+                    type="button"
+                    className="button button--primary"
+                    data-testid="stage-submit"
+                    disabled={presentation.primary.disabled}
+                    onClick={onSubmit}
+                  >
+                    {presentation.primary.label}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </>
       )}
 
-      {presentation.unresolvedOldRecords.map(record => (
-        <Notice key={record.intent.requestId}>
-          上一窗口的「{actionLabels[record.intent.action]}」结果仍在确认，不会向新窗口重发。
-          <button
-            type="button"
-            className="text-button"
-            disabled={record.checking}
-            onClick={() => onQuery(record.intent.requestId)}
-          >
-            查询原结果
-          </button>
+      {presentation.recoveryItems.map(item => (
+        <Notice key={item.requestId}>
+          上一窗口的「{actionLabels[item.action]}」
+          {item.status === 'sending' ? '正在发送' : '结果仍在确认'}，不会向新窗口重发。
+          {item.status !== 'sending' && (
+            <button
+              type="button"
+              className="text-button"
+              disabled={!item.canQuery}
+              onClick={() => onQuery(item.requestId)}
+            >
+              {item.checking ? '正在查询…' : '查询原结果'}
+            </button>
+          )}
         </Notice>
       ))}
 
-      {!task && presentation.recentOutcome && (
+      {presentation.recentOutcome && (
         <p role="status" className="accepted-summary">{presentation.recentOutcome}</p>
       )}
     </section>

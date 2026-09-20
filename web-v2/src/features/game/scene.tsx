@@ -3,14 +3,13 @@ import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { EventDTO, RoomSnapshot, SeatDTO, TaskDTO } from '../../../../contracts/v2.ts';
 import { Avatar, Modal, Notice } from '../../components/ui.tsx';
 import { actionLabels, formatCountdown, presenceLabels, publicPhaseLabel } from '../../presentation/labels.ts';
-import { targetSummary } from '../../presentation/targets.ts';
 import { describeEvent } from '../../presentation/events.ts';
 import { ApiFailure } from '../../transport/http.ts';
 import { navigate } from '../../app/navigation.ts';
 import { useCommands } from '../actions/use-commands.ts';
 import { actionIssue, commandIntent, currentTask, emptyDraft, taskKey, updateSelection } from '../actions/model.ts';
 import type { ActionDraft } from '../actions/model.ts';
-import { actionScopeKey, deriveActionPresentation } from '../actions/presentation.ts';
+import { actionScopeKey, deriveActionPresentation, type SubmissionEvidence } from '../actions/presentation.ts';
 import { StageActionCard } from '../actions/stage-action-card.tsx';
 import { Proposal } from '../actions/proposal.tsx';
 import { Lobby } from '../room/lobby.tsx';
@@ -50,12 +49,14 @@ export function GameScene({
   onExpired: () => void;
   active?: boolean;
 }) {
+  const currentScope = actionScopeKey(view);
   const [activeKey, setActiveKey] = useState('');
-  const [draftState, setDraftState] = useState<{ values: Record<string, ActionDraft>; changed: boolean }>({
+  const [draftState, setDraftState] = useState<{ scope: string; values: Record<string, ActionDraft>; changed: boolean }>({
+    scope: currentScope,
     values: {},
     changed: false,
   });
-  const drafts = draftState.values;
+  const drafts = draftState.scope === currentScope ? draftState.values : {};
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [manage, setManage] = useState(false);
   const [managementVisited, setManagementVisited] = useState(false);
@@ -73,16 +74,36 @@ export function GameScene({
     return () => clearInterval(timer);
   }, []);
 
-  // Scope isolation: reset drafts when room/game/user perspective changes
-  const currentScope = actionScopeKey(view);
+  // Scope isolation: reset drafts and evidence when room/game/user perspective changes
   const lastScope = useRef(currentScope);
+  const [evidence, setEvidence] = useState<SubmissionEvidence[]>([]);
+  const refreshedConflicts = useRef(new Set<string>());
+
   useEffect(() => {
     if (lastScope.current !== currentScope) {
       lastScope.current = currentScope;
-      setDraftState({ values: {}, changed: false });
+      setDraftState({ scope: currentScope, values: {}, changed: false });
+      setEvidence([]);
+      refreshedConflicts.current.clear();
       setActiveKey('');
     }
   }, [currentScope]);
+
+  useEffect(() => {
+    setEvidence(old =>
+      old.map(ev => {
+        if (ev.firstMatchingSnapshotVersion !== null) return ev;
+        if (ev.scope !== currentScope) return ev;
+        const match = view.submissionState.find(
+          s => s.requestId === ev.requestId && taskKey(s) === ev.taskKey
+        );
+        if (match) {
+          return { ...ev, firstMatchingSnapshotVersion: view.viewVersion };
+        }
+        return ev;
+      })
+    );
+  }, [currentScope, view.submissionState, view.viewVersion]);
 
   const availableTasks = view.viewer.readOnly ? [] : view.tasks.filter(item => currentTask(view, item));
   const taskSignature = JSON.stringify(availableTasks.map(item => [taskKey(item), item.targets]));
@@ -91,6 +112,7 @@ export function GameScene({
     const current = mountedView.current;
     const tasks = current.viewer.readOnly ? [] : current.tasks.filter(item => currentTask(current, item));
     setDraftState(old => {
+      if (old.scope !== currentScope) return { scope: currentScope, values: {}, changed: false };
       const values: Record<string, ActionDraft> = {};
       let changed = false;
       for (const task of tasks) {
@@ -100,14 +122,19 @@ export function GameScene({
         values[key] = task.targets ? reconcileDraft(task.targets, prior) : prior;
         if (values[key] !== prior) changed = true;
       }
-      return { values, changed };
+      return { scope: currentScope, values, changed };
     });
-  }, [taskSignature]);
+  }, [currentScope, taskSignature]);
 
-  const commands = useCommands(view, refresh, failure => {
-    if (failure instanceof ApiFailure && failure.code === 'unauthorized') onExpired();
-    else if (failure instanceof ApiFailure) void refresh();
-  });
+  const commands = useCommands(
+    view,
+    refresh,
+    failure => {
+      if (failure instanceof ApiFailure && failure.code === 'unauthorized') onExpired();
+      else if (failure instanceof ApiFailure) void refresh();
+    },
+    online
+  );
 
   const task = availableTasks.find(item => taskKey(item) === activeKey) ?? availableTasks[0] ?? null;
   const prior = task && view.submissionState.find(item => taskKey(item) === taskKey(task));
@@ -128,7 +155,11 @@ export function GameScene({
 
   const setDraft = (value: ActionDraft) => {
     if (task) {
-      setDraftState(old => ({ values: { ...old.values, [taskKey(task)]: value }, changed: false }));
+      setDraftState(old => ({
+        scope: currentScope,
+        values: { ...(old.scope === currentScope ? old.values : {}), [taskKey(task)]: value },
+        changed: false,
+      }));
     }
   };
 
@@ -149,12 +180,30 @@ export function GameScene({
   const submitDraft = (targetTask: TaskDTO, submittedDraft: ActionDraft) => {
     if (!targetTask || locked) return;
     if (!actionIssue(view, targetTask, submittedDraft)) {
-      void commands.submit(commandIntent(view, targetTask, submittedDraft, newRequestId()));
+      const reqId = newRequestId();
+      const priorSub = view.submissionState.find(s => taskKey(s) === taskKey(targetTask));
+      setEvidence(old => [
+        ...old.filter(e => e.scope === currentScope && e.requestId !== reqId),
+        {
+          scope: currentScope,
+          requestId: reqId,
+          taskKey: taskKey(targetTask),
+          snapshotVersionAtSend: view.viewVersion,
+          snapshotRequestIdAtSend: priorSub?.requestId ?? null,
+          firstMatchingSnapshotVersion: null,
+        },
+      ]);
+      void commands.submit(commandIntent(view, targetTask, submittedDraft, reqId));
     }
   };
 
   const submitEmpty = () => {
     if (task && task.targets?.canSkip) {
+      setDraftState(old => ({
+        scope: currentScope,
+        values: { ...(old.scope === currentScope ? old.values : {}), [taskKey(task)]: { ...draft, targets: [] } },
+        changed: false,
+      }));
       submitDraft(task, { ...draft, targets: [] });
     }
   };
@@ -175,7 +224,15 @@ export function GameScene({
     records: commands.records,
     online,
     remainingMs,
+    evidence,
   });
+
+  useEffect(() => {
+    const signature = presentation.syncConflictKey;
+    if (!signature || !online || refreshedConflicts.current.has(signature)) return;
+    refreshedConflicts.current.add(signature);
+    void refresh();
+  }, [online, presentation.syncConflictKey, refresh]);
 
   const publicWindows = view.windows.filter(
     window => !['guard', 'laike', 'faction', 'check', 'rescue', 'revive'].includes(window.type)
@@ -220,12 +277,14 @@ export function GameScene({
         draft={draft}
         availableTasks={availableTasks}
         countdown={task ? formatCountdown(remaining(task.closesAt)) : undefined}
+        targetChanged={draftState.changed}
         onSelectTask={setActiveKey}
         onDraftChange={setDraft}
         onSubmit={submit}
         onSubmitEmpty={submitEmpty}
         onRetry={id => void commands.retry(id)}
         onQuery={id => void commands.query(id)}
+        onRefresh={() => void refresh()}
       >
         {task && ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL'].includes(task.action) && <Proposal view={view} />}
       </StageActionCard>
@@ -269,8 +328,11 @@ export function GameScene({
             </span>
           </div>
           <div className="hud-tools">
-            <span className="hud-room-code" title={`房间 ${view.room.code} · ${view.room.config.mode === 'formal' ? '正式模式' : '实验模式'}`}>
-              房间 {view.room.code}
+            <span
+              className="hud-room-code"
+              title={`房间 ${view.room.code} · ${view.room.config.mode === 'formal' ? '正式模式' : '实验模式'}`}
+            >
+              房间 {view.room.code} · {view.room.config.mode === 'formal' ? '正式' : '实验'}
             </span>
             {privateView && (
               <button type="button" className="button" onClick={() => setOverlay({ kind: 'identity' })}>
@@ -300,18 +362,6 @@ export function GameScene({
           <Notice>
             正在观战 · {privateView ? `私人第二屏：${privateView.self.seat}号 ${privateView.self.nickname}` : '公开视角'} ·
             只读
-          </Notice>
-        )}
-        {draftState.changed && (
-          <Notice>
-            可选目标已更新，不再允许的选择已移除。请核对当前目标后再确认。
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => setDraftState(old => ({ ...old, changed: false }))}
-            >
-              知道了
-            </button>
           </Notice>
         )}
         {!view.viewer.readOnly && subject && !subject.alive && (

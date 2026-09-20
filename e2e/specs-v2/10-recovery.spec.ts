@@ -97,7 +97,8 @@ test('真实 spirit：导航往返保留 faction 草稿，20秒未知命令可�
     await game.spiritPage.getByRole('tab', { name: '情报' }).click();
     const factionDraft = game.spiritPage.getByLabel('阵营消息');
     await factionDraft.fill('导航保留的阵营草稿');
-    await game.spiritPage.getByRole('region', { name: '舞台行动', exact: true }).getByRole('button', { name: '确认提交' }).click();
+    await expect(game.spiritPage.getByTestId('stage-submit')).toHaveAccessibleName('发布方案');
+    await game.spiritPage.getByTestId('stage-submit').click();
     await expect(game.spiritPage.getByRole('region', { name: '舞台行动', exact: true }).getByRole('button', { name: /正在提交/ })).toBeVisible();
 
     await game.spiritPage.getByRole('button', { name: '导航' }).click();
@@ -149,7 +150,8 @@ test('真实 API 跨账号：A 的挂起命令在 logout 后释放，B 保持登
     const target = task.targets.playerIds[0];
     const seat = view.public.seats.find((item: any) => item.playerId === target).seat;
     await game.spiritPage.getByRole('button', { name: new RegExp(`^${seat}号 .*可选目标$`) }).click();
-    await game.spiritPage.getByRole('region', { name: '舞台行动', exact: true }).getByRole('button', { name: '确认提交' }).click();
+    await expect(game.spiritPage.getByTestId('stage-submit')).toHaveAccessibleName('发布方案');
+    await game.spiritPage.getByTestId('stage-submit').click();
     await expect(game.spiritPage.getByRole('region', { name: '舞台行动', exact: true }).getByRole('button', { name: /正在提交/ })).toBeVisible();
     await game.spiritPage.getByRole('button', { name: '导航' }).click();
     await game.spiritPage.getByRole('dialog', { name: '剧院导航' }).getByRole('button', { name: '剧院首页' }).click();

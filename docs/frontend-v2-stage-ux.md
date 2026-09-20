@@ -12,17 +12,20 @@
 ## 2. 纯展示推导层（Presentation Layer）
 
 - 模块：`web-v2/src/features/actions/presentation.ts`
-- 纯函数 `deriveActionPresentation` 接收 `view`、`task`、`draft`、`records`、`online`、`remainingMs`，输出结构化的 `ActionPresentation`。
+- 纯函数 `deriveActionPresentation` 接收 `view`、`task`、`draft`、`records`、`online`、`remainingMs` 与当前 scope 的提交证据，输出结构化的 `ActionPresentation`。
 - 状态集合：`editing`、`sending`、`accepted`、`changed`、`rejected`、`recovering`、`expired`、`offline`、`idle`。
-- 状态隔离：按 `actionScopeKey(view)`（房间、局号、玩家视角、只读状态）隔离草稿与恢复记录，防止跨视角泄漏。
+- 状态隔离：按与 `CommandTracker` 一致的用户、房间、局号、成员、玩家视角和只读状态隔离草稿、回执与提交证据；scope 切换首帧即屏蔽旧数据。
+- 提交依据：发送前记录当时的 snapshot requestId 与 viewVersion。快照与最新 accepted 回执冲突时只选择一份依据；顺序未知则显示同步状态，同一冲突仅自动刷新一次，并允许玩家显式重提合法草稿。
+- 恢复入口：截止只禁止新提交和重试，不阻断在线查询原 requestId；任务消失后旧窗口的 sending/unknown/pending 与终态摘要继续显示，但不会向新窗口重发。
 
 ## 3. 响应式布局与断点
 
 采用“一份组件、一份草稿、一份座位 DOM”的设计，支持桌面、平板、横屏手机与竖屏手机：
 
 1. **宽屏环形模式**（`>1180px` 且座位数 `<=13` 且空间充足）：
-   - `StageActionCard` 居于舞台中央保留区（`position: absolute; left: 20%; right: 20%; top: 50%; transform: translateY(-50%);`），严防遮挡座位；
+   - `StageActionCard` 居于舞台中央保留区（`position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: min(480px, 55%);`）；
    - 座位沿外环以绝对坐标排布。
+   - 每次候选 ring 都使用同一视觉坐标系测量卡片、座位主块、工具和角标；8 CSS px 间距按实际 zoom 换算。若卡片越界或发生交叠，本周期锁定 flow，直到任务、座位组成、舞台宽度或可见性发生外部变化后重新测量候选 ring。
 2. **非环形模式**（大人数、窄屏、手机端）：
    - 团队方案、指定发言顺序与只读观察采用正常文档流，避免较高内容遮挡环形座位和次数加减工具；
    - 统一采用“**行动卡在舞台顶部正常文档流，完整座位网格紧随其后**”；

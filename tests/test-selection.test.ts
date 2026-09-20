@@ -41,6 +41,21 @@ describe('incremental test selector', () => {
     expect(frontend).toContain('tests/frontend-v2-voice-session.test.ts');
   });
 
+  it('selects action presentation and stage geometry regression suites', () => {
+    for (const path of [
+      'web-v2/src/features/actions/presentation.ts',
+      'web-v2/src/features/actions/stage-action-card.tsx',
+      'web-v2/src/features/game/stage-layout.ts',
+    ]) {
+      const suites = selected(path);
+      expect(suites).toContain('tests/frontend-v2-action-presentation.test.ts');
+      expect(suites).toContain('tests/frontend-v2-stage-layout.test.ts');
+      expect(suites).toContain('tests/frontend-v2-actions.test.ts');
+      expect(suites).toContain('tests/frontend-v2-avatar.test.ts');
+      expect(suites).toContain('tests/frontend-v2-voice-session.test.ts');
+    }
+  });
+
   it('maps remaining entry, admin, and infra files to their reviewed suites', () => {
     expect(selected('server/v2/frontend-app.ts')).toEqual(['tests/frontend-v2-static.test.ts']);
     expect(selected('server/v2/admin-router.ts')).toEqual(['tests/admin-api.test.ts']);

@@ -4,6 +4,7 @@ import type { RoomSnapshot, TargetSelection, TaskDTO } from '../contracts/v2.ts'
 import type { TrackedCommand } from '../web-v2/src/features/actions/commands.ts';
 import type { ActionDraft } from '../web-v2/src/features/actions/model.ts';
 import {
+  actionButtonLabels,
   actionScopeKey,
   areTargetSetsEqual,
   deriveActionPresentation,
@@ -153,8 +154,8 @@ describe('v2 action presentation layer (A1)', () => {
     });
     expect(newWindowResult.status).toBe('editing');
     expect(newWindowResult.primary?.disabled).toBe(false);
-    expect(newWindowResult.unresolvedOldRecords).toHaveLength(1);
-    expect(newWindowResult.unresolvedOldRecords[0]?.intent.requestId).toBe('req-old');
+    expect(newWindowResult.recoveryItems).toHaveLength(1);
+    expect(newWindowResult.recoveryItems[0]?.requestId).toBe('req-old');
   });
 
   it('preserves prior server summary when offline or expired', () => {
@@ -253,7 +254,7 @@ describe('v2 action presentation layer (A1)', () => {
     });
     expect(acceptedResult.status).toBe('accepted');
     expect(acceptedResult.primary?.disabled).toBe(true);
-    expect(acceptedResult.statusText).toContain('已确认提交');
+    expect(acceptedResult.statusText).toContain('服务端已确认');
 
     // Changed target to p_b -> changed, primary enabled
     const changedDraft: ActionDraft = { targets: ['p_b'], direction: 'asc', revision: null };
@@ -419,5 +420,94 @@ describe('v2 action presentation layer (A1)', () => {
     view4.viewer.subjectPlayerId = 'diff-subject';
     const key4 = actionScopeKey(view4);
     expect(key1).not.toBe(key4);
+  });
+
+  it('uses the newer accepted request as the only basis while its prior snapshot is still visible', () => {
+    const view = viewCopy();
+    const task = prepareTask(view);
+    view.submissionState = [{
+      action: task.action, windowInstanceId: task.windowInstanceId, targets: ['p_a'],
+      revision: null, direction: null, requestId: 'rA', acceptedAt: 1,
+    }];
+    const acceptedB: TrackedCommand = {
+      intent: { requestId: 'rB', gameId: view.gameId!, windowInstanceId: task.windowInstanceId, action: task.action, targets: ['p_b'] },
+      status: 'accepted', code: null, checking: false,
+    };
+    const evidence = [{
+      scope: actionScopeKey(view), requestId: 'rB', taskKey: `${task.windowInstanceId}/${task.action}`,
+      snapshotVersionAtSend: view.viewVersion, snapshotRequestIdAtSend: 'rA', firstMatchingSnapshotVersion: null,
+    }];
+    const oldDraft = deriveActionPresentation({ view, task, draft: { targets: ['p_a'], direction: 'asc', revision: null }, records: [acceptedB], evidence, online: true, remainingMs: 10_000 });
+    expect(oldDraft.status).toBe('changed');
+    expect(oldDraft.primary?.disabled).toBe(false);
+    const newDraft = deriveActionPresentation({ view, task, draft: { targets: ['p_b'], direction: 'asc', revision: null }, records: [acceptedB], evidence, online: true, remainingMs: 10_000 });
+    expect(newDraft.status).toBe('accepted');
+    expect(newDraft.serverSummary).toContain('正在与服务端同步');
+  });
+
+  it('does not let an older local receipt override a later snapshot after that receipt was observed', () => {
+    const view = viewCopy();
+    const task = prepareTask(view);
+    const acceptedB: TrackedCommand = {
+      intent: { requestId: 'rB', gameId: view.gameId!, windowInstanceId: task.windowInstanceId, action: task.action, targets: ['p_b'] },
+      status: 'accepted', code: null, checking: false,
+    };
+    view.viewVersion = 3;
+    view.submissionState = [{ action: task.action, windowInstanceId: task.windowInstanceId, targets: ['p_c'], revision: null, direction: null, requestId: 'rC', acceptedAt: 3 }];
+    const evidence = [{ scope: actionScopeKey(view), requestId: 'rB', taskKey: `${task.windowInstanceId}/${task.action}`, snapshotVersionAtSend: 1, snapshotRequestIdAtSend: 'rA', firstMatchingSnapshotVersion: 2 }];
+    const result = deriveActionPresentation({ view, task, draft: { targets: ['p_b'], direction: 'asc', revision: null }, records: [acceptedB], evidence, online: true, remainingMs: 10_000 });
+    expect(result.status).toBe('changed');
+    expect(result.serverSummary).toContain('服务端已确认');
+  });
+
+  it('does not treat a conflicting submission in the same observed snapshot version as newer', () => {
+    const view = viewCopy();
+    const task = prepareTask(view);
+    view.viewVersion = 2;
+    view.submissionState = [{ action: task.action, windowInstanceId: task.windowInstanceId, targets: ['p_c'], revision: null, direction: null, requestId: 'rC', acceptedAt: 3 }];
+    const accepted: TrackedCommand = { intent: { requestId: 'rB', gameId: view.gameId!, windowInstanceId: task.windowInstanceId, action: task.action, targets: ['p_b'] }, status: 'accepted', code: null, checking: false };
+    const evidence = [{ scope: actionScopeKey(view), requestId: 'rB', taskKey: `${task.windowInstanceId}/${task.action}`, snapshotVersionAtSend: 1, snapshotRequestIdAtSend: 'rA', firstMatchingSnapshotVersion: 2 }];
+    const result = deriveActionPresentation({ view, task, draft: { targets: ['p_b'], direction: 'asc', revision: null }, records: [accepted], evidence, online: true, remainingMs: 10_000 });
+    expect(result.statusText).toBe('提交记录正在同步');
+    expect(result.syncConflictKey).not.toBeNull();
+  });
+
+  it('marks unknown ordering ambiguous, isolates evidence by scope, and exposes one refresh signature', () => {
+    const view = viewCopy();
+    const task = prepareTask(view);
+    view.submissionState = [{ action: task.action, windowInstanceId: task.windowInstanceId, targets: ['p_a'], revision: null, direction: null, requestId: 'unknown-snapshot', acceptedAt: 1 }];
+    const accepted: TrackedCommand = { intent: { requestId: 'local', gameId: view.gameId!, windowInstanceId: task.windowInstanceId, action: task.action, targets: ['p_b'] }, status: 'accepted', code: null, checking: false };
+    const wrongScope = [{ scope: `${actionScopeKey(view)}:other`, requestId: 'local', taskKey: `${task.windowInstanceId}/${task.action}`, snapshotVersionAtSend: 1, snapshotRequestIdAtSend: 'unknown-snapshot', firstMatchingSnapshotVersion: null }];
+    const result = deriveActionPresentation({ view, task, draft: { targets: ['p_b'], direction: 'asc', revision: null }, records: [accepted], evidence: wrongScope, online: true, remainingMs: 10_000 });
+    expect(result.statusText).toBe('提交记录正在同步');
+    expect(result.primary?.disabled).toBe(false);
+    expect(result.syncConflictKey).toContain('unknown-snapshot|local');
+    expect(result.canRefreshRecord).toBe(true);
+  });
+
+  it('keeps query visibility separate from expiry, checking, sending, old windows, and offline state', () => {
+    const view = viewCopy();
+    const task = prepareTask(view);
+    const base: TrackedCommand = { intent: { requestId: 'r1', gameId: view.gameId!, windowInstanceId: task.windowInstanceId, action: task.action, targets: ['p_a'] }, status: 'unknown', code: null, checking: false };
+    const expired = deriveActionPresentation({ view, task, draft: { targets: ['p_a'], direction: 'asc', revision: null }, records: [base], online: true, remainingMs: 0 });
+    expect(expired.queryRequestId).toBe('r1');
+    expect(expired.retryRequestId).toBeNull();
+    expect(expired.primary?.disabled).toBe(true);
+    const checking = deriveActionPresentation({ view, task, draft: { targets: ['p_a'], direction: 'asc', revision: null }, records: [{ ...base, checking: true, status: 'pending' }], online: true, remainingMs: 1 });
+    expect(checking.queryDisabled).toBe(true);
+    const checkingUnknown = deriveActionPresentation({ view, task, draft: { targets: ['p_a'], direction: 'asc', revision: null }, records: [{ ...base, checking: true }], online: true, remainingMs: 1 });
+    expect(checkingUnknown.retryRequestId).toBeNull();
+    view.tasks = [];
+    const oldSending = deriveActionPresentation({ view, task: null, draft: { targets: [], direction: 'asc', revision: null }, records: [{ ...base, status: 'sending' }], online: true, remainingMs: null });
+    expect(oldSending.recoveryItems[0]).toMatchObject({ status: 'sending', canQuery: false, canRetry: false });
+    const offline = deriveActionPresentation({ view, task: null, draft: { targets: [], direction: 'asc', revision: null }, records: [base], online: false, remainingMs: null });
+    expect(offline.recoveryItems[0]?.canQuery).toBe(false);
+  });
+
+  it('defines concrete labels for all 18 command actions', () => {
+    expect(Object.keys(actionButtonLabels)).toHaveLength(18);
+    expect(actionButtonLabels.SUBMIT_GUARD).toEqual({ initial: '确认守护', modify: '更新守护' });
+    expect(actionButtonLabels.EDIT_PROPOSAL).toEqual({ initial: '发布方案', modify: '更新方案' });
+    expect(actionButtonLabels.END_LAST_WORDS.initial).toBe('结束遗言');
   });
 });

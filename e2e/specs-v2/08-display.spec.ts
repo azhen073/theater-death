@@ -28,6 +28,21 @@ async function expectNoOverflow(page: Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
+async function expectActionClearOfSeatsAndTools(page: Page) {
+  await expect.poll(async () => page.evaluate(() => {
+      const card = document.querySelector('.stage-action-slot')?.getBoundingClientRect();
+      if (!card || card.width <= 0 || card.height <= 0) return 'action card is not measurable';
+      for (const element of document.querySelectorAll('.seat-main, .seat-tools, .seat-count, .seat-sheriff')) {
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        if (card.left - 1 < rect.right && card.right + 1 > rect.left && card.top - 1 < rect.bottom && card.bottom + 1 > rect.top) {
+          return `${element.className}: ${JSON.stringify({ card: { left: card.left, top: card.top, right: card.right, bottom: card.bottom }, rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } })}`;
+        }
+      }
+      return null;
+    }), { timeout: 5_000 }).toBeNull();
+}
+
 function deathFixture(base: GameHarnessFixture, type: 'deaths_announced' | 'elimination_announced', cursor: number): GameHarnessFixture {
   const next = structuredClone(base);
   next.view.public!.events = [...next.view.public!.events, {
@@ -120,7 +135,7 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   await expect(stageActions).toBeVisible();
   await expect(stageActions).toContainText('选择守护目标');
   await expect(stageActions).toContainText(/00:\d{2}/);
-  await expect(stageActions.getByRole('button', { name: /确认空守|确认提交/ })).toBeVisible();
+  await expect(stageActions.getByTestId('stage-submit')).toHaveAccessibleName(/确认空守|确认守护/);
   await expect(page.locator('.mobile-action-bar')).toHaveCount(0);
 
   const firstSeat = base.view.public!.seats.find(s => s.seat === 1)!;
@@ -135,6 +150,8 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   // Sequential viewport resizing across key breakpoints
   const sizes = [
     { width: 1440, height: 900, cols: 0 },
+    { width: 1280, height: 800, cols: 0 },
+    { width: 1240, height: 800, cols: 0 },
     { width: 1181, height: 900, cols: 0 },
     { width: 1180, height: 800, cols: 4 },
     { width: 681, height: 800, cols: 4 },
@@ -151,6 +168,7 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
     await expect(page.getByRole('heading', { name: /夜幕降临|晨间公告/ })).toBeVisible();
     await expect(selectedSummary).toContainText(`1号 ${firstSeat.nickname}`);
     await expect(page.getByRole('region', { name: '舞台行动', exact: true })).toHaveCount(1);
+    await expectActionClearOfSeatsAndTools(page);
     if (size.cols > 0) {
       const colCount = await page.locator('.stage-seats').evaluate(el => window.getComputedStyle(el).gridTemplateColumns.split(' ').length);
       expect(colCount).toBe(size.cols);

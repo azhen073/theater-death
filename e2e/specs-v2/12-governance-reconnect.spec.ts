@@ -342,10 +342,10 @@ test('AC19 真实Socket断线重连保持玩家与窗口，禁止自动重发；
     const legalTask = actionView.tasks?.find((task: any) => task.action === 'REGISTER_CANDIDACY');
     if (!legalTask) throw new Error('public writer has no REGISTER_CANDIDACY task before reconnect');
     const actionRegion = reconnectPage.getByRole('region', { name: '舞台行动', exact: true });
-    await expect(actionRegion.getByRole('button', { name: '确认提交', exact: true })).toBeVisible();
+    await expect(actionRegion.getByTestId('stage-submit')).toHaveAccessibleName('报名竞选');
     const commandRequest = reconnectPage.waitForRequest(request => request.url().endsWith('/command') && request.method() === 'POST');
     const commandResponse = reconnectPage.waitForResponse(response => response.url().endsWith('/command') && response.request().method() === 'POST');
-    await actionRegion.getByRole('button', { name: '确认提交', exact: true }).click();
+    await actionRegion.getByTestId('stage-submit').click();
     const sentCommand = await commandRequest;
     const commandReceipt = await (await commandResponse).json() as Record<string, any>;
     const sentBody = sentCommand.postDataJSON() as Record<string, any>;

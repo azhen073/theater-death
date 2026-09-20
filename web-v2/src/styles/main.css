@@ -248,8 +248,6 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .stage-action-card .select-field select { min-width: 0; flex: 1; max-width: 200px; }
 .stage-action-card .speech-preview { margin-top: 6px; padding: 6px 10px; background: #edf3f8; border-radius: 4px; font-size: 12px; color: #3b506a; overflow-wrap: anywhere; }
 .stage-action-card .feedback { margin-top: 8px; }
-.stage-action-card .status-text { font-size: 13px; font-weight: 500; color: var(--muted); }
-.stage-action-card .status-text.accepted { color: #2c6e49; }
 .selection-summary { font-size: 14px; font-weight: 600; line-height: 1.7; }
 .selection-summary span { color: var(--muted); font-weight: 400; }
 .accepted-summary { font-size: 12px; color: #436b5d; }
