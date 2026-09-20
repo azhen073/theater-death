@@ -60,7 +60,7 @@ test('夹具 UI 为全部18个 action 发送准确 envelope，目标单击不提
     const next = taskFixture(base.view, action, targetActions.has(action) ? targetSelection(base.view) : null);
     if (action === 'CONFIRM_PROPOSAL') next.view.private!.proposal = { pool: 'death', activeMemberIds: [], revision: 3, targetPlayerIds: [], confirmedBy: [], locked: false, effective: { revision: 1, targetPlayerIds: [], basis: 'latest_legal' } };
     await mounted.setFixture(next);
-    await expect(page.locator('.action-dock h2')).toHaveText(labels[action]);
+    await expect(page.getByRole('region', { name: '舞台行动', exact: true }).locator('h2')).toHaveText(labels[action]);
     const before = mounted.commands.length;
     if (targetActions.has(action)) {
       await page.locator('.seat-main[aria-label*="可选目标"]').first().click();
@@ -87,7 +87,7 @@ test('夹具 UI 保持选择/任务/草稿边界并覆盖席位布局与公开�
   await mounted.setFixture(constrained);
   await page.locator('.seat-main[aria-label*="可选目标"]').nth(0).click();
   await page.locator('.seat-main[aria-label*="可选目标"]').nth(1).click();
-  await expect(page.locator('.action-dock button.button--primary')).toBeDisabled();
+  await expect(page.getByRole('region', { name: '舞台行动', exact: true }).locator('button.button--primary')).toBeDisabled();
   await page.getByRole('button', { name: '清空选择', exact: true }).click();
   await expect(page.getByRole('button', { name: '确认空守', exact: true })).toBeVisible();
   await page.locator('.seat-main[aria-label*="可选目标"]').nth(0).click();
@@ -107,13 +107,13 @@ test('夹具 UI 保持选择/任务/草稿边界并覆盖席位布局与公开�
   await mounted.setFixture({ ...repeated, view: multi });
   await expect(page.getByRole('group', { name: '可用任务' })).toBeVisible();
   await page.getByRole('button', { name: '选择刺杀目标', exact: true }).click();
-  await expect(page.locator('.action-dock h2')).toHaveText('选择刺杀目标');
+  await expect(page.getByRole('region', { name: '舞台行动', exact: true }).locator('h2')).toHaveText('选择刺杀目标');
 
   const proposal = taskFixture(base.view, 'CONFIRM_PROPOSAL');
   proposal.view.private!.proposal = { pool: 'death', activeMemberIds: [], revision: 2, targetPlayerIds: [], confirmedBy: [], locked: false, effective: { revision: 1, targetPlayerIds: alivePlayers(base.view).slice(0, 1), basis: 'latest_legal' } };
   await mounted.setFixture(proposal);
-  await expect(page.locator('.action-dock [aria-label="团队方案"]')).toContainText('最新草稿 v2');
-  await expect(page.locator('.action-dock [aria-label="团队方案"]')).toContainText('v1');
+  await expect(page.getByRole('region', { name: '舞台行动', exact: true }).locator('[aria-label="团队方案"]')).toContainText('最新草稿 v2');
+  await expect(page.getByRole('region', { name: '舞台行动', exact: true }).locator('[aria-label="团队方案"]')).toContainText('v1');
 
   for (const count of [5, 13, 26, 64]) {
     const resized = resizeSeats(base.view, count);
@@ -128,7 +128,7 @@ test('夹具 UI 保持选择/任务/草稿边界并覆盖席位布局与公开�
   const publicFixture = loadGameFixture('started-public-observer-full.json');
   const publicView = structuredClone(publicFixture.view); publicView.viewer.kind = 'public_spectator'; publicView.viewer.readOnly = true; publicView.private = null;
   await mounted.setFixture({ ...publicFixture, view: publicView });
-  await expect(page.locator('.action-dock h2')).toHaveText('你正在只读观战');
+  await expect(page.getByRole('region', { name: '观察玩家当前行动', exact: true }).locator('h2')).toHaveText('你正在只读观战');
   await expect(page.getByRole('button', { name: '确认提交', exact: true })).toHaveCount(0);
   const privateFixture = loadGameFixture('private-second-screen-full.json');
   const privateView = structuredClone(privateFixture.view); privateView.viewer.kind = 'private_spectator'; privateView.viewer.readOnly = true;
@@ -169,6 +169,7 @@ test('夹具 UI 处理 rejected、丢响应查询/retry、旧窗口、新 game �
   mounted.setMode('lost');
   await mounted.setFixture(oldWindow);
   await page.locator('.seat-main[aria-label*="可选目标"]').first().click();
+  await expect(page.locator('.selection-summary')).toContainText('1 / 2');
   await confirm(page);
   await expect(page.getByText('连接中断')).toBeVisible();
   mounted.setMode('accepted');
@@ -183,7 +184,7 @@ test('夹具 UI 处理 rejected、丢响应查询/retry、旧窗口、新 game �
   const offline = { ...taskFixture(base.view, 'SUBMIT_GUARD', targetSelection(base.view)), online: false };
   await mounted.setFixture(offline);
   await expect(page.getByText('连接尚未恢复')).toBeVisible();
-  await expect(page.locator('.action-dock button.button--primary')).toBeDisabled();
+  await expect(page.getByRole('region', { name: '舞台行动', exact: true }).locator('button.button--primary')).toBeDisabled();
   await page.screenshot({ path: '/results/actions-outcomes-' + testInfo.project.name + '.png' });
   await expectNoOverflow(page);
 });

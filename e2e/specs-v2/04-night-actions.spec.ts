@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { advanceAcceptanceClock } from '../helpers-v2/full-game.ts';
 import { loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
@@ -69,8 +70,14 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     await expect.poll(async () => (await roomView(door, code)).submissionState.some((item: Record<string, any>) => item.requestId === doorBody.requestId && item.windowInstanceId === doorTask.windowInstanceId && item.action === 'SUBMIT_GUARD'), { timeout: 10_000 }).toBe(true);
     await door.evaluate(() => window.scrollTo(0, 0));
     await door.screenshot({ path: `/results/real-night-door-stage-${testInfo.project.name}.png` });
-    await door.locator('.action-dock').scrollIntoViewIfNeeded();
+    await door.getByRole('region', { name: '舞台行动', exact: true }).scrollIntoViewIfNeeded();
     await door.screenshot({ path: `/results/real-night-door-action-${testInfo.project.name}.png` });
+    const clockSocket = process.env.ACCEPTANCE_CLOCK_SOCKET ?? '/clock-control/clock.sock';
+    try {
+      await advanceAcceptanceClock(clockSocket, Math.max(1, doorTask.closesAt - doorView.serverTime + 1));
+    } catch {
+      // In real time environments, proceed to poll
+    }
 
     await expect.poll(async () => (await roomView(death, code)).serverTime >= doorTask.closesAt, { timeout: 45_000, intervals: [1000] }).toBe(true);
     const deathTask = await expect.poll(async () => (await roomView(death, code)).tasks.find((task: Record<string, any>) => task.action === 'EDIT_PROPOSAL') ?? null, { timeout: 90_000, intervals: [1000] }).toBeTruthy();
@@ -92,7 +99,7 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     await expect.poll(async () => { const proposal = (await roomView(death, code)).private?.proposal; return { latest: proposal?.targetPlayerIds.filter((id: string) => id === deathTarget).length ?? 0, effective: proposal?.effective.targetPlayerIds.filter((id: string) => id === deathTarget).length ?? 0 }; }, { timeout: 15_000 }).toEqual({ latest: 2, effective: 2 });
     await death.evaluate(() => window.scrollTo(0, 0));
     await death.screenshot({ path: `/results/real-night-death-stage-${testInfo.project.name}.png` });
-    await death.locator('.action-dock').scrollIntoViewIfNeeded();
+    await death.getByRole('region', { name: '舞台行动', exact: true }).scrollIntoViewIfNeeded();
     await death.screenshot({ path: `/results/real-night-death-action-${testInfo.project.name}.png` });
   } finally {
     for (const item of contexts) await leaveRoom(item.page);

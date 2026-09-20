@@ -19,6 +19,7 @@ export interface ResetAccount extends LoginAccount {
 
 export interface RoomAccount extends LoginAccount {
   userId: string;
+  username: string;
 }
 
 export type FullGameAccount = RoomAccount;
@@ -35,7 +36,20 @@ export function loadAccountCase(projectName: string): AccountCase {
   const all = JSON.parse(readFileSync('/test-access/accounts.json', 'utf8')) as Record<string, AccountCase | undefined>;
   const account = all[projectName];
   if (!account) throw new Error(`missing disposable account case for ${projectName}`);
-  return { ...account, username: account.username ?? account.nickname };
+  const enrich = <T extends LoginAccount>(item?: T): (T & { username: string }) | undefined => {
+    if (!item) return undefined;
+    return {
+      ...item,
+      username: item.username ?? item.nickname,
+    };
+  };
+  return {
+    ...enrich(account)!,
+    lost: enrich(account.lost)!,
+    reset: enrich(account.reset) as any,
+    rooms: account.rooms?.map(enrich as any),
+    fullGame: account.fullGame?.map(enrich as any),
+  };
 }
 
 export function newPasswordFor(_uid: string): string {
