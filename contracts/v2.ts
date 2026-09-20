@@ -25,7 +25,7 @@ export interface RequestIntent { requestId: string }
 export interface MatchIntent extends RequestIntent { gameId: string }
 export interface VoiceCredentials { appId: string; channel: string; uid: number; token: string }
 export interface VoiceSyncResult { synced: true }
-export interface CommandIntent extends MatchIntent { windowInstanceId: string; action: CommandAction; targets?: string[]; revision?: number; direction?: 'asc' | 'desc' }
+export interface CommandIntent extends MatchIntent { windowInstanceId: string; action: CommandAction; targets?: string[]; revision?: number; direction?: 'asc' | 'desc'; confirmSelf?: true; expectedRevision?: number }
 export interface CommandReceipt {
   requestId: string;
   status: 'accepted' | 'rejected';
@@ -74,6 +74,7 @@ export interface PrivateGameDTO {
 export type RoomAction = 'ready' | 'start' | 'promote' | 'leave' | 'transferHost' | 'dissolve' | 'endReview' | 'kickFormal' | 'kickSpectator' | 'inviteSecondScreen' | 'revokeSecondScreen';
 export interface SnapshotCapabilities {
   canPostPublic: boolean; canPostFaction: boolean; canPublishVoice: boolean; canVote: boolean;
+  supportsProposalEditConfirmation?: boolean;
   allowedCommands: CommandAction[];
   commandReasons: Record<CommandAction, string | null>;
   room: Record<RoomAction, Permission>;

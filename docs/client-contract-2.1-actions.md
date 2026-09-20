@@ -25,6 +25,8 @@ JSON请求中的额外顶层字段目前会被忽略，不获得任何身份或�
 | END_LAST_WORDS | last_words | 无 | 本人提前结束遗言 |
 | SUBMIT_HANDOVER | handover | targets，至多1个 | 销毁职务 |
 
+契约2.2可选扩展：当快照声明 `supportsProposalEditConfirmation=true` 时，`EDIT_PROPOSAL` 可同时发送 `confirmSelf:true` 与 `expectedRevision`，用一个幂等请求原子创建方案并确认本人。它不代替其他成员确认，也不改变全员确认和截止兜底规则；无支持标记时仍走上表原有两步语义。
+
 固定夜间时长不会因为所有人提交而缩短。团队只有最新全员确认方案优先；从未全员确认才用最后合法草稿，不能在 UI 把未全员确认一律标成“不会执行”。查验结果按实际角色授权，不把 bool 推断为完整身份。
 
 团队面板的 proposal.revision/targetPlayerIds/confirmedBy 表示最新草稿。`locked` 表示曾存在可执行的全员确认版本，并不等于最新草稿已全员确认。`effective` 明确给出如果此刻截止将执行的 revision、targetPlayerIds 与 basis（unanimous/latest_legal/empty）；后续合法编辑或确认仍可改变它。无方案时revision=null、targets为空；主动空刀是有revision的空目标方案。

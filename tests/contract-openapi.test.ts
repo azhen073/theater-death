@@ -78,6 +78,17 @@ describe('client contract OpenAPI verification', () => {
     }
   });
 
+  it('validates legacy and atomic proposal commands while rejecting incomplete or misplaced proposal options', () => {
+    const check = validator(openapi.components.schemas.Command);
+    const base = { requestId: 'schema-proposal', gameId: 'g1', windowInstanceId: 'w1', action: 'EDIT_PROPOSAL', targets: [] };
+    expect(check(base)).toBe(true);
+    expect(check({ ...base, confirmSelf: true, expectedRevision: 0 })).toBe(true);
+    expect(check({ ...base, confirmSelf: true })).toBe(false);
+    expect(check({ ...base, expectedRevision: 0 })).toBe(false);
+    expect(check({ ...base, confirmSelf: false, expectedRevision: 0 })).toBe(false);
+    expect(check({ ...base, action: 'SUBMIT_GUARD', confirmSelf: true, expectedRevision: 0 })).toBe(false);
+  });
+
   it('validates anonymous catalog/auth/room/snapshot/realtime payloads against OpenAPI schemas', async () => {
     const h = await makeHarness();
     const bootstrap = await request(h, '/api/v2/bootstrap');

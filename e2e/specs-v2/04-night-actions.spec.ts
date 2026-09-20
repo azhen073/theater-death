@@ -92,12 +92,12 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     await expect(death.getByText(/2 \/ 2/)).toBeVisible();
     const deathRequest = death.waitForRequest(request => request.method() === 'POST' && request.url().endsWith('/command'));
     const deathResponse = death.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/command'));
-    await expect(death.getByTestId('stage-submit')).toHaveAccessibleName('发布方案');
+    await expect(death.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认方案');
     await death.getByTestId('stage-submit').click();
     const deathBody = await (await deathRequest).postDataJSON() as Record<string, any>;
     const deathReceipt = await (await deathResponse).json() as Record<string, any>;
     expect(deathReceipt).toMatchObject({ requestId: deathBody.requestId, status: 'accepted' });
-    expect(deathBody).toMatchObject({ gameId: deathView.gameId, windowInstanceId: proposalTask.windowInstanceId, action: 'EDIT_PROPOSAL', targets: [deathTarget, deathTarget] });
+    expect(deathBody).toMatchObject({ gameId: deathView.gameId, windowInstanceId: proposalTask.windowInstanceId, action: 'EDIT_PROPOSAL', targets: [deathTarget, deathTarget], confirmSelf: true, expectedRevision: 0 });
     await expect.poll(async () => { const proposal = (await roomView(death, code)).private?.proposal; return { latest: proposal?.targetPlayerIds.filter((id: string) => id === deathTarget).length ?? 0, effective: proposal?.effective.targetPlayerIds.filter((id: string) => id === deathTarget).length ?? 0 }; }, { timeout: 15_000 }).toEqual({ latest: 2, effective: 2 });
     await death.evaluate(() => window.scrollTo(0, 0));
     await death.screenshot({ path: `/results/real-night-death-stage-${testInfo.project.name}.png` });

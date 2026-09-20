@@ -67,6 +67,12 @@ describe('incremental test selector', () => {
     expect(selected('vite.v2.config.ts')).toEqual(['tests/smoke.test.ts']);
   });
 
+  it('selects the atomic proposal API suite for its contract and command sources', () => {
+    for (const path of ['contracts/v2.ts', 'server/commands.ts', 'server/night-driver.ts', 'server/v2/parse-command.ts', 'server/v2/app.ts', 'server/v2/snapshots.ts']) {
+      expect(selected(path)).toContain('tests/proposal-combined-api.test.ts');
+    }
+  });
+
   it('deduplicates multiple mappings and selects runtime dependencies for package changes', () => {
     expect(selected('docs/openapi-v2.2.json', 'docs/openapi-v2.2.json', 'contracts/catalog.ts')).toEqual([
       'tests/contract-openapi.test.ts', 'tests/client-catalog.test.ts',

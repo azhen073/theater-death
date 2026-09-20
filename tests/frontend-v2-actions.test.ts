@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { CommandAction, CommandIntent, RoomSnapshot, TargetSelection, TaskDTO } from '../contracts/v2.ts';
 import { COMMAND_ACTIONS } from '../contracts/v2.ts';
-import { actionIssue, commandIntent, currentTask, emptyDraft, selectionIssue, speechPreview, targetActions, taskKey, updateSelection } from '../web-v2/src/features/actions/model.ts';
+import { actionIssue, commandIntent, currentTask, emptyDraft, proposalEditAndConfirmIntent, selectionIssue, speechPreview, targetActions, taskKey, updateSelection } from '../web-v2/src/features/actions/model.ts';
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
 
@@ -119,5 +119,18 @@ describe('v2 action model', () => {
   it('uses taskKey to isolate action slots by window and action', () => {
     expect(taskKey({ action: 'SUBMIT_GUARD', windowInstanceId: 'w1' })).toBe('w1/SUBMIT_GUARD');
     expect(taskKey({ action: 'SUBMIT_GUARD', windowInstanceId: 'w2' })).not.toBe(taskKey({ action: 'SUBMIT_GUARD', windowInstanceId: 'w1' }));
+  });
+
+  it('builds the optional atomic proposal envelope only when the server advertises support and both capabilities exist', () => {
+    const view = viewCopy();
+    const task = prepare(view, 'EDIT_PROPOSAL', selection);
+    view.capabilities.supportsProposalEditConfirmation = true;
+    view.capabilities.allowedCommands = ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL'];
+    expect(proposalEditAndConfirmIntent(view, task, { targets: ['p_a'], direction: 'asc', revision: null }, 'combined', 3)).toEqual({
+      requestId: 'combined', gameId: view.gameId, windowInstanceId: task.windowInstanceId,
+      action: 'EDIT_PROPOSAL', targets: ['p_a'], confirmSelf: true, expectedRevision: 3,
+    });
+    view.capabilities.supportsProposalEditConfirmation = false;
+    expect(() => proposalEditAndConfirmIntent(view, task, emptyDraft(), 'unsupported', 3)).toThrow('不能提交并确认');
   });
 });

@@ -3850,6 +3850,10 @@
           "canVote": {
             "type": "boolean"
           },
+          "supportsProposalEditConfirmation": {
+            "type": "boolean",
+            "description": "服务端支持以一次EDIT_PROPOSAL原子创建方案并确认提交者本人。缺省或false时客户端使用旧的编辑/确认两步流程。"
+          },
           "allowedCommands": {
             "type": "array",
             "items": {
@@ -4538,6 +4542,14 @@
               "asc",
               "desc"
             ]
+          },
+          "confirmSelf": {
+            "type": "boolean",
+            "const": true
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
@@ -4545,6 +4557,47 @@
           "gameId",
           "windowInstanceId",
           "action"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "confirmSelf": {},
+                "expectedRevision": {}
+              },
+              "anyOf": [
+                { "properties": { "confirmSelf": {} }, "required": ["confirmSelf"] },
+                { "properties": { "expectedRevision": {} }, "required": ["expectedRevision"] }
+              ]
+            },
+            "then": {
+              "properties": {
+                "action": { "const": "EDIT_PROPOSAL" },
+                "confirmSelf": {},
+                "expectedRevision": {},
+                "targets": {}
+              },
+              "required": ["confirmSelf", "expectedRevision", "targets"]
+            }
+          },
+          {
+            "if": {
+              "properties": { "action": { "const": "EDIT_PROPOSAL" } },
+              "required": ["action"]
+            },
+            "else": {
+              "not": {
+                "properties": {
+                  "confirmSelf": {},
+                  "expectedRevision": {}
+                },
+                "anyOf": [
+                  { "properties": { "confirmSelf": {} }, "required": ["confirmSelf"] },
+                  { "properties": { "expectedRevision": {} }, "required": ["expectedRevision"] }
+                ]
+              }
+            }
+          }
         ],
         "additionalProperties": true
       },

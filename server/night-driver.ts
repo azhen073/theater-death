@@ -378,7 +378,19 @@ export function createNightDriver(options: {
     if (issues.length > 0) {
       return rejectedIssue(issues[0]);
     }
-    pool.set(editProposal(pool.get(), pool.memberIds, command.playerId, command.targets));
+    const before = pool.get();
+    if (command.confirmSelf) {
+      const currentRevision = before.versions.at(-1)?.revision ?? 0;
+      if (currentRevision !== command.expectedRevision) {
+        return rejected('proposal_changed', '团队方案已经更新，请核对后重试');
+      }
+      const edited = editProposal(before, pool.memberIds, command.playerId, command.targets);
+      const revision = edited.versions.at(-1)!.revision;
+      const confirmed = confirmProposal(edited, pool.memberIds, command.playerId, revision);
+      pool.set(confirmed);
+    } else {
+      pool.set(editProposal(before, pool.memberIds, command.playerId, command.targets));
+    }
     return accepted();
   }
 

@@ -7,9 +7,9 @@ import { describeEvent } from '../../presentation/events.ts';
 import { ApiFailure } from '../../transport/http.ts';
 import { navigate } from '../../app/navigation.ts';
 import { useCommands } from '../actions/use-commands.ts';
-import { actionIssue, commandIntent, currentTask, emptyDraft, taskKey, updateSelection } from '../actions/model.ts';
+import { actionIssue, commandIntent, currentTask, emptyDraft, proposalEditAndConfirmIntent, taskKey, updateSelection } from '../actions/model.ts';
 import type { ActionDraft } from '../actions/model.ts';
-import { actionScopeKey, deriveActionPresentation, type SubmissionEvidence } from '../actions/presentation.ts';
+import { actionScopeKey, areTargetSetsEqual, deriveActionPresentation, type SubmissionEvidence } from '../actions/presentation.ts';
 import { StageActionCard } from '../actions/stage-action-card.tsx';
 import { Proposal } from '../actions/proposal.tsx';
 import { Lobby } from '../room/lobby.tsx';
@@ -105,7 +105,14 @@ export function GameScene({
     );
   }, [currentScope, view.submissionState, view.viewVersion]);
 
-  const availableTasks = view.viewer.readOnly ? [] : view.tasks.filter(item => currentTask(view, item));
+  const authorizedTasks = view.viewer.readOnly ? [] : view.tasks.filter(item => currentTask(view, item));
+  const proposalEditTask = authorizedTasks.find(item => item.action === 'EDIT_PROPOSAL') ?? null;
+  const proposalConfirmTask = authorizedTasks.find(item => item.action === 'CONFIRM_PROPOSAL' &&
+    item.windowInstanceId === proposalEditTask?.windowInstanceId) ?? null;
+  const combinedProposal = !!view.capabilities.supportsProposalEditConfirmation && !!proposalEditTask && !!proposalConfirmTask;
+  const availableTasks = combinedProposal
+    ? authorizedTasks.filter(item => item !== proposalConfirmTask)
+    : authorizedTasks;
   const taskSignature = JSON.stringify(availableTasks.map(item => [taskKey(item), item.targets]));
 
   useEffect(() => {
@@ -140,13 +147,16 @@ export function GameScene({
   const prior = task && view.submissionState.find(item => taskKey(item) === taskKey(task));
   const privateView = authorizedPrivate(view);
 
+  const proposal = privateView?.proposal ?? null;
   let draft = task
     ? drafts[taskKey(task)] ??
       (prior
         ? (task.targets
             ? reconcileDraft(task.targets, { targets: [...prior.targets], direction: prior.direction ?? 'asc', revision: prior.revision })
             : { targets: [...prior.targets], direction: prior.direction ?? 'asc', revision: prior.revision })
-        : emptyDraft())
+        : combinedProposal && task.action === 'EDIT_PROPOSAL' && proposal
+          ? { ...emptyDraft(), targets: [...proposal.targetPlayerIds] }
+          : emptyDraft())
     : emptyDraft();
 
   if (task?.action === 'CONFIRM_PROPOSAL') {
@@ -163,11 +173,11 @@ export function GameScene({
     }
   };
 
-  const pending =
-    task &&
-    commands.records.some(
-      record => taskKey(record.intent) === taskKey(task) && !['accepted', 'rejected'].includes(record.status)
-    );
+  const pending = task && commands.records.some(record =>
+    !['accepted', 'rejected'].includes(record.status) &&
+    (taskKey(record.intent) === taskKey(task) || combinedProposal &&
+      record.intent.windowInstanceId === task.windowInstanceId &&
+      ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL'].includes(record.intent.action)));
   const remainingMs = task ? remaining(task.closesAt) : null;
   const locked = !online || !!pending || (remainingMs !== null && remainingMs === 0);
 
@@ -177,7 +187,7 @@ export function GameScene({
     }
   };
 
-  const submitDraft = (targetTask: TaskDTO, submittedDraft: ActionDraft) => {
+  const submitDraft = (targetTask: TaskDTO, submittedDraft: ActionDraft, buildIntent = commandIntent) => {
     if (!targetTask || locked) return;
     if (!actionIssue(view, targetTask, submittedDraft)) {
       const reqId = newRequestId();
@@ -193,7 +203,7 @@ export function GameScene({
           firstMatchingSnapshotVersion: null,
         },
       ]);
-      void commands.submit(commandIntent(view, targetTask, submittedDraft, reqId));
+      void commands.submit(buildIntent(view, targetTask, submittedDraft, reqId));
     }
   };
 
@@ -217,7 +227,52 @@ export function GameScene({
     }
   };
 
-  const presentation = deriveActionPresentation({
+  const proposalModified = combinedProposal && task?.action === 'EDIT_PROPOSAL' && proposal
+    ? !areTargetSetsEqual(draft.targets, proposal.targetPlayerIds) : false;
+  const proposalConfirmedBySelf = !!proposal && !!privateView?.self.playerId &&
+    proposal.confirmedBy.includes(privateView.self.playerId);
+  const proposalConfirmRecord = combinedProposal && proposalConfirmTask && proposal
+    ? commands.records.findLast(record => taskKey(record.intent) === taskKey(proposalConfirmTask) &&
+        record.intent.revision === proposal.revision && record.status !== 'rejected')
+    : null;
+  const proposalConfirmationSyncing = !!proposalConfirmRecord && !proposalConfirmedBySelf;
+  const proposalEditRecord = combinedProposal && proposalEditTask && proposal
+    ? commands.records.findLast(record => taskKey(record.intent) === taskKey(proposalEditTask) &&
+        record.intent.confirmSelf === true && record.intent.expectedRevision === proposal.revision &&
+        record.status !== 'rejected')
+    : null;
+  const proposalEditSyncing = !!proposalEditRecord;
+  const proposalSyncLabel = proposalEditRecord?.status === 'sending'
+    ? '正在提交…'
+    : proposalEditRecord && !['accepted', 'rejected'].includes(proposalEditRecord.status)
+      ? '方案结果待确认'
+      : '方案已提交，正在同步';
+  const confirmationSyncLabel = proposalConfirmRecord?.status === 'sending'
+    ? '正在提交…'
+    : proposalConfirmRecord && !['accepted', 'rejected'].includes(proposalConfirmRecord.status)
+      ? '确认结果待定'
+      : '同意已提交，正在同步';
+  const submitProposal = () => {
+    if (!combinedProposal || !proposalEditTask || !proposalConfirmTask || !proposal) return submit();
+    if (proposalConfirmationSyncing || proposalEditSyncing) return;
+    if (proposal.revision > 0 && !proposalModified) {
+      const confirmDraft = { ...emptyDraft(), revision: proposal.revision };
+      submitDraft(proposalConfirmTask, confirmDraft);
+      return;
+    }
+    submitDraft(proposalEditTask, draft, (currentView, targetTask, currentDraft, requestId) =>
+      proposalEditAndConfirmIntent(currentView, targetTask, currentDraft, requestId, proposal.revision));
+  };
+  const submitEmptyProposal = () => {
+    if (!combinedProposal || !proposalEditTask || !proposal) return submitEmpty();
+    if (proposal.revision > 0 && !proposalModified && draft.targets.length === 0) return submitProposal();
+    const empty = { ...draft, targets: [] };
+    setDraft(empty);
+    submitDraft(proposalEditTask, empty, (currentView, targetTask, currentDraft, requestId) =>
+      proposalEditAndConfirmIntent(currentView, targetTask, currentDraft, requestId, proposal.revision));
+  };
+
+  const basePresentation = deriveActionPresentation({
     view,
     task,
     draft,
@@ -226,6 +281,31 @@ export function GameScene({
     remainingMs,
     evidence,
   });
+  const presentation = combinedProposal && task?.action === 'EDIT_PROPOSAL' && proposal
+    ? {
+        ...basePresentation,
+        title: '团队攻击',
+        primary: basePresentation.primary ? {
+          ...basePresentation.primary,
+          label: proposal.revision > 0 && !proposalModified
+            ? proposalConfirmedBySelf ? `已同意 v${proposal.revision}`
+              : proposalConfirmationSyncing ? confirmationSyncLabel
+              : `同意方案 v${proposal.revision}`
+            : proposalEditSyncing ? proposalSyncLabel : '发布并确认方案',
+          disabled: locked || !!actionIssue(view, task, draft) ||
+            proposalEditSyncing || proposal.revision > 0 && !proposalModified && (proposalConfirmedBySelf || proposalConfirmationSyncing),
+        } : null,
+        emptyAction: basePresentation.emptyAction ? {
+          ...basePresentation.emptyAction,
+          label: proposal.revision > 0 && !proposalModified && draft.targets.length === 0
+            ? proposalConfirmedBySelf ? `已同意 v${proposal.revision}`
+              : proposalConfirmationSyncing ? confirmationSyncLabel
+              : `同意方案 v${proposal.revision}`
+            : '发布并确认空刀',
+          disabled: locked || proposalEditSyncing || proposal.revision > 0 && !proposalModified && (proposalConfirmedBySelf || proposalConfirmationSyncing),
+        } : null,
+      }
+    : basePresentation;
 
   useEffect(() => {
     const signature = presentation.syncConflictKey;
@@ -278,10 +358,11 @@ export function GameScene({
         availableTasks={availableTasks}
         countdown={task ? formatCountdown(remaining(task.closesAt)) : undefined}
         targetChanged={draftState.changed}
+        proposalCombined={combinedProposal}
         onSelectTask={setActiveKey}
         onDraftChange={setDraft}
-        onSubmit={submit}
-        onSubmitEmpty={submitEmpty}
+        onSubmit={combinedProposal && task?.action === 'EDIT_PROPOSAL' ? submitProposal : submit}
+        onSubmitEmpty={combinedProposal && task?.action === 'EDIT_PROPOSAL' ? submitEmptyProposal : submitEmpty}
         onRetry={id => void commands.retry(id)}
         onQuery={id => void commands.query(id)}
         onRefresh={() => void refresh()}

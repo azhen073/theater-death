@@ -13,6 +13,8 @@ export type NightCommand =
       readonly type: 'EDIT_PROPOSAL';
       readonly playerId: string;
       readonly targets: readonly string[];
+      readonly confirmSelf?: true;
+      readonly expectedRevision?: number;
     }
   | {
       readonly type: 'CONFIRM_PROPOSAL';

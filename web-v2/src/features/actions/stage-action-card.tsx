@@ -15,6 +15,7 @@ export interface StageActionCardProps {
   availableTasks: TaskDTO[];
   countdown?: string;
   targetChanged?: boolean;
+  proposalCombined?: boolean;
   children?: ReactNode;
   onSelectTask: (key: string) => void;
   onDraftChange: (draft: ActionDraft) => void;
@@ -33,6 +34,7 @@ export function StageActionCard({
   availableTasks,
   countdown,
   targetChanged,
+  proposalCombined,
   children,
   onSelectTask,
   onDraftChange,
@@ -66,7 +68,7 @@ export function StageActionCard({
               aria-pressed={!!task && taskKey(task) === taskKey(item)}
               onClick={() => onSelectTask(taskKey(item))}
             >
-              {actionLabels[item.action]}
+              {proposalCombined && item.action === 'EDIT_PROPOSAL' ? '团队攻击' : actionLabels[item.action]}
             </button>
           ))}
         </div>

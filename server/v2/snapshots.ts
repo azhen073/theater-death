@@ -88,6 +88,7 @@ export class RoomSnapshots {
     const gameCaps = readOnly ? noGameCapabilities() : subjectCaps;
     const caps: SnapshotCapabilities = {
       ...gameCaps,
+      supportsProposalEditConfirmation: true,
       allowedCommands: [...gameCaps.allowedCommands],
       commandReasons: Object.fromEntries(COMMAND_ACTIONS.map((action) => [action, gameCaps.allowedCommands.includes(action) ? null : readOnly ? 'spectator_read_only' : runtime ? 'action_unavailable' : 'game_not_started'])) as SnapshotCapabilities['commandReasons'],
       room: this.roomCapabilities(room, member),
