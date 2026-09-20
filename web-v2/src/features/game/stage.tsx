@@ -33,6 +33,8 @@ export function Stage({
   const isCandidate = seats.length <= 13 && !needsFlowLayout;
 
   const [layoutMode, setLayoutMode] = useState<StageLayout>('ring');
+  const layoutModeRef = useRef<StageLayout>(layoutMode);
+  layoutModeRef.current = layoutMode;
   const flowLockedRef = useRef(false);
   const stageRef = useRef<HTMLElement | null>(null);
   const actionSlotRef = useRef<HTMLDivElement | null>(null);
@@ -49,41 +51,18 @@ export function Stage({
 
   const cycleKey = `${currentTaskKey}:${seatComposition}:${view.viewer.readOnly}`;
 
-  const evaluateLayout = useCallback(() => {
-    if (!isCandidate) {
-      if (layoutMode !== 'flow') setLayoutMode('flow');
-      return;
-    }
-    if (typeof window !== 'undefined' && window.innerWidth <= 1180) {
-      if (layoutMode !== 'flow') setLayoutMode('flow');
-      return;
-    }
+  // Only trustworthy while the ring geometry is actually rendered: a card measured in flow position always fails.
+  const measureRingFit = useCallback((): boolean | null => {
     const stageEl = stageRef.current;
     const cardEl = actionSlotRef.current;
     const seatsEl = seatsRef.current;
-    if (!stageEl || !cardEl || !seatsEl) return;
+    if (!stageEl || !cardEl || !seatsEl) return null;
 
     const stageRect = stageEl.getBoundingClientRect();
     const cardRect = cardEl.getBoundingClientRect();
 
     if (isDegenerateRect(stageRect) || isDegenerateRect(cardRect)) {
-      return;
-    }
-
-    const widthChanged = lastStageWidth.current > 0 && Math.abs(stageRect.width - lastStageWidth.current) > 1;
-    if (widthChanged) {
-      flowLockedRef.current = false;
-      lastStageWidth.current = stageRect.width;
-      if (layoutMode !== 'ring') {
-        setLayoutMode('ring');
-        return;
-      }
-    }
-    lastStageWidth.current = stageRect.width;
-
-    if (flowLockedRef.current) {
-      if (layoutMode !== 'flow') setLayoutMode('flow');
-      return;
+      return null;
     }
 
     const seatNodes = seatsEl.querySelectorAll<HTMLElement>(
@@ -98,30 +77,50 @@ export function Stage({
     }
 
     const zoom = stageEl.offsetWidth > 0 ? stageRect.width / stageEl.offsetWidth : 1;
-    const gap = 8 * zoom;
+    return ringFits(cardRect, seatRects, stageRect, 8 * zoom);
+  }, []);
 
-    const fits = ringFits(cardRect, seatRects, stageRect, gap);
-    if (!fits) {
+  // Verify synchronously after every commit that keeps the ring candidate on screen, before paint.
+  useLayoutEffect(() => {
+    if (!isCandidate || layoutMode !== 'ring') return;
+    if (measureRingFit() === false) {
       flowLockedRef.current = true;
-      if (layoutMode !== 'flow') setLayoutMode('flow');
-    } else if (layoutMode !== 'ring') {
-      setLayoutMode('ring');
+      setLayoutMode('flow');
     }
-  }, [isCandidate, layoutMode, selectionSignature, toolSignature]);
+  }, [isCandidate, layoutMode, cycleKey, selectionSignature, toolSignature, measureRingFit]);
+
+  const evaluateLayout = useCallback(() => {
+    if (!isCandidate || (typeof window !== 'undefined' && window.innerWidth <= 1180)) {
+      if (layoutModeRef.current !== 'flow') setLayoutMode('flow');
+      return;
+    }
+    const stageEl = stageRef.current;
+    if (!stageEl) return;
+    const stageRect = stageEl.getBoundingClientRect();
+    if (isDegenerateRect(stageRect)) return;
+    if (lastStageWidth.current > 0 && Math.abs(stageRect.width - lastStageWidth.current) > 1) {
+      flowLockedRef.current = false;
+    }
+    lastStageWidth.current = stageRect.width;
+    if (layoutModeRef.current === 'flow') {
+      if (flowLockedRef.current) return;
+      setLayoutMode('ring');
+      return;
+    }
+    if (measureRingFit() === false) {
+      flowLockedRef.current = true;
+      setLayoutMode('flow');
+    }
+  }, [isCandidate, measureRingFit]);
 
   useLayoutEffect(() => {
     if (cycleKey !== lastCycleKey.current) {
       lastCycleKey.current = cycleKey;
       flowLockedRef.current = false;
       lastStageWidth.current = 0;
-      const nextMode = isCandidate ? 'ring' : 'flow';
-      if (layoutMode !== nextMode) {
-        setLayoutMode(nextMode);
-        return;
-      }
     }
     evaluateLayout();
-  }, [cycleKey, evaluateLayout, isCandidate]);
+  }, [cycleKey, evaluateLayout]);
 
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return;
@@ -151,7 +150,7 @@ export function Stage({
       window.removeEventListener('resize', scheduleEvaluation);
       document.removeEventListener('visibilitychange', scheduleEvaluation);
     };
-  }, [evaluateLayout]);
+  }, [evaluateLayout, cycleKey, selectionSignature, toolSignature]);
 
   const ring = isCandidate && layoutMode === 'ring';
   return (

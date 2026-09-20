@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loadGameFixture, loadReviewDocument, loadReviewFixture, pushFixture, resizeSeats, type GameHarnessFixture } from '../helpers-v2/game.ts';
+import { alivePlayers, loadGameFixture, loadReviewDocument, loadReviewFixture, pushFixture, resizeSeats, taskFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
 
 async function mountPlaying(page: Page, fixture: GameHarnessFixture) {
   let current = fixture;
@@ -199,6 +199,51 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.getAttribute('aria-label'))).toBe('查看1号玩家信息');
+});
+
+async function ringWithinFrames(page: Page, frames: number): Promise<boolean> {
+  return page.evaluate(async count => {
+    for (let index = 0; index < count; index += 1) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+    }
+    return document.querySelector('.theater-stage')?.classList.contains('theater-stage--ring') ?? false;
+  }, frames);
+}
+
+test('窄屏往返与高卡片回退后，加宽都在数帧内确定性恢复环形布局', async ({ page }) => {
+  const base = loadGameFixture('night-door-full.json');
+  const mounted = await mountPlaying(page, base);
+  const stage = page.locator('.theater-stage');
+  const isRing = () => stage.evaluate(element => element.classList.contains('theater-stage--ring'));
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(isRing).toBe(false);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  expect(await ringWithinFrames(page, 4)).toBe(true);
+  await expectActionClearOfSeatsAndTools(page);
+
+  await page.setViewportSize({ width: 1181, height: 900 });
+  expect(await ringWithinFrames(page, 4)).toBe(true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  expect(await ringWithinFrames(page, 4)).toBe(true);
+  await expectActionClearOfSeatsAndTools(page);
+
+  const resized = resizeSeats(base.view, 13);
+  const tall = taskFixture(resized, 'SUBMIT_LAIKE', {
+    playerIds: alivePlayers(resized).slice(0, 6), maxTargets: 3, allowRepeated: true, canSkip: true, forbiddenPairs: [],
+  }, 'fixture:tall');
+  tall.view.submissionState = [{
+    action: 'SUBMIT_LAIKE', windowInstanceId: 'fixture:tall',
+    targets: [resized.public!.seats[0]!.playerId, resized.public!.seats[1]!.playerId],
+    revision: null, direction: null, requestId: 'fixture-tall-req', acceptedAt: tall.view.serverTime - 1000,
+  }];
+  await mounted.setFixture(tall);
+  await page.setViewportSize({ width: 1181, height: 900 });
+  await expect.poll(isRing).toBe(false);
+  await expectActionClearOfSeatsAndTools(page);
+  await page.setViewportSize({ width: 1600, height: 900 });
+  expect(await ringWithinFrames(page, 4)).toBe(true);
+  await expectActionClearOfSeatsAndTools(page);
 });
 
 test('模拟软键盘缩小视口时聊天输入可见且焦点不被抢走，舞台行动不遮挡聊天', async ({ page }) => {
