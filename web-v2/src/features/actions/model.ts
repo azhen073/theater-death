@@ -51,6 +51,15 @@ export function commandIntent(view: RoomSnapshot, task: TaskDTO, draft: ActionDr
   return result;
 }
 
+export function proposalEditAndConfirmIntent(view: RoomSnapshot, task: TaskDTO, draft: ActionDraft, requestId: string, expectedRevision: number): CommandIntent {
+  const intent = commandIntent(view, task, draft, requestId);
+  if (task.action !== 'EDIT_PROPOSAL' || !view.capabilities.supportsProposalEditConfirmation ||
+    !view.capabilities.allowedCommands.includes('CONFIRM_PROPOSAL') || !Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+    throw new Error('当前不能提交并确认团队方案。');
+  }
+  return { ...intent, confirmSelf: true, expectedRevision };
+}
+
 export function speechPreview(view: RoomSnapshot, task: TaskDTO, draft: ActionDraft): SeatDTO[] {
   if (task.action !== 'DESIGNATE_SPEECH' || !currentTask(view, task) || !task.targets || draft.targets.length !== 1) return [];
   const candidates = (view.public?.seats ?? []).filter(seat => task.targets!.playerIds.includes(seat.playerId)).sort((a, b) => a.seat - b.seat);

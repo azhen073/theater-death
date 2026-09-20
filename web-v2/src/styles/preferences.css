@@ -12,8 +12,6 @@ html[data-reduced-motion='true'] *::after {
 .setting-row small { display: block; margin-top: 6px; }
 .modal-game-context { top: 0; }
 .chat-composer, .chat-composer textarea, input { scroll-margin-bottom: 130px; }
-.mobile-action-bar { bottom: var(--keyboard-inset, 0px); }
-html[data-keyboard-open='true'] .mobile-action-summary span { display: none; }
 .death-notice {
   position: fixed; top: 105px; right: 24px; z-index: 20;
   display: flex; align-items: center; gap: 10px; max-width: min(340px, calc(100vw - 32px));

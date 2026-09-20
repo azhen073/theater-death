@@ -13,3 +13,9 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 管理员接口见 `openapi-admin-v2.2.json`：注册开关、UID/昵称搜索、改昵称、停用/启用、直接设置新密码和永久删除。账号只在没有任何关联进行中对局时可删除。删除撤销凭证、会话及当前房间关系；完成对局保留开局时的UID、昵称、行动和交流，头像显示默认图。
 
 旧schema3迁移到schema4时保留内部ID、密码哈希、会话、头像和资料版本；按创建时间及内部ID稳定分配UID，旧账号名成为初始昵称。注册邀请码及密码重置码不再提供；房间码和私人第二屏邀请不受影响。
+
+## 团队方案原子提交扩展
+
+`POST /api/v2/rooms/{code}/command` 的 `EDIT_PROPOSAL` 可选携带 `confirmSelf:true` 和 `expectedRevision`（非负整数）。两字段必须同时出现，并显式提供 `targets`；服务端在房间串行队列中校验当前最新版本等于 `expectedRevision`，再原子创建新版本并确认提交者本人。成功仍返回一个既有 `CommandReceipt`，同一请求ID重放不会创建重复版本。
+
+快照能力 `capabilities.supportsProposalEditConfirmation=true` 表示支持此扩展，不代表当前玩家具有编辑或确认权限。缺省或 false 时，客户端继续使用独立的 `EDIT_PROPOSAL` 与 `CONFIRM_PROPOSAL`。组合参数错误返回 `invalid_proposal_options`；依据版本已变化返回 `proposal_changed`，状态不产生部分写入。旧的、不带扩展字段的编辑语义保持不变。

@@ -19,6 +19,7 @@
 | 解散与遗弃回收（v2.0.1-beta） | ✅ | 解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房主继任）；**大厅房主操作只保留「解散房间」**；遗弃房间 **24 小时回收**（v2 全员离线 / v1 房间无活动）；`tests/room-governance`、`empty-rooms`、`v2-maintenance`、`server-api`(+3)、`room-operation-api` 相应更新；新增 E2E `specs/11-dissolve.spec.ts`（v1 解散）与 `specs-v2/02-rooms.spec.ts` 的「房主大厅退出=解散」；`empty-rooms` 增加 `forget` 兜底用例、`frontend-v2-room-model` 增加 `hostExitDissolves` 用例；全量 84 文件 527 例 |
 | 语音媒体服务（声网替换） | ✅ | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；**2026-09-19 真实云联调与 E2E 语音 3 例全过**；服务器更新待执行（见接续指引） |
 | PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
+| 舞台行动 UX（PR #5 本地续作） | ✅ | PR A 舞台内行动与竖屏已提交；A+边界修复本地提交`32fa949`；B新增`EDIT_PROPOSAL`原子“发布并确认本人”、版本冲突/幂等/旧服务端回退及统一团队入口。Luna独立验证：8文件64单测、双浏览器03/04/10共22例、类型与构建全部通过；尚未推送，未合并/部署。 |
 
 ## 接续指引（compact 后先读这里）
 
@@ -33,6 +34,7 @@
    - **服务器更新仍待执行**：`cd ~/theater-death && git pull` → `.env` 加 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE` / `AGORA_CUSTOMER_KEY` / `AGORA_CUSTOMER_SECRET`（删旧 LiveKit 行；`PUBLIC_BASE_URL` / `SESSION_SECRET` / `SESSION_COOKIE_SECURE` 保持服务器值不动）→ `./deploy/update.sh`；此前里程碑与语音链路均已就绪。
    - 本地分支 `pr3-review` 为 PR#3 head（审查用，暂留）；`deploy/livekit.yaml` / `livekit-public.yaml` 旧残留**已删除**（v1.9 另清理了 `frontend-local.ps1` 的 `livekit` 服务与各 compose 的 `LIVEKIT_*` / `VOICE_SERVICE_URL` / `VOICE_ADMIN_URL` 环境变量）。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
+5. 舞台UX本地断点：A+已保存为`32fa949`；B在其上独立提交，团队“发布并确认”只确认作者本人，其他成员仍逐版确认。PR #5仍未合并；是否推送由后续明确指令决定。
 
 ## 仓库与交付
 

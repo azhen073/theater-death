@@ -87,7 +87,12 @@ export async function submitTargetInBrowser(page: Page, view: Record<string, any
   const requestPromise = page.waitForRequest(request => request.method() === 'POST' && request.url().endsWith(`/api/v2/rooms/${view.room.code}/command`));
   const responsePromise = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith(`/api/v2/rooms/${view.room.code}/command`));
   await target.click();
-  await page.getByRole('button', { name: '确认提交', exact: true }).click();
+  const submit = page.getByTestId('stage-submit');
+  const submitLabels: Record<string, string> = { SUBMIT_GUARD: '确认守护', SUBMIT_LAIKE: '确认刺杀', EDIT_PROPOSAL: '发布方案', SUBMIT_CHECK: '提交查验', SUBMIT_RESCUE: '确认还魂曲', SUBMIT_REVIVE: '确认回归对象', SUBMIT_ELECTION_VOTE: '提交天理投票', DESIGNATE_SPEECH: '确认发言顺序', SUBMIT_DAY_VOTE: '提交放逐投票', SUBMIT_HANDOVER: '确认移交天理' };
+  const submitLabel = submitLabels[action];
+  if (!submitLabel) throw new Error(`${action}: no stage submit label is defined`);
+  await expect(submit).toHaveAccessibleName(submitLabel);
+  await submit.click();
   const sent = await requestPromise;
   const receipt = await (await responsePromise).json() as Record<string, any>;
   const body = sent.postDataJSON() as Record<string, any>;

@@ -41,6 +41,21 @@ describe('incremental test selector', () => {
     expect(frontend).toContain('tests/frontend-v2-voice-session.test.ts');
   });
 
+  it('selects action presentation and stage geometry regression suites', () => {
+    for (const path of [
+      'web-v2/src/features/actions/presentation.ts',
+      'web-v2/src/features/actions/stage-action-card.tsx',
+      'web-v2/src/features/game/stage-layout.ts',
+    ]) {
+      const suites = selected(path);
+      expect(suites).toContain('tests/frontend-v2-action-presentation.test.ts');
+      expect(suites).toContain('tests/frontend-v2-stage-layout.test.ts');
+      expect(suites).toContain('tests/frontend-v2-actions.test.ts');
+      expect(suites).toContain('tests/frontend-v2-avatar.test.ts');
+      expect(suites).toContain('tests/frontend-v2-voice-session.test.ts');
+    }
+  });
+
   it('maps remaining entry, admin, and infra files to their reviewed suites', () => {
     expect(selected('server/v2/frontend-app.ts')).toEqual(['tests/frontend-v2-static.test.ts']);
     expect(selected('server/v2/admin-router.ts')).toEqual(['tests/admin-api.test.ts']);
@@ -50,6 +65,12 @@ describe('incremental test selector', () => {
     expect(selected('tests/deploy-frontend-local.tests.ps1')).toEqual(['tests/smoke.test.ts']);
     expect(selected('vite.config.ts')).toEqual(['tests/smoke.test.ts']);
     expect(selected('vite.v2.config.ts')).toEqual(['tests/smoke.test.ts']);
+  });
+
+  it('selects the atomic proposal API suite for its contract and command sources', () => {
+    for (const path of ['contracts/v2.ts', 'server/commands.ts', 'server/night-driver.ts', 'server/v2/parse-command.ts', 'server/v2/app.ts', 'server/v2/snapshots.ts']) {
+      expect(selected(path)).toContain('tests/proposal-combined-api.test.ts');
+    }
   });
 
   it('deduplicates multiple mappings and selects runtime dependencies for package changes', () => {

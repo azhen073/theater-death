@@ -285,13 +285,25 @@ export function createV2App(deps: V2Deps) {
         const currentWindow = runtime.driver?.windows().some((w) => w.instanceId === command.windowInstanceId);
         const cap = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now()).capabilities;
         if (currentWindow && !cap?.allowedCommands.includes(command.type)) return { requestId, status: 'rejected' as const, code: 'action_forbidden', message: '当前无此行动权限' };
+        if (command.type === 'EDIT_PROPOSAL' && command.confirmSelf && !cap?.allowedCommands.includes('CONFIRM_PROPOSAL')) {
+          return { requestId, status: 'rejected' as const, code: 'action_forbidden', message: '当前无此确认权限' };
+        }
         const result = runtime.driver!.submit(command);
-        if (result.accepted) room.rememberSubmission(id, {
-          action: command.type, windowInstanceId: command.windowInstanceId!, requestId, acceptedAt: clock.now(),
-          targets: Array.isArray(req.body.targets) ? [...req.body.targets] : [],
-          revision: typeof req.body.revision === 'number' ? req.body.revision : null,
-          direction: req.body.direction === 'asc' || req.body.direction === 'desc' ? req.body.direction : null,
-        });
+        if (result.accepted) {
+          const acceptedAt = clock.now();
+          const combinedRevision = command.type === 'EDIT_PROPOSAL' && command.confirmSelf
+            ? runtime.driver!.proposalState(id)?.revision ?? null : null;
+          room.rememberSubmission(id, {
+            action: command.type, windowInstanceId: command.windowInstanceId!, requestId, acceptedAt,
+            targets: Array.isArray(req.body.targets) ? [...req.body.targets] : [],
+            revision: combinedRevision ?? (typeof req.body.revision === 'number' ? req.body.revision : null),
+            direction: req.body.direction === 'asc' || req.body.direction === 'desc' ? req.body.direction : null,
+          });
+          if (command.type === 'EDIT_PROPOSAL' && command.confirmSelf && combinedRevision !== null) room.rememberSubmission(id, {
+            action: 'CONFIRM_PROPOSAL', windowInstanceId: command.windowInstanceId!, requestId, acceptedAt,
+            targets: [], revision: combinedRevision, direction: null,
+          });
+        }
         refresh(room);
         return { requestId, status: result.accepted ? 'accepted' as const : 'rejected' as const, code: result.code, message: result.message };
       } catch (error) {

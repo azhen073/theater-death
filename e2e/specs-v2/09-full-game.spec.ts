@@ -47,7 +47,8 @@ async function driveAuthorizedWindows(requests: APIRequestContext[], hostPage: a
           const request = hostPage.waitForRequest((item: any) => item.method() === 'POST' && item.url().endsWith('/command'));
           const response = hostPage.waitForResponse((item: any) => item.request().method() === 'POST' && item.url().endsWith('/command'));
           await hostPage.getByRole('button', { name: new RegExp(`^${seat.seat}号 .*可选目标`) }).click();
-          await hostPage.getByRole('button', { name: '确认提交', exact: true }).click();
+          await expect(hostPage.getByTestId('stage-submit')).toHaveAccessibleName('提交放逐投票');
+          await hostPage.getByTestId('stage-submit').click();
           const sentBody = await (await request).postDataJSON();
           receipt = await (await response).json();
           expect(sentBody).toMatchObject({ gameId: body.gameId, windowInstanceId: body.windowInstanceId, action: body.action, targets: body.targets });

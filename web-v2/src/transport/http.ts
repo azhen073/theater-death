@@ -68,6 +68,7 @@ const messages: Record<string, string> = {
   stale_game: '已经进入新的对局，旧操作已失效。', stale_window: '行动阶段已变化，请查看当前任务。',
   window_closed: '本次行动时间已结束，正在同步。', request_id_reused: '这次请求的内容已改变，请核对原操作结果。',
   action_forbidden: '当前不能执行此行动。', chat_forbidden: '当前频道暂不可发送消息。',
+  invalid_proposal_options: '团队方案提交参数无效，请刷新后重试。', proposal_changed: '团队方案已经更新，请核对当前版本后重试。',
   not_host: '你的房主管理权限已变化。', seat_control_required: '此设备已没有操作权限。',
   room_access_required: '请重新确认当前房间身份。', lobby_required: '此操作只能在大厅进行。', review_required: '当前不在复盘阶段。',
   invalid_ruleset: '角色组合不符合规则，请检查配置。', player_count_mismatch: '人数与角色数量不一致。',

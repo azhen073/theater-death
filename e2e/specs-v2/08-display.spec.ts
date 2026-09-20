@@ -28,6 +28,21 @@ async function expectNoOverflow(page: Page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
+async function expectActionClearOfSeatsAndTools(page: Page) {
+  await expect.poll(async () => page.evaluate(() => {
+      const card = document.querySelector('.stage-action-slot')?.getBoundingClientRect();
+      if (!card || card.width <= 0 || card.height <= 0) return 'action card is not measurable';
+      for (const element of document.querySelectorAll('.seat-main, .seat-tools, .seat-count, .seat-sheriff')) {
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        if (card.left - 1 < rect.right && card.right + 1 > rect.left && card.top - 1 < rect.bottom && card.bottom + 1 > rect.top) {
+          return `${element.className}: ${JSON.stringify({ card: { left: card.left, top: card.top, right: card.right, bottom: card.bottom }, rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } })}`;
+        }
+      }
+      return null;
+    }), { timeout: 5_000 }).toBeNull();
+}
+
 function deathFixture(base: GameHarnessFixture, type: 'deaths_announced' | 'elimination_announced', cursor: number): GameHarnessFixture {
   const next = structuredClone(base);
   next.view.public!.events = [...next.view.public!.events, {
@@ -116,37 +131,50 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   const base = loadGameFixture('night-door-full.json');
   const mounted = await mountPlaying(page, base);
   await page.setViewportSize({ width: 1440, height: 900 });
-  const fixedActions = page.getByRole('region', { name: '当前行动快捷栏' });
-  await expect(fixedActions).toBeVisible();
-  await expect(fixedActions).toContainText('选择守护目标');
-  await expect(fixedActions).toContainText(/00:\d{2}/);
-  await expect(fixedActions.getByRole('button', { name: /确认空守|确认提交/ })).toBeVisible();
-  await expect(page.locator('.action-dock > .button-row > .button--primary')).toBeHidden();
-  const initialFixedBox = await fixedActions.boundingBox();
-  expect(initialFixedBox).not.toBeNull();
-  expect(initialFixedBox!.y).toBeGreaterThanOrEqual(0);
-  expect(initialFixedBox!.y + initialFixedBox!.height).toBeLessThanOrEqual(900);
-  expect(await page.evaluate(() => window.scrollY)).toBe(0);
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
-  const scrolledFixedBox = await fixedActions.boundingBox();
-  expect(scrolledFixedBox).not.toBeNull();
-  expect(scrolledFixedBox!.y).toBeGreaterThanOrEqual(0);
-  expect(scrolledFixedBox!.y + scrolledFixedBox!.height).toBeLessThanOrEqual(900);
+  const stageActions = page.getByRole('region', { name: '舞台行动', exact: true });
+  await expect(stageActions).toBeVisible();
+  await expect(stageActions).toContainText('选择守护目标');
+  await expect(stageActions).toContainText(/00:\d{2}/);
+  await expect(stageActions.getByTestId('stage-submit')).toHaveAccessibleName(/确认空守|确认守护/);
+  await expect(page.locator('.mobile-action-bar')).toHaveCount(0);
 
-  const firstTarget = page.getByRole('button', { name: '1号 http_user_10，可选目标' });
+  const firstSeat = base.view.public!.seats.find(s => s.seat === 1)!;
+  const firstTarget = page.getByRole('button', { name: `1号 ${firstSeat.nickname}，可选目标` });
   await firstTarget.click();
   const selectedSummary = page.locator('.selection-summary');
-  await expect(selectedSummary).toContainText('1号 http_user_10');
+  await expect(selectedSummary).toContainText(`1号 ${firstSeat.nickname}`);
   const settings = await openSettings(page);
   await settings.getByLabel('界面缩放').selectOption('110');
   await page.getByRole('button', { name: '关闭' }).click();
-  for (const size of [{ width: 320, height: 740 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 1440, height: 900 }]) {
-    await page.setViewportSize(size);
+
+  // Sequential viewport resizing across key breakpoints
+  const sizes = [
+    { width: 1440, height: 900, cols: 0 },
+    { width: 1280, height: 800, cols: 0 },
+    { width: 1240, height: 800, cols: 0 },
+    { width: 1181, height: 900, cols: 0 },
+    { width: 1180, height: 800, cols: 4 },
+    { width: 681, height: 800, cols: 4 },
+    { width: 680, height: 750, cols: 3 },
+    { width: 390, height: 844, cols: 3 },
+    { width: 320, height: 740, cols: 3 },
+    { width: 844, height: 390, cols: 4 },
+    { width: 1440, height: 900, cols: 0 },
+  ];
+
+  for (const size of sizes) {
+    await page.setViewportSize({ width: size.width, height: size.height });
     await expectNoOverflow(page);
     await expect(page.getByRole('heading', { name: /夜幕降临|晨间公告/ })).toBeVisible();
-    await expect(selectedSummary).toContainText('1号 http_user_10');
+    await expect(selectedSummary).toContainText(`1号 ${firstSeat.nickname}`);
+    await expect(page.getByRole('region', { name: '舞台行动', exact: true })).toHaveCount(1);
+    await expectActionClearOfSeatsAndTools(page);
+    if (size.cols > 0) {
+      const colCount = await page.locator('.stage-seats').evaluate(el => window.getComputedStyle(el).gridTemplateColumns.split(' ').length);
+      expect(colCount).toBe(size.cols);
+    }
   }
+
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: `/results/display-desktop-${testInfo.project.name}.png`, fullPage: false });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -173,7 +201,7 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   await expect.poll(() => page.evaluate(() => (document.activeElement as HTMLElement | null)?.getAttribute('aria-label'))).toBe('查看1号玩家信息');
 });
 
-test('模拟软键盘缩小视口时聊天输入与固定行动条可见且焦点不被抢走', async ({ page }) => {
+test('模拟软键盘缩小视口时聊天输入可见且焦点不被抢走，舞台行动不遮挡聊天', async ({ page }) => {
   const fixture = loadGameFixture('night-door-full.json');
   fixture.view.capabilities.canPostPublic = true;
   const mounted = await mountPlaying(page, fixture);
@@ -182,17 +210,15 @@ test('模拟软键盘缩小视口时聊天输入与固定行动条可见且焦�
   await input.focus();
   await page.setViewportSize({ width: 390, height: 500 });
   await expect(input).toBeFocused();
-  await expect(page.locator('.mobile-action-bar')).toBeVisible();
+  await expect(page.locator('.mobile-action-bar')).toHaveCount(0);
   const bounds = await input.boundingBox();
-  const actionBounds = await page.locator('.mobile-action-bar').boundingBox();
   const sendBounds = await page.getByRole('button', { name: '发送公屏消息' }).boundingBox();
-  expect(bounds).not.toBeNull(); expect(actionBounds).not.toBeNull();
+  expect(bounds).not.toBeNull();
   expect(sendBounds).not.toBeNull();
   expect(bounds!.y).toBeGreaterThanOrEqual(0);
   expect(sendBounds!.y).toBeGreaterThanOrEqual(0);
-  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(actionBounds!.y + 1);
-  expect(sendBounds!.y + sendBounds!.height).toBeLessThanOrEqual(actionBounds!.y + 1);
   expect(await page.evaluate(() => document.documentElement.dataset.keyboardOpen)).toBe('true');
+  await expect(page.getByRole('region', { name: '舞台行动', exact: true })).toBeVisible();
   void mounted;
 });
 

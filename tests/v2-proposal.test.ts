@@ -148,4 +148,20 @@ describe('v2 团队方案兜底', () => {
     for (const member of ['p_10', 'p_11', 'p_12']) driver.submit({ type: 'CONFIRM_PROPOSAL', playerId: member, revision: 2 });
     expect(driver.proposalState('p_12')).toMatchObject({ effective: { revision: 2, targetPlayerIds: [], basis: 'unanimous' } });
   });
+
+  it('atomically creates a proposal and confirms only its author when the expected revision matches', () => {
+    const driver = proposalDriver();
+    expect(driver.submit({ type: 'EDIT_PROPOSAL', playerId: 'p_11', targets: ['p_5'], confirmSelf: true, expectedRevision: 0 })).toMatchObject({ accepted: true });
+    expect(driver.proposalState('p_11')).toMatchObject({ revision: 1, targetPlayerIds: ['p_5'], confirmedBy: ['p_11'] });
+    expect(driver.submit({ type: 'EDIT_PROPOSAL', playerId: 'p_12', targets: ['p_6'], confirmSelf: true, expectedRevision: 0 })).toMatchObject({ accepted: false, code: 'proposal_changed' });
+    expect(driver.proposalState('p_12')).toMatchObject({ revision: 1, targetPlayerIds: ['p_5'], confirmedBy: ['p_11'] });
+    expect(driver.submit({ type: 'CONFIRM_PROPOSAL', playerId: 'p_12', revision: 1 })).toMatchObject({ accepted: true });
+    expect(driver.proposalState('p_12')).toMatchObject({ revision: 1, confirmedBy: ['p_11', 'p_12'], effective: { revision: 1, basis: 'unanimous' } });
+  });
+
+  it('keeps single-member proposal confirmation idempotent in the combined path', () => {
+    const driver = proposalDriver();
+    expect(driver.submit({ type: 'EDIT_PROPOSAL', playerId: 'p_10', targets: [], confirmSelf: true, expectedRevision: 0 })).toMatchObject({ accepted: true });
+    expect(driver.proposalState('p_10')).toMatchObject({ revision: 1, targetPlayerIds: [], confirmedBy: ['p_10'], effective: { revision: 1, basis: 'unanimous' } });
+  });
 });
