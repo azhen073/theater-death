@@ -21,9 +21,13 @@ export interface VoiceState {
   microphoneError: string;
   devices: readonly MediaDeviceInfo[];
   activeDeviceId: string;
+  /** 自己麦克风的电平 0–100（本地采集，增益之后）。 */
+  level: number;
+  /** 远端音量指示里最高的一项 0–100：发言窗口内只有一人有发布权，因此可归属为当前发言者。 */
+  remoteLevel: number;
 }
 
-const initialState = (): VoiceState => ({ connection: 'idle', requested: false, microphoneEnabled: false, audioBlocked: false, error: '', microphoneError: '', devices: [], activeDeviceId: '' });
+const initialState = (): VoiceState => ({ connection: 'idle', requested: false, microphoneEnabled: false, audioBlocked: false, error: '', microphoneError: '', devices: [], activeDeviceId: '', level: 0, remoteLevel: 0 });
 const mediaError = (error: unknown) => {
   if (error instanceof DOMException) {
     if (error.name === 'NotAllowedError') return '麦克风权限被拒绝，请在浏览器设置中允许后重试。';
@@ -33,6 +37,29 @@ const mediaError = (error: unknown) => {
   return error instanceof Error ? `麦克风启用失败：${error.message}` : '麦克风启用失败。';
 };
 const isPermissionRace = (error: unknown) => /permission|not.?authorized|denied|forbidden/i.test(error instanceof Error ? error.message : String(error));
+
+/**
+ * 音量指示是可选 API：用结构化垫片调用，避免因 SDK 版本 typings 差异（或未提供该能力）让构建失败。
+ * 真实名字与取值范围在容器内核对 typings 后再收紧；即使不可用也只是没有电平，不影响通话。
+ */
+interface VolumeIndicatorApi {
+  enableAudioVolumeIndicator?: (intervalMs?: number) => void;
+  disableAudioVolumeIndicator?: () => void;
+  onVolumeIndicator?: (listener: (users: readonly { uid: number | string; level: number }[]) => void) => void;
+}
+const volumeIndicatorApi = (client: IAgoraRTCClient): VolumeIndicatorApi => {
+  const target = client as unknown as {
+    enableAudioVolumeIndicator?: (intervalMs?: number) => void;
+    disableAudioVolumeIndicator?: () => void;
+    on?: (event: string, listener: (users: readonly { uid: number | string; level: number }[]) => void) => unknown;
+  };
+  return {
+    enableAudioVolumeIndicator: target.enableAudioVolumeIndicator?.bind(target),
+    disableAudioVolumeIndicator: target.disableAudioVolumeIndicator?.bind(target),
+    onVolumeIndicator: typeof target.on === 'function' ? (listener) => { target.on!('volume-indicator', listener); } : undefined,
+  };
+};
+const VOLUME_INDICATOR_INTERVAL_MS = 200;
 
 /**
  * One authenticated room media session (Agora). Credentials and tracks never leave memory.
@@ -47,6 +74,9 @@ export class VoiceSession {
   #generation = 0;
   #retry: number | null = null;
   #retryCount = 0;
+  #uid = 0;
+  #outputVolume = 100;
+  #inputVolume = 100;
   #listeners = new Set<(state: VoiceState) => void>();
 
   state() { return this.#state; }
@@ -74,10 +104,23 @@ export class VoiceSession {
       AgoraRTC.onAutoplayFailed = () => this.#set({ audioBlocked: true });
       client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
       this.#client = client;
+      this.#uid = Number(credentials.uid);
+      const indicator = volumeIndicatorApi(client);
+      indicator.onVolumeIndicator?.((users) => {
+        let own = 0;
+        let remote = 0;
+        for (const user of users) {
+          const level = typeof user.level === 'number' && Number.isFinite(user.level) ? Math.min(100, Math.max(0, Math.round(user.level))) : 0;
+          if (Number(user.uid) === this.#uid) own = Math.max(own, level);
+          else remote = Math.max(remote, level);
+        }
+        this.#set({ level: own, remoteLevel: remote });
+      });
       client.on('user-published', (user, mediaType) => {
         void (async () => {
           if (mediaType !== 'audio') return;
           await client!.subscribe(user, mediaType);
+          user.audioTrack?.setVolume(this.#outputVolume);
           user.audioTrack?.play();
         })().catch(() => undefined);
       });
@@ -91,6 +134,8 @@ export class VoiceSession {
       });
       await client.join(credentials.appId, credentials.channel, credentials.token, credentials.uid);
       if (generation !== this.#generation) { await client.leave().catch(() => undefined); return; }
+      indicator.enableAudioVolumeIndicator?.(VOLUME_INDICATOR_INTERVAL_MS);
+      this.#applyOutputVolume();
       this.#set({ connection: 'connected' });
       void this.#refreshDevices();
     } catch (error) {
@@ -113,8 +158,21 @@ export class VoiceSession {
   async switchDevice(deviceId: string) {
     const track = this.#track;
     if (!track) return;
-    try { await track.setDevice(deviceId); this.#set({ activeDeviceId: deviceId }); }
+    try { await track.setDevice(deviceId); track.setVolume(this.#inputVolume); this.#set({ activeDeviceId: deviceId }); }
     catch (error) { this.#set({ microphoneError: mediaError(error) }); }
+  }
+
+  /** 远端播放音量 0–100（本机偏好，不上报服务端）。 */
+  setOutputVolume(volume: number) {
+    this.#outputVolume = Math.min(100, Math.max(0, Math.round(volume)));
+    this.#applyOutputVolume();
+  }
+
+  /** 自己麦克风采集增益 0–100；每次重新开麦都会新建轨道，故值由会话记住并在开麦后重新应用。 */
+  setInputVolume(volume: number) {
+    this.#inputVolume = Math.min(100, Math.max(0, Math.round(volume)));
+    const track = this.#track;
+    if (track) track.setVolume(this.#inputVolume);
   }
   async enableAudio() {
     const client = this.#client;
@@ -150,6 +208,7 @@ export class VoiceSession {
         this.#track = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: true, ...(deviceId === '' ? {} : { microphoneId: deviceId }) });
       }
       await client.publish([this.#track]);
+      this.#track.setVolume(this.#inputVolume);
       if (!this.#state.requested || this.#context?.canPublish !== true) { await this.#stopTrack(); return; }
       this.#clearRetry(); this.#set({ microphoneEnabled: true, microphoneError: '' }); await this.#refreshDevices();
     } catch (error) {
@@ -178,9 +237,16 @@ export class VoiceSession {
       this.#set({ devices, activeDeviceId: this.#state.activeDeviceId || devices[0]?.deviceId || '' });
     } catch { /* Device labels are optional; active audio remains usable. */ }
   }
+  #applyOutputVolume() {
+    const client = this.#client;
+    if (!client) return;
+    for (const user of client.remoteUsers) user.audioTrack?.setVolume(this.#outputVolume);
+  }
   #teardownClient() {
     this.#clearRetry();
     const client = this.#client; this.#client = null;
+    if (client) volumeIndicatorApi(client).disableAudioVolumeIndicator?.();
+    this.#uid = 0;
     void this.#stopTrack();
     client?.removeAllListeners();
   }

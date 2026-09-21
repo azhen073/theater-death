@@ -17,6 +17,15 @@ html[data-reduced-motion='true'] *::after {
 .display-settings .select-field select { font-size: 12px; }
 .display-settings .setting-row { font-size: 14px; margin-bottom: 18px; }
 .display-settings .setting-row small { font-size: 12px; }
+/* 语音条里的电平与音量控制：离散段（无过渡），减少动画下天然不抖 */
+.voice-bar__levels { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; flex-basis: 100%; }
+.voice-bar__own, .voice-bar__speaker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.voice-bar__volume { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.voice-bar__volume input[type='range'] { width: 88px; min-width: 0; }
+.voice-bar__volume > span { min-width: 22px; font-variant-numeric: tabular-nums; }
+.level-meter { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.level-meter__segment { width: 3px; height: 5px; border-radius: 1px; background: #c9d1d8; }
+.level-meter__segment--on { height: 12px; background: var(--accent); }
 .modal-game-context { top: 0; }
 .chat-composer, .chat-composer textarea, input { scroll-margin-bottom: 130px; }
 .death-notice {
