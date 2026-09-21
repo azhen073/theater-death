@@ -1,12 +1,12 @@
 # theater_death 进度与交接
 
-更新时间：2026-09-19 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-09-21 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
-| 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v1.9**，Q-01–Q-08 全量定值（规则书第 09 章） |
+| 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.3-alpha**，Q-01–Q-08 全量定值（规则书第 09 章） |
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
@@ -19,13 +19,15 @@
 | 解散与遗弃回收（v2.0.1-beta） | ✅ | 解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房主继任）；**大厅房主操作只保留「解散房间」**；遗弃房间 **24 小时回收**（v2 全员离线 / v1 房间无活动）；`tests/room-governance`、`empty-rooms`、`v2-maintenance`、`server-api`(+3)、`room-operation-api` 相应更新；新增 E2E `specs/11-dissolve.spec.ts`（v1 解散）与 `specs-v2/02-rooms.spec.ts` 的「房主大厅退出=解散」；`empty-rooms` 增加 `forget` 兜底用例、`frontend-v2-room-model` 增加 `hostExitDissolves` 用例；全量 84 文件 527 例 |
 | 语音媒体服务（声网替换） | ✅ | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；**2026-09-19 真实云联调与 E2E 语音 3 例全过**；服务器更新待执行（见接续指引） |
 | PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
-| 舞台行动 UX（PR #5，贡献 syhneversigh） | ✅ | PR #5 全部 4 个提交已整合进 main（`b085f1b`）：舞台内行动交互与竖屏适配、边界修复、`EDIT_PROPOSAL` 原子“发布并确认本人”（版本冲突/幂等/旧服务端回退，R-47 语义不变）。维护方复核修复环形/文档流判定的竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）并补回归 E2E；全量 87 文件 556 单测、双浏览器 E2E 与类型构建通过。未部署。 |
+| 舞台行动 UX（v2.0.2-alpha，PR #5，贡献 syhneversigh） | ✅ | PR #5 全部 4 个提交已整合进 main（`b085f1b`）：舞台内行动交互与竖屏适配、边界修复、`EDIT_PROPOSAL` 原子“发布并确认本人”（版本冲突/幂等/旧服务端回退，R-47 语义不变）。维护方复核修复环形/文档流判定的竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）并补回归 E2E；全量 87 文件 556 单测、双浏览器 E2E 与类型构建通过。未部署。 |
+| 2.0.2-beta（遗言 + 账户显示设置 + 文档审计，贡献 kiahir） | ✅ | **遗言**：R-41/R-45/R-46、V2-01/V2-02 复核一致；G5 把「同日多名出局者按座位号升序、每人 60 秒」写入规则书 R-45 与 `docs/rules-v2-full.md`（无行为变更）；G4 新增 `e2e/specs-v2/17-last-words.spec.ts`——**2/2（chromium + webkit）实测通过**。**显示与动画**：三设置核对通过；F2「死亡特效」补 `aria-label` 并收紧 E2E 定位；F5 + 字号统一（三标签 14px、帮助 12px、行距 18px，定点不改全局）；`01-account` 补账号页断言与截图——**8/8 实测通过**。**md 审计**：25 个受控 md、链接 0 失效、计数实测无误，修 md-1/md-2。分支 `2.0.2-beta`（`c5df078`）随后**改名为 `2.0.3-alpha`**（内容保留）；未决：F1/F3/F4、`lastWords.firstNight`/`otherNights` 死配置、麦克风仅单测覆盖 |
+| 2.0.3-alpha（局内语音音量显示与调节，贡献 kiahir） | 🚧 | 分支自 `2.0.2-beta` 的 tip（`c5df078`）拉出。**已实现 A+B + 输出/输入增益**：自己的 5 段电平、当前发言者「N号 正在发言 · X%」（静音时「已静音」但保留"谁在发言"）、输出音量 0–100 + 一键静音、**麦克风增益 0–150（>125 关闭 AGC，跨阈值时重建采集轨道）**（重开麦/换设备自动重应用）；纯本地偏好（`localStorage` 四字段），受 R-43 时段门控。**实测：容器内 20 例单测全过 + 双 typecheck 通过 + 界面 E2E `18-voice-levels.spec.ts`（chromium 2/2、webkit 2/2，含电平段数/发言者与静音文案/滑杆即时生效与落库/增益 150 与 AGC 提示/关麦隐藏/偏好关闭只隐藏电平并保留"谁在发言"）**。未覆盖：真实媒体（需声网凭据）未验；未实现：座位卡电平环、每玩家音量、无电平提示；待核：声网音量 API 名称与本地 `setVolume` 的实际上限（150 是否真放大）。遗留仍在：F1/F3/F4、P1/P2 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.1-beta：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收，见文末版本记录）。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.3-alpha（进行中）：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合 · v2.0.2-beta 遗言顺序明文 + 账户显示设置修复 + 文档审计 · v2.0.3-alpha 局内语音音量显示与调节（已实现，双浏览器 E2E 通过），见文末版本记录）。
 3. 进度断点（2026-09-19 深夜）：**PR#3 选定移植进行中**（外部贡献 syhneversigh，阿真确认照抄 A/B/D 三部分）。
    - **A 组已推送 `4688b49`**：公开知识泄露修复（`visibility/knowledge.ts` 先红后绿 9 例——修夜间名单在晨间公告前可从公开接口读到的泄露）、`engine/targets.ts`、`server/capabilities.ts`、`server/windows.ts` + `queued-clock.ts`、`server/log-store.ts`（迁移守卫 + 预备表列）、`GameCommand.windowInstanceId` / `START_SPEECH`、`LiveWindow.instanceId` / `type`。
    - **B 组（本批）**：天理夜死移交时机对齐 R-46/T-40 字面（晨间公告后立即办，不再等白天末尾）+ 规则 2.0 命名预设 `THEATER_DEATH_13_V2`（V2-01 立即终局 / V2-02 公告前竞选 / V2-03 发言 120 秒 + 15 秒准备窗口 / V2-04 提案兜底）；`engine/*`、`rulesets/*`、`day-driver` / `night-driver`、`clock` 照抄；版本记录已更新（规则书 Q-09 + 需求 v1.7 + `docs/rules-v2.md`）；增量 18 文件 193 例全过。
@@ -233,9 +235,10 @@ theater_death/
 
 ## 测试状态
 
-556 passed / 87 files（容器内 `npm run test`，2026-09-21 全量实测；镜像构建同样强制执行，并执行 `typecheck`（服务端）、`typecheck:web` / `typecheck:web:v2`（前端）与 `build:web` / `build:web:v2`）。
+568 passed / 88 files（2026-09-21 本分支全量实测：容器内 `docker compose -f deploy/docker-compose.yml build` 串跑 `typecheck`（服务端）、`typecheck:web` / `typecheck:web:v2` / `typecheck:web:v2-tests`（前端）全部通过 + `vitest run` **88 文件 568 例全过**（18.3s）+ `build:web` / `build:web:v2` 打包成功，并产出镜像 `ghcr.io/azhen073/theater-death:latest`（451MB）。此前的 556 例 / 87 文件是 `main` 的记录，已按本分支实测更新）。
 
 E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行受验收服务 **IP 限流**（登录/注册 30 次/分钟）影响会出现登录 429 级联失败，需按增量策略分批跑——本次已逐 spec 复核：03/04/05/07/08/09/10/11 全过，12 仅 AC09/AC19 失败（main 基线同样失败，既有），02 与 06 的失败在 main 基线同样复现（既有）。`13-release-smoke`（需 `FRONTEND_BASE_URL`）、`15-admin`（需 `ADMIN_TEST_PASSWORD`）、`16-voice`（需语音配置）为环境门控，不在本编排运行。
+E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **18 个 spec / 51 例**（其中 `18-voice-levels.spec.ts` 为 v2.0.3-alpha 新增）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
@@ -338,7 +341,7 @@ E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行�
 - **前端**：`web/src/game.tsx` 终局卡片改为「查看复盘 / 退出房间」两按钮（观战者不显示后者，走既有「退出观战」）；`web/src/app.tsx` 新增 `leaveRoom` 回调（镜像 `leaveSpectate`：调 `api.leaveRoom(roomCode)` → 清 session/事件/聊天/复盘/语音 → 回入口页）
 - **测试**：`tests/server-api.test.ts` +3 例（终局后成员退出且他人复盘保留 / 房主退出不解散 / 最后一人退出销毁房间），该文件 24→27 例；E2E `10-end-exit.spec.ts` 2 例（对局中退出被拒 409；终局退出回入口页 + 他人复盘保留，含 13 机器人快进）
 - **真实运行（2026-09-18）**：容器内 `docker compose -f deploy/docker-compose.yml build` exit 0（typecheck + typecheck:web + 18 文件 207 例全过 + vite build，镜像 sha256 `ff8ec7dc…`）；增量 E2E 只跑 `specs/10-end-exit.spec.ts` → **2 passed (3.2m)**；其余用例未跑（按测试策略）
-- **E2E 用例口径提醒**：静态清点为 17 个 `test()`（chromium 全跑 17 + webkit 匹配 04/05 各 2 = **21 次运行**）；`AGENTS.md` 此前记的「18/18」与静态清点差 1，未跑全量故未定论，需要时以一次全量运行核对。**（2026-09-20 结论）** 口径已核实：本节当时确实是 17 个 `test()` / 21 次运行；其后新增 `specs/11-dissolve.spec.ts`，v1 入口现为 **18 个 `test()` / 22 次运行（chromium 18 + webkit 4）**，v2 入口为 16 个 spec / 42 例，`AGENTS.md` 已按此更新。
+- **E2E 用例口径提醒**：静态清点为 17 个 `test()`（chromium 全跑 17 + webkit 匹配 04/05 各 2 = **21 次运行**）；`AGENTS.md` 此前记的「18/18」与静态清点差 1，未跑全量故未定论，需要时以一次全量运行核对。**（2026-09-20 结论）** 口径已核实：本节当时确实是 17 个 `test()` / 21 次运行；其后新增 `specs/11-dissolve.spec.ts`，v1 入口现为 **18 个 `test()` / 22 次运行（chromium 18 + webkit 4）**，v2 入口为 16 个 spec / 42 例，`AGENTS.md` 已按此更新。**（2026-09-21 更新）** 该口径此后继续变动：PR #5 整合后 v2 为 16 个 spec / 47 例，新增 `specs-v2/17-last-words.spec.ts` 后为 **17 个 spec / 49 例**；当前数字以本文件「测试状态」一节为准。
 
 ## 提醒事项（踩坑记录）
 

@@ -14,20 +14,33 @@ describe('v2 display preference model', () => {
     }
   });
 
-  it('keeps only the three non-sensitive allowed fields and strips tokens/user objects', () => {
+  it('keeps only the allowed non-sensitive fields and strips tokens/user objects', () => {
     const parsed = parsePreferences({ motion: 'full', deathEffects: false, scale: 110, token: 'secret', user: { id: 'u1' }, room: 'room' });
-    expect(parsed).toEqual({ motion: 'full', deathEffects: false, scale: 110 });
-    expect(Object.keys(parsed).sort()).toEqual(['deathEffects', 'motion', 'scale']);
+    expect(parsed).toEqual({ ...defaultPreferences, motion: 'full', deathEffects: false, scale: 110 });
+    expect(Object.keys(parsed).sort()).toEqual(['deathEffects', 'motion', 'scale', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
     expect(parsed).not.toHaveProperty('token');
     expect(parsed).not.toHaveProperty('user');
   });
 
   it('accepts system/full/reduced motion, both deathEffects values, and only 90/100/110 scales', () => {
-    expect(parsePreferences({ motion: 'system', deathEffects: true, scale: 90 })).toEqual({ motion: 'system', deathEffects: true, scale: 90 });
-    expect(parsePreferences({ motion: 'reduced', deathEffects: false, scale: 100 })).toEqual({ motion: 'reduced', deathEffects: false, scale: 100 });
-    expect(parsePreferences({ motion: 'full', deathEffects: true, scale: 110 })).toEqual({ motion: 'full', deathEffects: true, scale: 110 });
-    expect(parsePreferences({ motion: 'full', scale: 95 })).toEqual({ motion: 'full', deathEffects: true, scale: 100 });
+    expect(parsePreferences({ motion: 'system', deathEffects: true, scale: 90 })).toMatchObject({ motion: 'system', deathEffects: true, scale: 90 });
+    expect(parsePreferences({ motion: 'reduced', deathEffects: false, scale: 100 })).toMatchObject({ motion: 'reduced', deathEffects: false, scale: 100 });
+    expect(parsePreferences({ motion: 'full', deathEffects: true, scale: 110 })).toMatchObject({ motion: 'full', deathEffects: true, scale: 110 });
+    expect(parsePreferences({ motion: 'full', scale: 95 })).toMatchObject({ motion: 'full', deathEffects: true, scale: 100 });
     expect(parsePreferences({ motion: 'system', scale: '110' })).toEqual(defaultPreferences);
+  });
+
+  it('defaults the voice preferences to 100 / 100 / levels on / not muted', () => {
+    expect(parsePreferences({})).toMatchObject({ voiceLevels: true, voiceOutput: 100, voiceInput: 100, voiceMuted: false });
+    expect(defaultPreferences).toMatchObject({ voiceLevels: true, voiceOutput: 100, voiceInput: 100, voiceMuted: false });
+  });
+
+  it('clamps stored voice volumes into 0–100（输出）and 0–150（增益）and rejects non-numeric volumes', () => {
+    expect(parsePreferences({ voiceOutput: -3, voiceInput: 250 })).toMatchObject({ voiceOutput: 0, voiceInput: 150 });
+    expect(parsePreferences({ voiceOutput: 60.6, voiceInput: 0 })).toMatchObject({ voiceOutput: 61, voiceInput: 0 });
+    expect(parsePreferences({ voiceOutput: '60', voiceInput: null })).toMatchObject({ voiceOutput: 100, voiceInput: 100 });
+    expect(parsePreferences({ voiceInput: 130 })).toMatchObject({ voiceInput: 130 });
+    expect(parsePreferences({ voiceLevels: 'yes', voiceMuted: 1 })).toMatchObject({ voiceLevels: true, voiceMuted: false });
   });
 });
 

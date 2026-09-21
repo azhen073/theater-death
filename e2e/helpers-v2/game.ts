@@ -4,7 +4,7 @@ import type { CatalogDTO } from '../../contracts/catalog.ts';
 import type { CommandAction, JsonValue, RoomSnapshot, TaskDTO } from '../../contracts/v2.ts';
 export type { CommandAction, RoomSnapshot, TaskDTO } from '../../contracts/v2.ts';
 
-export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean }
+export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; voice?: Record<string, unknown> }
 export interface ReviewEnvelope {
   review: {
     gameId: string; winner: 'human' | 'death_faction'; reason: string; endedAtDay: number;

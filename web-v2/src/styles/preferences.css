@@ -10,6 +10,23 @@ html[data-reduced-motion='true'] *::after {
 .account-profile > div { min-width: 0; }
 .account-profile h2, .account-profile h3 { overflow-wrap: anywhere; }
 .setting-row small { display: block; margin-top: 6px; }
+/* 账户「显示与动画」：三个标签统一 14px（与账号页「账户安全」的 .setting-row strong 一致），
+   帮助文字降为 12px；死亡特效一行补下边距，避免与紧随其后的「界面缩放」贴在一起
+   （.setting-row 无下边距，而 .select-field 只有 margin-bottom）。 */
+.display-settings .select-field { font-size: 14px; }
+.display-settings .select-field select { font-size: 12px; }
+.display-settings .setting-row { font-size: 14px; margin-bottom: 18px; }
+.display-settings .setting-row small { font-size: 12px; }
+/* 语音条里的电平与音量控制：离散段（无过渡），减少动画下天然不抖 */
+.voice-bar__levels { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; flex-basis: 100%; }
+.voice-bar__own, .voice-bar__speaker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.voice-bar__volume { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.voice-bar__volume input[type='range'] { width: 88px; min-width: 0; }
+.voice-bar__volume > span { min-width: 22px; font-variant-numeric: tabular-nums; }
+.voice-bar__agc { font-style: normal; font-size: 10px; color: #8a6d3b; border: 1px solid #e0cfa8; background: #fdf7e8; border-radius: 4px; padding: 1px 5px; }
+.level-meter { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.level-meter__segment { width: 3px; height: 5px; border-radius: 1px; background: #c9d1d8; }
+.level-meter__segment--on { height: 12px; background: var(--accent); }
 .modal-game-context { top: 0; }
 .chat-composer, .chat-composer textarea, input { scroll-margin-bottom: 130px; }
 .death-notice {

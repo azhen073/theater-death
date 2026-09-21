@@ -3,8 +3,9 @@
 13 人 9 身份的社交推理游戏**在线法官**：服务端持有真实状态并做全部裁决，纯规则引擎 + Socket.IO 实时推送 + 网页前端；支持「玩家电脑 / 第三方服务器」两种托管（同一 Docker 镜像）。
 
 - 玩法权威：`theater_death_rulebook_v1.1.md`（1.1 默认预设，含 S3 裁定与追加记录）；规则 2.0 命名预设见 `docs/rules-v2-full.md`
-- 工程规格：`theater_death_development_requirements_v1.1.md`（当前 v2.0.1-beta）
+- 工程规格：`theater_death_development_requirements_v1.1.md`（当前 v2.0.3-alpha）
 - 进度与交接：`PROGRESS.md`
+- 版本号约定：**版本名 = 推送分支名**（当前 `2.0.3-alpha`）；工程版本与**规则版本**（1.1 / 2.0）、**客户端契约版本**（2.1 / 2.2）是三套独立编号，不互相换算
 
 ## 快速开始（Docker）
 
@@ -25,8 +26,10 @@ cd theater-death
 
 ```bash
 git pull
-./deploy/update.sh           # 拉取 CI 构建的镜像，约 1-2 分钟
+./deploy/update.sh           # 拉取 CI 构建的镜像，约 1-2 分钟；Windows: deploy\update.ps1
 ```
+
+日常启停见 `deploy/start.sh` / `deploy/stop.sh`（Windows 为 `deploy\start.ps1` / `deploy\stop.ps1`）。
 
 ## 开发与测试
 
@@ -37,7 +40,7 @@ docker compose -f deploy/docker-compose.yml build   # 构建 = 类型检查 + �
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-推送代码到 `main` 后，GitHub Actions 会自动构建（镜像构建内含全部测试）并发布 `ghcr.io/azhen073/theater-death:latest`。
+合并进 `main` 后，GitHub Actions 会自动构建（镜像构建内含全部测试）并发布 `ghcr.io/azhen073/theater-death:latest`。
 
 ## 贡献
 
@@ -57,8 +60,8 @@ gh pr create
 
 ## 致谢
 
-- **syhneversigh**：贡献账号体系（数字 UID）、v2 稳定房间模型与租约、新版前端（web-v2）、契约 2.x 与验收测试等（PR #3，已按采用/调整说明整合进 `main`）
-- **kiahir**：贡献终局退出（需求 v1.5）、全仓库文档一致性核对（需求 v1.9）、房间解散任意阶段生效与遗弃房间 24 小时回收（需求 v2.0.1-beta）
+- **syhneversigh**（PR #3、#5）：账号体系（数字 UID）、v2 稳定房间模型与租约、新版前端（web-v2）、契约 2.x 与验收测试；舞台行动 UX 与竖屏适配、团队方案「发布并确认本人」原子提交（经维护方复核修复后整合）
+- **kiahir**（PR #2、#4、#7）：终局退出（需求 v1.5）、全仓库文档一致性核对（需求 v1.9）、房间解散任意阶段生效与遗弃房间 24 小时回收（需求 v2.0.1-beta）、遗言顺序明文与账户「显示与动画」修复（v2.0.2-beta）、局内语音音量显示与调节（v2.0.3-alpha）
 
 ## 目录结构
 
@@ -73,6 +76,6 @@ gh pr create
 | `web-v2/` | 新版前端（React + Vite，同镜像交付，默认入口） |
 | `contracts/` | 新版客户端契约类型 |
 | `docs/` | 契约文档、规则 2.0 增补与前端说明 |
-| `tests/` | Vitest 全量测试（527 用例）+ `fixtures/contract-2.1` 契约快照 |
+| `tests/` | Vitest 全量测试（568 用例 / 88 文件）+ `fixtures/contract-2.1` 契约快照 |
 | `e2e/` | Playwright 端到端验收（`specs/` 旧版、`specs-v2/` 新版） |
 | `deploy/` | Dockerfile、compose、安装/更新脚本、运行手册 |

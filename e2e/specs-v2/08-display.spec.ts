@@ -57,13 +57,14 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   const dialog = await openSettings(page);
+  const deathEffects = dialog.getByRole('checkbox', { name: '死亡特效', exact: true });
   await dialog.getByLabel('动画偏好').selectOption('full');
-  await dialog.getByRole('checkbox').uncheck();
+  await deathEffects.uncheck();
   await dialog.getByLabel('界面缩放').selectOption('90');
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).zoom)).toBe('0.9');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('false');
   await dialog.getByLabel('界面缩放').selectOption('110');
-  await dialog.getByRole('checkbox').check();
+  await deathEffects.check();
   await dialog.getByLabel('动画偏好').selectOption('reduced');
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).zoom)).toBe('1.1');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
@@ -114,13 +115,13 @@ test('公开新死讯才显示短提示：重复/私有/重连基线/减少动�
   await expect(page.locator('.death-notice')).toHaveCount(0);
 
   const settings = await openSettings(page);
-  await settings.getByRole('checkbox').uncheck();
+  await settings.getByRole('checkbox', { name: '死亡特效', exact: true }).uncheck();
   await page.getByRole('button', { name: '关闭' }).click();
   const disabledDeath = deathFixture(privateOnly, 'elimination_announced', 5);
   await mounted.setFixture(disabledDeath);
   await expect(page.locator('.death-notice')).toHaveCount(0);
   const reducedSettings = await openSettings(page);
-  await reducedSettings.getByRole('checkbox').check();
+  await reducedSettings.getByRole('checkbox', { name: '死亡特效', exact: true }).check();
   await reducedSettings.getByLabel('动画偏好').selectOption('reduced');
   await page.getByRole('button', { name: '关闭' }).click();
   await mounted.setFixture(deathFixture(disabledDeath, 'deaths_announced', 6));
