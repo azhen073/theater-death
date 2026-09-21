@@ -235,7 +235,7 @@ theater_death/
 
 ## 测试状态
 
-556 passed / 87 files（容器内 `npm run test`，2026-09-21 全量实测；镜像构建同样强制执行，并执行 `typecheck`（服务端）、`typecheck:web` / `typecheck:web:v2`（前端）与 `build:web` / `build:web:v2`）。
+568 passed / 88 files（2026-09-21 本分支全量实测：容器内 `docker compose -f deploy/docker-compose.yml build` 串跑 `typecheck`（服务端）、`typecheck:web` / `typecheck:web:v2` / `typecheck:web:v2-tests`（前端）全部通过 + `vitest run` **88 文件 568 例全过**（18.3s）+ `build:web` / `build:web:v2` 打包成功，并产出镜像 `ghcr.io/azhen073/theater-death:latest`（451MB）。此前的 556 例 / 87 文件是 `main` 的记录，已按本分支实测更新）。
 
 E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行受验收服务 **IP 限流**（登录/注册 30 次/分钟）影响会出现登录 429 级联失败，需按增量策略分批跑——本次已逐 spec 复核：03/04/05/07/08/09/10/11 全过，12 仅 AC09/AC19 失败（main 基线同样失败，既有），02 与 06 的失败在 main 基线同样复现（既有）。`13-release-smoke`（需 `FRONTEND_BASE_URL`）、`15-admin`（需 `ADMIN_TEST_PASSWORD`）、`16-voice`（需语音配置）为环境门控，不在本编排运行。
 E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **18 个 spec / 51 例**（其中 `18-voice-levels.spec.ts` 为 v2.0.3-alpha 新增）。

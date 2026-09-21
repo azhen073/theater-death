@@ -797,6 +797,7 @@ https://docs.docker.com/get-started/
   - `typecheck:web:v2` 与 `typecheck:web:v2-tests` 通过（首轮 typecheck 抓到 2 处真错误——入参字段名写错、`setVolume` 在 typings 里返回 `void`——已修）。
   - 界面 E2E `e2e/specs-v2/18-voice-levels.spec.ts`（2 例）：**chromium 2/2、webkit 2/2**；v2 入口静态清点更新为 **18 个 spec / 51 例**。
   - 命令：`docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 18-voice-levels.spec.ts`（acceptance 栈 + seed）。
+  - **全量镜像构建（本分支）**：`docker compose -f deploy/docker-compose.yml build` 通过——4 个 typecheck（服务端 + 三个前端工程）全过、`vitest run` **88 文件 / 568 例全过**（18.27s）、`build:web` 与 `build:web:v2` 打包成功、镜像 `ghcr.io/azhen073/theater-death:latest` 产出（451MB）。因此把 `main` 的「556 例 / 87 文件」口径更新为本分支实测的 **568 例 / 88 文件**（`README.md`、`AGENTS.md`、`PROGRESS.md`「测试状态」三处同步）。
 
 - **未覆盖 / 未实现（如实记录）**：**真实媒体未验**——加入频道、开麦、增益与 AGC 的实际听感需要声网凭据（`16-voice` 环境门控）；**本地轨道 `setVolume` 的实际上限待核**（我们允许到 150，若 SDK 内部钳到 100 则该档只等效 100）；`enableAudioVolumeIndicator` / `volume-indicator` 的 API 名与载荷也需按实际 typings 复核（现以结构化垫片调用，缺失时只是没有电平，不影响通话）。未做：座位卡电平环、每玩家音量、「开麦但无电平」提示。详见 `docs/frontend-v2-voice.md`。
 
