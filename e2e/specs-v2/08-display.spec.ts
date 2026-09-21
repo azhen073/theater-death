@@ -70,7 +70,7 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
   await dialog.getByLabel('动画偏好').selectOption('system');
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}') as Record<string, unknown>);
-  expect(Object.keys(stored).sort()).toEqual(['deathEffects', 'motion', 'scale']);
+  expect(Object.keys(stored).sort()).toEqual(['deathEffects', 'motion', 'scale', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
   expect(stored).toMatchObject({ deathEffects: true, motion: 'system', scale: 110 });
 
   await page.getByRole('button', { name: '关闭' }).click();
@@ -78,7 +78,7 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   const afterReload = await openSettings(page);
   await expect(afterReload.getByLabel('动画偏好')).toHaveValue('system');
   await expect(afterReload.getByLabel('界面缩放')).toHaveValue('110');
-  await expect(afterReload.getByRole('checkbox')).toBeChecked();
+  await expect(afterReload.getByRole('checkbox', { name: '死亡特效', exact: true })).toBeChecked();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.getByRole('button', { name: '关闭' }).click();
   await page.reload();
