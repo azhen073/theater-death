@@ -23,6 +23,7 @@
 - 语音关键约束（2026-09-19 起）：服务器语音采用 **声网 Agora 免费层**（App ID / App Certificate 只入 `.env`，不入库；项目须在控制台**开启「连麦鉴权」**发布权限控制才生效）；R-43 发布权通过短期 token 实现——加入 = 订阅角色（可听不可发），发言 = 服务端下发发布凭证（TTL 10 分钟）+ 前端 `renewToken` 即时生效，收回 = 订阅凭证即时降权 + TTL 到期兜底；踢人/关房走频道管理 REST（一次性踢出，可立即重进）。上一代 LiveKit 实现与其残留已清理（`deploy/livekit*.yaml`、`deploy/frontend-local.ps1` 的 `livekit` 服务、各 compose 中的 `LIVEKIT_*` / `VOICE_SERVICE_URL` / `VOICE_ADMIN_URL` 环境变量）；仅 `docs/openapi-v2.2.json` 的 `/voice/webhook`（`livekitSignature`）与 `server/v2/app.ts` 中未被注入的 `verifyWebhook` 路由仍为历史遗留（**未启用**，待定）。
 - 关于夜间窗口"无事可做提前结束"的提案已讨论并否决：固定时长是防泄露设计（需求明文），不要重新引入。
 - **v2.0.2-alpha 完成（贡献提案 syhneversigh，阿真确认）**：舞台行动 UX 已整合进 main（2026-09-21）：舞台内行动交互与竖屏适配 + 边界修复 + 团队方案“发布并确认本人”单请求原子操作（保留全队逐版确认与固定窗口，R-47 语义不变）。维护方复核后修复环形/文档流判定的竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）并补回归 E2E；未部署。
+- **v2.0.2-beta（进行中）**：分支 `2.0.2-beta`（由 `2.0.2-alpha` **改名**）承载接下来在本地开发的新改动，落地后按版本记录补记；当前相对基线 `de68a89` 只有版本号与记录同步的文档改动。上一条（v2.0.2-alpha）即其内容基线。
 - 构建/测试命令：`docker compose -f deploy/docker-compose.yml build`（构建即跑全部测试）。
 
 ## 裁定状态
