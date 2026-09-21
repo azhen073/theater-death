@@ -778,4 +778,10 @@ https://docs.docker.com/get-started/
   - **F5 / 字号回归断言**：`01-account.spec.ts` 量取三个标签的计算字号必须相同、帮助文字字号小于标签、该行与下一项的垂直间距 ≥16px（修复前该间距约为 0，断言会失败）。
   - **实测**（2026-09-21，容器内 acceptance 栈 + seed）：`01-account.spec.ts 08-display.spec.ts --project=chromium` → **8/8 通过**（12.9s / F5 修复后复跑 12.5s，含上述字号与间距断言）。
   - **未修（待定案）**：**F3** `saved` 初值恒为 `true`，读 localStorage 失败不提示；**F4** `docs/` 缺 display 说明文档（`frontend-v2-{admin,assets,room-exit,stage-ux,voice}.md` 之外没有对应文件）。
+- **全量 md 审计与两处过期指针修复（md-1 / md-2，贡献 kiahir，用户（阿真）确认）**：逐个核对**受版本控制的 25 个 md**（根 5 + `deploy/` 1 + `docs/` 16 + `tests/fixtures/contract-2.1/` 1 + `web-v2/public/assets/` 1；另有不入库的 `e2e-results/pr-body.md`）。
+  - **实测结论**：内部链接 **0 处失效**（抽取全部行内链接与引用式链接定义，跳过 http/mailto/锚点后逐一判存在，含 `../` 相对路径）；计数类断言全部正确——v2 E2E 逐文件清点 `^test(` 为 **17 个 spec / 49 例**、v1 为 **11 个 spec / 18 个 `test()`（22 次运行）**、契约夹具索引为 **19 份完整快照 + 8 个人工小样例**。单测 556 例 / 87 文件沿用 `main` 的 2026-09-21 实测记录（本轮未重跑镜像构建，如实标注）。
+  - **md-1 已修**：`M4_ACCEPTANCE_REPORT.md` 的历史快照抬头把「当前工程规格」写成 `（v1.9）`，现改为 `（当前 v2.0.2-beta，见该文档表头与文末版本记录）`。
+  - **md-2 已修**：`PROGRESS.md` 的「E2E 用例口径提醒」停在 2026-09-20 的 `16 个 spec / 42 例`，现补 2026-09-21 更新：PR #5 整合后 16/47、新增 `specs-v2/17-last-words.spec.ts` 后 **17/49**，并注明以「测试状态」为准。
+  - **属历史、刻意不改**：`M4_ACCEPTANCE_REPORT.md` 正文数据（187 单测 / E2E 14/14 / LiveKit Cloud）、`PROGRESS.md` 的 M4b LiveKit 记录（第 367 行已明文标记为历史）、各版本记录内的旧计数（84 文件 527 例 / 16 spec 42 例 / 24 个 md）；`docs/*` 中 `voice/livekit.ts`、`openapi-v2.1.json`、`backend-v2-plan.md` 等字样均出现在「已替换 / 未启用 / 未随仓库入库」的说明里。
+  - **操作提示**：PowerShell 5.1 的 `Get-Content -Raw` 会把 UTF-8 的 md 按 GBK 解出乱码（本轮 `web-v2/public/assets/README.md` 一度误判）；审计脚本一律用 `[IO.File]::ReadAllText($p, [Text.Encoding]::UTF8)`。
 - **待补记项**：改动内容 / 是否触碰玩法规则 / 增量测试命令与结果 / 是否部署。
