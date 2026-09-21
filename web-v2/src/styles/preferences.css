@@ -10,6 +10,13 @@ html[data-reduced-motion='true'] *::after {
 .account-profile > div { min-width: 0; }
 .account-profile h2, .account-profile h3 { overflow-wrap: anywhere; }
 .setting-row small { display: block; margin-top: 6px; }
+/* 账户「显示与动画」：三个标签统一 14px（与账号页「账户安全」的 .setting-row strong 一致），
+   帮助文字降为 12px；死亡特效一行补下边距，避免与紧随其后的「界面缩放」贴在一起
+   （.setting-row 无下边距，而 .select-field 只有 margin-bottom）。 */
+.display-settings .select-field { font-size: 14px; }
+.display-settings .select-field select { font-size: 12px; }
+.display-settings .setting-row { font-size: 14px; margin-bottom: 18px; }
+.display-settings .setting-row small { font-size: 12px; }
 .modal-game-context { top: 0; }
 .chat-composer, .chat-composer textarea, input { scroll-margin-bottom: 130px; }
 .death-notice {

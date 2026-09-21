@@ -23,6 +23,22 @@ test('直接注册、UID 展示、昵称编辑与改密', async ({ page, browser
   await expect(deathEffects).toBeChecked();
   await expect(display.getByLabel('动画偏好')).toHaveValue('system');
   await expect(display.getByLabel('界面缩放')).toHaveValue('100');
+  // F5：三个标签字号统一，帮助文字更小，且「死亡特效」与下一项之间保持间距
+  const metrics = await display.evaluate(section => {
+    const fields = [...section.querySelectorAll('.select-field')];
+    const row = section.querySelector('.setting-row');
+    const size = (element: Element | null) => element ? getComputedStyle(element as HTMLElement).fontSize : '';
+    return {
+      motion: size(fields[0] ?? null),
+      scale: size(fields[1] ?? null),
+      deathEffects: size(row?.querySelector('span') ?? null),
+      helper: size(row?.querySelector('small') ?? null),
+      gap: row && fields[1] ? Math.round(fields[1].getBoundingClientRect().top - row.getBoundingClientRect().bottom) : -1,
+    };
+  });
+  expect(new Set([metrics.motion, metrics.scale, metrics.deathEffects]).size).toBe(1);
+  expect(parseFloat(metrics.helper)).toBeLessThan(parseFloat(metrics.deathEffects));
+  expect(metrics.gap).toBeGreaterThanOrEqual(16);
   await display.screenshot({ path: `/results/account-display-${testInfo.project.name}.png` });
   await deathEffects.uncheck();
   await display.getByLabel('动画偏好').selectOption('reduced');
