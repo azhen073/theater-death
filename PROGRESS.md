@@ -27,7 +27,7 @@
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.3-alpha（进行中）：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合 · v2.0.2-beta 遗言顺序明文 + 账户显示设置修复 + 文档审计 · v2.0.3-alpha 后续改动（麦克风音量显示等待做），见文末版本记录）。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.3-alpha（进行中）：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合 · v2.0.2-beta 遗言顺序明文 + 账户显示设置修复 + 文档审计 · v2.0.3-alpha 局内语音音量显示与调节（已实现，双浏览器 E2E 通过），见文末版本记录）。
 3. 进度断点（2026-09-19 深夜）：**PR#3 选定移植进行中**（外部贡献 syhneversigh，阿真确认照抄 A/B/D 三部分）。
    - **A 组已推送 `4688b49`**：公开知识泄露修复（`visibility/knowledge.ts` 先红后绿 9 例——修夜间名单在晨间公告前可从公开接口读到的泄露）、`engine/targets.ts`、`server/capabilities.ts`、`server/windows.ts` + `queued-clock.ts`、`server/log-store.ts`（迁移守卫 + 预备表列）、`GameCommand.windowInstanceId` / `START_SPEECH`、`LiveWindow.instanceId` / `type`。
    - **B 组（本批）**：天理夜死移交时机对齐 R-46/T-40 字面（晨间公告后立即办，不再等白天末尾）+ 规则 2.0 命名预设 `THEATER_DEATH_13_V2`（V2-01 立即终局 / V2-02 公告前竞选 / V2-03 发言 120 秒 + 15 秒准备窗口 / V2-04 提案兜底）；`engine/*`、`rulesets/*`、`day-driver` / `night-driver`、`clock` 照抄；版本记录已更新（规则书 Q-09 + 需求 v1.7 + `docs/rules-v2.md`）；增量 18 文件 193 例全过。

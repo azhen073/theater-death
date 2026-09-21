@@ -1,6 +1,6 @@
 # 《剧院死神》在线法官 · 开发需求文档
 
-版本：v2.0.3-alpha · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更）；v2.0.1-beta 变更：房间解散任意阶段生效 + 遗弃房间 24 小时回收；v2.0.2-alpha 记录：舞台行动 UX 整合（PR #5）+ 团队方案原子提交 + 布局竞态修复；v2.0.2-beta 变更：遗言顺序明文 + 账户显示设置修复 + 文档审计；v2.0.3-alpha（进行中）变更：见文末版本记录）  
+版本：v2.0.3-alpha · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更）；v2.0.1-beta 变更：房间解散任意阶段生效 + 遗弃房间 24 小时回收；v2.0.2-alpha 记录：舞台行动 UX 整合（PR #5）+ 团队方案原子提交 + 布局竞态修复；v2.0.2-beta 变更：遗言顺序明文 + 账户显示设置修复 + 文档审计；v2.0.3-alpha（进行中）变更：局内语音音量显示与调节，见文末版本记录）  
 适用读者：给 Codex 与项目维护者  
 整理日期：2026-09-16 · 增补记录 2026-09-17 起 · 最近整理 2026-09-21（v2.0.3-alpha）
 
@@ -777,18 +777,29 @@ https://docs.docker.com/get-started/
 - **全量 md 审计（md-1 / md-2 已修）**：25 个受控 md，内部链接 **0 处失效**；计数断言实测无误（v2 17 spec / 49 例、v1 11 spec / 18 例即 22 次运行、契约夹具 19 + 8 份）。修 `M4_ACCEPTANCE_REPORT.md` 抬头的过期版本号与 `PROGRESS.md` 的旧 E2E 口径注记；历史项（M4 正文数据、M4b LiveKit 记录、旧版本计数）刻意不改。
 - **测试与部署**：以上 E2E 均在容器内 acceptance 栈 + seed 上实跑；单测沿用 `main` 的 556 例 / 87 文件记录（本版未重跑镜像构建，如实标注）；**未部署**。
 
-### v2.0.3-alpha（2026-09-21 起，进行中）· 后续改动（待逐条补记）
+### v2.0.3-alpha（2026-09-21，进行中）· 局内语音音量显示与调节（贡献 kiahir，用户（阿真）确认）
 
-- **版本号**：沿用「版本名 = 分支名」约定，本版 = **`2.0.3-alpha`**。分支自上一版 `2.0.2-beta` 的 tip（`c5df078`）拉出并**承接了 `2.0.2-beta` 这个远端分支名**（原 `2.0.2-beta` 已在远端改名为 `2.0.3-alpha`），因此 **2.0.2-beta 的全部内容（遗言 G4/G5、账户显示 F2/F5、全量 md 审计）即本版基线**；与规则版本 2.0、客户端契约 2.1/2.2 仍是三套独立编号；文件名保留基线名 `theater_death_development_requirements_v1.1.md`。
-- **计划内容（实现后在此补记实测与未覆盖项）**：
-  - **局内语音音量显示与调节（A+B + 输出/输入增益，已实现；贡献 kiahir，用户（阿真）确认）**：
-    - **显示**：A = 自己开麦后的 5 段离散电平（`role="meter"`）；B = 当前发言者「N号 正在发言 · X%」，输出静音时显示「N号 已静音」并**保留"谁在发言"**（用户裁定）。只在 R-43 四个开麦时段出现（服务端 `day.currentSpeakerId` 非空），投票/夜间/晨间结算等窗口不显示。
-    - **调节**：输出音量 0–100 + 一键静音（远端播放）；**麦克风增益 0–150**，其中 **>125 时关闭 AGC**（自动增益控制）——AGC 只存在于建轨参数，故跨过 125 这条线时**重建采集轨道**（松手提交时重建，不在拖动中反复断音；阈值外继续加减只改音量不重建），仅开麦时显示，**每次重新开麦与换设备后自动重新应用**。默认 `100 / 100 / 不静音`；每玩家音量不做。
-    - **边界**：纯本地信号与偏好（`localStorage` 四个新字段，不上报服务端、不入日志与复盘）；不改变任何人的发言权与计时；数值钳制 0–100；「音量指示」关闭时**只隐藏电平**（自己的电平条与发言者百分比），**"谁在发言"照旧显示**（保留座位号，静音时显示「已静音」），音量调节不受影响；减少动画下无需特殊分支（离散段、无过渡）。
-    - **实现**：`web-v2/src/presentation/voice-levels.ts`（纯模型）、`features/voice/session.ts`（`enableAudioVolumeIndicator(200ms)` + `setOutputVolume`/`setInputVolume`）、`features/voice/bar.tsx`、`state/preferences-model.ts`（+4 字段）、`features/account/display-settings.tsx`（新增「音量指示」开关）、`styles/preferences.css`。
-    - **实测**（2026-09-21，容器内）：`tests/frontend-v2-voice-levels.test.ts` 6 例 + `frontend-v2-voice-session.test.ts` 7 例 + `frontend-v2-display-model.test.ts` 7 例 = **20 例全过**（含 0–150 钳制、AGC 阈值边界、跨阈值重建轨道并重新应用增益）；`typecheck:web:v2` 与 `typecheck:web:v2-tests` 通过（首轮 typecheck 抓到 2 处真错误——输入模型字段名写错、`setVolume` 在 typings 里返回 `void`——已修）。
-    - **界面 E2E（补齐）**：夹具页原本不挂 app shell，故给 `VoiceBar` 加了可注入会话的 seam（`session?: VoiceSessionLike`），harness 用一个状态来自夹具、记录音量调用的会话桩渲染它；新增 `e2e/specs-v2/18-voice-levels.spec.ts`（2 例，断言电平段数与 `aria-valuenow`、发言者/静音文案、输出与增益滑杆即时生效并落库、关麦后隐藏、偏好关闭后只隐藏电平并保留"谁在发言"、未加入只有加入按钮）——**chromium 2/2、webkit 2/2 通过**。v2 入口静态清点随之更新为 **18 个 spec / 51 例**。
-    - **未覆盖/未实现（如实记录）**：**真实媒体仍未验**（加入频道、开麦、增益与 `AGC` 的听感需要声网凭据，`16-voice` 环境门控）；**座位卡电平环**、**每玩家音量**、「开麦但无电平」提示未做；`agora-rtc-sdk-ng` 的音量 API 名称与**本地轨道 `setVolume` 的实际上限**待按实际 typings 复核（我们允许到 150，但 SDK/设备是否真的放大超过 100 需实机确认；若 SDK 内部钳到 100，则 150 档只等于 100）。详见 `docs/frontend-v2-voice.md`。
-  - **上一版遗留**：**F4** 补 `docs/frontend-v2-display.md`；**F1/F3**（账号页 `!saved` 分支未覆盖、`saved` 初值恒真）；**P1/P2**（`duplicateTargetPolicy: 'forbid'` 与 `attackOrder`/`stage1SpiritQuota`/`stage1OverkillThreshold`/`stageTriggerSnapshot`/`replayDisclosure`/`simultaneousWinPriority`/`researcherCondition` 等策略字段只声明不实现）。
-  - **已确认不改**：v1 入口的身份提示文案（科研员「被公开时…」、魂灵「与死神协商夜袭方案」）本轮维持原样，仅留档待议。
-- **测试与部署**：每项落地后按增量策略在容器内实跑并如实登记（含未覆盖项）；**未部署**。
+- **版本号**：沿用「版本名 = 分支名」约定，本版 = **`2.0.3-alpha`**；分支自上一版 `2.0.2-beta` 的 tip（`c5df078`）拉出，并**承接了 `2.0.2-beta` 这个远端分支名**（原 `2.0.2-beta` 已在远端改名为 `2.0.3-alpha`）。因此 **2.0.2-beta 的全部内容（遗言 G4/G5、账户显示 F2/F5、全量 md 审计）即本版基线**；与规则版本 2.0、客户端契约 2.1/2.2 仍是三套独立编号；文件名保留基线名 `theater_death_development_requirements_v1.1.md`。
+
+- **更新说明（本次新增）**
+  1. **语音音量指示（A+B）**：开麦后显示自己的 5 段离散电平（`role="meter"` + `aria-valuenow`）；并显示当前发言者「**N号 正在发言 · X%**」。
+     - 只在 R-43 的四个开麦时段出现（服务端 `day.currentSpeakerId` 非空）；投票、重投、夜间、晨间结算、指定顺序、移交、结算等窗口**不显示任何电平**。
+     - 输出静音时改为「**N号 已静音**」——**保留"谁在发言"**，避免误以为无人说话。
+  2. **输出音量 + 一键静音**（0–100）：只影响本机听到的音量；静音后滑杆保留原值，取消静音即恢复。
+  3. **麦克风增益 0–150**：仅在开麦时显示；**>125 时关闭 AGC**（自动增益控制）并在界面标注「AGC 已关闭」。AGC 是建轨参数，故跨过 125 这条线会**重建采集轨道**（滑杆提交时重建，拖动中不重建；阈值外继续加减只改音量）；每次重新开麦与换设备后增益自动重新应用。
+  4. **显示设置新增「音量指示」开关**（我的账户 → 显示与动画）：关闭后**只隐藏电平**（自己的电平条与发言者百分比），"谁在发言"照旧显示；输出音量与增益不受影响。
+  5. **前端可测性（内部改动）**：`VoiceBar` 增加可选 `session?: VoiceSessionLike` 注入口，夹具 harness 增加会话桩（状态来自夹具、记录音量调用），使语音条界面能在无凭据环境下被 E2E 覆盖。**生产路径不变**。
+
+- **明确不变的边界**：语音仍由 R-43 许可时段管辖；死者只读（R-35）不变；**音量是纯本地信号与偏好**（`localStorage` 四个新字段 `voiceLevels`/`voiceOutput`/`voiceInput`/`voiceMuted`，默认 `true`/`100`/`100`/`false`，分别钳制 0–100 或 0–150），**不上报服务端、不入日志与复盘**；本地静音不改变任何人的发言权与计时；任何人的麦克风权限都不能被他人远程调整。减少动画下无需特殊分支（离散段、无过渡）。
+
+- **验证（2026-09-21，容器内）**
+  - 单测 **20 例全过**：`tests/frontend-v2-voice-levels.test.ts` 6 + `frontend-v2-voice-session.test.ts` 7 + `frontend-v2-display-model.test.ts` 7（含 0–150 钳制、AGC 阈值 125 边界、跨阈值重建轨道并重新应用增益）。
+  - `typecheck:web:v2` 与 `typecheck:web:v2-tests` 通过（首轮 typecheck 抓到 2 处真错误——入参字段名写错、`setVolume` 在 typings 里返回 `void`——已修）。
+  - 界面 E2E `e2e/specs-v2/18-voice-levels.spec.ts`（2 例）：**chromium 2/2、webkit 2/2**；v2 入口静态清点更新为 **18 个 spec / 51 例**。
+  - 命令：`docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 18-voice-levels.spec.ts`（acceptance 栈 + seed）。
+
+- **未覆盖 / 未实现（如实记录）**：**真实媒体未验**——加入频道、开麦、增益与 AGC 的实际听感需要声网凭据（`16-voice` 环境门控）；**本地轨道 `setVolume` 的实际上限待核**（我们允许到 150，若 SDK 内部钳到 100 则该档只等效 100）；`enableAudioVolumeIndicator` / `volume-indicator` 的 API 名与载荷也需按实际 typings 复核（现以结构化垫片调用，缺失时只是没有电平，不影响通话）。未做：座位卡电平环、每玩家音量、「开麦但无电平」提示。详见 `docs/frontend-v2-voice.md`。
+
+- **上一版遗留（未做）**：**F1/F3**（账号页 `!saved` 分支未覆盖、`saved` 初值恒真）、**F4**（补 `docs/frontend-v2-display.md`）、**P1/P2**（`duplicateTargetPolicy: 'forbid'` 与 `attackOrder`/`stage1SpiritQuota`/`stage1OverkillThreshold`/`stageTriggerSnapshot`/`replayDisclosure`/`simultaneousWinPriority`/`researcherCondition` 等策略字段只声明不实现）。**已确认不改**：v1 入口身份提示文案（科研员「被公开时…」、魂灵「与死神协商夜袭方案」）。
+
+- **部署**：**未部署**（服务器更新仍需另行执行 `git pull` → `.env` 换 `AGORA_*` → `./deploy/update.sh`）。
