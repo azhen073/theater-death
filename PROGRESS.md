@@ -1,12 +1,12 @@
 # theater_death 进度与交接
 
-更新时间：2026-09-19 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-09-21 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
-| 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v1.9**，Q-01–Q-08 全量定值（规则书第 09 章） |
+| 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.2-alpha**，Q-01–Q-08 全量定值（规则书第 09 章） |
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
@@ -19,13 +19,13 @@
 | 解散与遗弃回收（v2.0.1-beta） | ✅ | 解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房主继任）；**大厅房主操作只保留「解散房间」**；遗弃房间 **24 小时回收**（v2 全员离线 / v1 房间无活动）；`tests/room-governance`、`empty-rooms`、`v2-maintenance`、`server-api`(+3)、`room-operation-api` 相应更新；新增 E2E `specs/11-dissolve.spec.ts`（v1 解散）与 `specs-v2/02-rooms.spec.ts` 的「房主大厅退出=解散」；`empty-rooms` 增加 `forget` 兜底用例、`frontend-v2-room-model` 增加 `hostExitDissolves` 用例；全量 84 文件 527 例 |
 | 语音媒体服务（声网替换） | ✅ | LiveKit（Cloud 跨境连接慢）→ **声网 Agora 免费层**：服务端签发短期 token（订阅/发布/降权）、前端换 `agora-rtc-sdk-ng`、踢人走频道管理 REST；**2026-09-19 真实云联调与 E2E 语音 3 例全过**；服务器更新待执行（见接续指引） |
 | PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
-| 舞台行动 UX（PR #5，贡献 syhneversigh） | ✅ | PR #5 全部 4 个提交已整合进 main（`b085f1b`）：舞台内行动交互与竖屏适配、边界修复、`EDIT_PROPOSAL` 原子“发布并确认本人”（版本冲突/幂等/旧服务端回退，R-47 语义不变）。维护方复核修复环形/文档流判定的竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）并补回归 E2E；全量 87 文件 556 单测、双浏览器 E2E 与类型构建通过。未部署。 |
+| 舞台行动 UX（v2.0.2-alpha，PR #5，贡献 syhneversigh） | ✅ | PR #5 全部 4 个提交已整合进 main（`b085f1b`）：舞台内行动交互与竖屏适配、边界修复、`EDIT_PROPOSAL` 原子“发布并确认本人”（版本冲突/幂等/旧服务端回退，R-47 语义不变）。维护方复核修复环形/文档流判定的竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）并补回归 E2E；全量 87 文件 556 单测、双浏览器 E2E 与类型构建通过。未部署。 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.1-beta：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收，见文末版本记录）。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.2-alpha：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合，见文末版本记录）。
 3. 进度断点（2026-09-19 深夜）：**PR#3 选定移植进行中**（外部贡献 syhneversigh，阿真确认照抄 A/B/D 三部分）。
    - **A 组已推送 `4688b49`**：公开知识泄露修复（`visibility/knowledge.ts` 先红后绿 9 例——修夜间名单在晨间公告前可从公开接口读到的泄露）、`engine/targets.ts`、`server/capabilities.ts`、`server/windows.ts` + `queued-clock.ts`、`server/log-store.ts`（迁移守卫 + 预备表列）、`GameCommand.windowInstanceId` / `START_SPEECH`、`LiveWindow.instanceId` / `type`。
    - **B 组（本批）**：天理夜死移交时机对齐 R-46/T-40 字面（晨间公告后立即办，不再等白天末尾）+ 规则 2.0 命名预设 `THEATER_DEATH_13_V2`（V2-01 立即终局 / V2-02 公告前竞选 / V2-03 发言 120 秒 + 15 秒准备窗口 / V2-04 提案兜底）；`engine/*`、`rulesets/*`、`day-driver` / `night-driver`、`clock` 照抄；版本记录已更新（规则书 Q-09 + 需求 v1.7 + `docs/rules-v2.md`）；增量 18 文件 193 例全过。
