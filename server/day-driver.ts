@@ -10,6 +10,7 @@ import {
   currentTieSpeechSpeaker,
   designateSpeechRound,
   designateSpeechRoundIssue,
+  electionVoterCount,
   endLastWords,
   endLastWordsIssue,
   registerCandidacy,
@@ -461,9 +462,9 @@ export function createDayDriver(options: {
     if (election.phase !== 'vote' && election.phase !== 'revote') {
       return;
     }
-    if (Object.keys(election.votes).length >= eligibleVoterCount(game)) {
-      apply(settleElectionVote(game));
-    }
+  if (Object.keys(election.votes).length >= electionVoterCount(game)) {
+    apply(settleElectionVote(game));
+  }
   }
 
   function submitDesignateSpeech(

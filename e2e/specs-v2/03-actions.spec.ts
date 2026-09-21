@@ -14,7 +14,7 @@ const targetActions = new Set<CommandAction>(['SUBMIT_GUARD', 'SUBMIT_LAIKE', 'E
 const submitLabels: Record<CommandAction, string> = {
   SUBMIT_GUARD: '确认守护', SUBMIT_LAIKE: '确认刺杀', EDIT_PROPOSAL: '发布方案', CONFIRM_PROPOSAL: '同意方案 v3',
   SUBMIT_CHECK: '提交查验', SUBMIT_RESCUE: '确认还魂曲', SUBMIT_REVIVE: '确认回归对象', REGISTER_CANDIDACY: '报名竞选',
-  WITHDRAW_CANDIDACY: '退出竞选', START_SPEECH: '开始发言', END_ELECTION_SPEECH: '结束竞选发言', SUBMIT_ELECTION_VOTE: '提交天理投票',
+  WITHDRAW_CANDIDACY: '退出竞选', START_SPEECH: '提前开始发言', END_ELECTION_SPEECH: '结束竞选发言', SUBMIT_ELECTION_VOTE: '提交天理投票',
   DESIGNATE_SPEECH: '确认发言顺序', END_SPEECH: '结束发言', SUBMIT_DAY_VOTE: '提交放逐投票', END_TIE_SPEECH: '结束平票发言',
   END_LAST_WORDS: '结束遗言', SUBMIT_HANDOVER: '确认移交天理',
 };

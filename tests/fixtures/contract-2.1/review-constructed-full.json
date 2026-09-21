@@ -1,33 +1,43 @@
 {
   "review": {
-    "gameId": "g_1e61408b81d04a4b2f82cf72e3e15f98",
+    "gameId": "g_01bf3cb65d327c0a54c649e06de41000",
     "winner": "human",
     "reason": "constructed_contract_review",
     "endedAtDay": 1,
     "players": [
       {
-        "playerId": "p_5e327036eb8117da",
+        "playerId": "p_2454bbe6e505436d",
         "seat": 1,
-        "roleId": "civilian",
-        "life": "alive",
-        "revealed": false,
-        "uid": "10000013",
-        "nickname": "httpuserm",
-        "avatarUrl": null
-      },
-      {
-        "playerId": "p_0b81a3bb9ef36855",
-        "seat": 2,
         "roleId": "death",
         "life": "alive",
         "revealed": false,
-        "uid": "10000006",
-        "nickname": "httpuserf",
+        "uid": "10000009",
+        "nickname": "httpuseri",
         "avatarUrl": null
       },
       {
-        "playerId": "p_04044c4a8c185b7e",
+        "playerId": "p_4bcaea130e6b614d",
+        "seat": 2,
+        "roleId": "civilian",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000002",
+        "nickname": "httpuserb",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_482324364db1c69c",
         "seat": 3,
+        "roleId": "water",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000007",
+        "nickname": "httpuserg",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_06b5e64d00d74984",
+        "seat": 4,
         "roleId": "spirit",
         "life": "alive",
         "revealed": false,
@@ -36,49 +46,9 @@
         "avatarUrl": null
       },
       {
-        "playerId": "p_254732ca2121b3e9",
-        "seat": 4,
-        "roleId": "laike",
-        "life": "alive",
-        "revealed": false,
-        "uid": "10000002",
-        "nickname": "httpuserb",
-        "avatarUrl": null
-      },
-      {
-        "playerId": "p_ad47836e2fb1b25a",
+        "playerId": "p_6b441345a3ab24f4",
         "seat": 5,
-        "roleId": "water",
-        "life": "alive",
-        "revealed": false,
-        "uid": "10000004",
-        "nickname": "httpuserd",
-        "avatarUrl": null
-      },
-      {
-        "playerId": "p_a0255810edddb437",
-        "seat": 6,
         "roleId": "civilian",
-        "life": "alive",
-        "revealed": false,
-        "uid": "10000005",
-        "nickname": "httpusere",
-        "avatarUrl": null
-      },
-      {
-        "playerId": "p_9b46d1be9108414b",
-        "seat": 7,
-        "roleId": "spirit",
-        "life": "alive",
-        "revealed": false,
-        "uid": "10000007",
-        "nickname": "httpuserg",
-        "avatarUrl": null
-      },
-      {
-        "playerId": "p_9dd60112f662dc45",
-        "seat": 8,
-        "roleId": "researcher",
         "life": "alive",
         "revealed": false,
         "uid": "10000008",
@@ -86,19 +56,9 @@
         "avatarUrl": null
       },
       {
-        "playerId": "p_88b9550131511a83",
-        "seat": 9,
-        "roleId": "door",
-        "life": "alive",
-        "revealed": false,
-        "uid": "10000011",
-        "nickname": "httpuserk",
-        "avatarUrl": null
-      },
-      {
-        "playerId": "p_78b170cc1e20faf6",
-        "seat": 10,
-        "roleId": "civilian",
+        "playerId": "p_cec0bb04c636b208",
+        "seat": 6,
+        "roleId": "mourner",
         "life": "alive",
         "revealed": false,
         "uid": "10000001",
@@ -106,9 +66,29 @@
         "avatarUrl": null
       },
       {
-        "playerId": "p_217e519915ae4522",
-        "seat": 11,
+        "playerId": "p_6ec2351f17795148",
+        "seat": 7,
+        "roleId": "laike",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000013",
+        "nickname": "httpuserm",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_66ecc03b4de6d828",
+        "seat": 8,
         "roleId": "civilian",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000004",
+        "nickname": "httpuserd",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_e2eaf517f9d20388",
+        "seat": 9,
+        "roleId": "descender",
         "life": "alive",
         "revealed": false,
         "uid": "10000003",
@@ -116,9 +96,29 @@
         "avatarUrl": null
       },
       {
-        "playerId": "p_9d0a558a74e40460",
+        "playerId": "p_1337cbdc0c89bce6",
+        "seat": 10,
+        "roleId": "civilian",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000011",
+        "nickname": "httpuserk",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_2b1d2187b3de865b",
+        "seat": 11,
+        "roleId": "door",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000006",
+        "nickname": "httpuserf",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_81b19353e18952dc",
         "seat": 12,
-        "roleId": "descender",
+        "roleId": "researcher",
         "life": "alive",
         "revealed": false,
         "uid": "10000012",
@@ -126,13 +126,13 @@
         "avatarUrl": null
       },
       {
-        "playerId": "p_1bf070b52f587b17",
+        "playerId": "p_78bebadee91fb718",
         "seat": 13,
-        "roleId": "mourner",
+        "roleId": "spirit",
         "life": "alive",
         "revealed": false,
-        "uid": "10000009",
-        "nickname": "httpuseri",
+        "uid": "10000005",
+        "nickname": "httpusere",
         "avatarUrl": null
       }
     ],
@@ -145,68 +145,68 @@
           "dayNumber": 1,
           "seats": [
             {
-              "playerId": "p_5e327036eb8117da",
-              "nickname": "httpuserm",
+              "playerId": "p_2454bbe6e505436d",
+              "nickname": "httpuseri",
               "seat": 1
             },
             {
-              "playerId": "p_0b81a3bb9ef36855",
-              "nickname": "httpuserf",
+              "playerId": "p_4bcaea130e6b614d",
+              "nickname": "httpuserb",
               "seat": 2
             },
             {
-              "playerId": "p_04044c4a8c185b7e",
-              "nickname": "httpuserj",
+              "playerId": "p_482324364db1c69c",
+              "nickname": "httpuserg",
               "seat": 3
             },
             {
-              "playerId": "p_254732ca2121b3e9",
-              "nickname": "httpuserb",
+              "playerId": "p_06b5e64d00d74984",
+              "nickname": "httpuserj",
               "seat": 4
             },
             {
-              "playerId": "p_ad47836e2fb1b25a",
-              "nickname": "httpuserd",
+              "playerId": "p_6b441345a3ab24f4",
+              "nickname": "httpuserh",
               "seat": 5
             },
             {
-              "playerId": "p_a0255810edddb437",
-              "nickname": "httpusere",
+              "playerId": "p_cec0bb04c636b208",
+              "nickname": "httpusera",
               "seat": 6
             },
             {
-              "playerId": "p_9b46d1be9108414b",
-              "nickname": "httpuserg",
+              "playerId": "p_6ec2351f17795148",
+              "nickname": "httpuserm",
               "seat": 7
             },
             {
-              "playerId": "p_9dd60112f662dc45",
-              "nickname": "httpuserh",
+              "playerId": "p_66ecc03b4de6d828",
+              "nickname": "httpuserd",
               "seat": 8
             },
             {
-              "playerId": "p_88b9550131511a83",
-              "nickname": "httpuserk",
+              "playerId": "p_e2eaf517f9d20388",
+              "nickname": "httpuserc",
               "seat": 9
             },
             {
-              "playerId": "p_78b170cc1e20faf6",
-              "nickname": "httpusera",
+              "playerId": "p_1337cbdc0c89bce6",
+              "nickname": "httpuserk",
               "seat": 10
             },
             {
-              "playerId": "p_217e519915ae4522",
-              "nickname": "httpuserc",
+              "playerId": "p_2b1d2187b3de865b",
+              "nickname": "httpuserf",
               "seat": 11
             },
             {
-              "playerId": "p_9d0a558a74e40460",
+              "playerId": "p_81b19353e18952dc",
               "nickname": "httpuserl",
               "seat": 12
             },
             {
-              "playerId": "p_1bf070b52f587b17",
-              "nickname": "httpuseri",
+              "playerId": "p_78bebadee91fb718",
+              "nickname": "httpusere",
               "seat": 13
             }
           ]
@@ -217,16 +217,7 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_5e327036eb8117da",
-          "roleId": "civilian"
-        }
-      },
-      {
-        "dayNumber": 1,
-        "stage": 1,
-        "type": "role_assigned",
-        "payload": {
-          "playerId": "p_0b81a3bb9ef36855",
+          "playerId": "p_2454bbe6e505436d",
           "roleId": "death"
         }
       },
@@ -235,8 +226,8 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_04044c4a8c185b7e",
-          "roleId": "spirit"
+          "playerId": "p_4bcaea130e6b614d",
+          "roleId": "civilian"
         }
       },
       {
@@ -244,16 +235,7 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_254732ca2121b3e9",
-          "roleId": "laike"
-        }
-      },
-      {
-        "dayNumber": 1,
-        "stage": 1,
-        "type": "role_assigned",
-        "payload": {
-          "playerId": "p_ad47836e2fb1b25a",
+          "playerId": "p_482324364db1c69c",
           "roleId": "water"
         }
       },
@@ -262,16 +244,7 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_a0255810edddb437",
-          "roleId": "civilian"
-        }
-      },
-      {
-        "dayNumber": 1,
-        "stage": 1,
-        "type": "role_assigned",
-        "payload": {
-          "playerId": "p_9b46d1be9108414b",
+          "playerId": "p_06b5e64d00d74984",
           "roleId": "spirit"
         }
       },
@@ -280,25 +253,7 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_9dd60112f662dc45",
-          "roleId": "researcher"
-        }
-      },
-      {
-        "dayNumber": 1,
-        "stage": 1,
-        "type": "role_assigned",
-        "payload": {
-          "playerId": "p_88b9550131511a83",
-          "roleId": "door"
-        }
-      },
-      {
-        "dayNumber": 1,
-        "stage": 1,
-        "type": "role_assigned",
-        "payload": {
-          "playerId": "p_78b170cc1e20faf6",
+          "playerId": "p_6b441345a3ab24f4",
           "roleId": "civilian"
         }
       },
@@ -307,7 +262,25 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_217e519915ae4522",
+          "playerId": "p_cec0bb04c636b208",
+          "roleId": "mourner"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_6ec2351f17795148",
+          "roleId": "laike"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_66ecc03b4de6d828",
           "roleId": "civilian"
         }
       },
@@ -316,7 +289,7 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_9d0a558a74e40460",
+          "playerId": "p_e2eaf517f9d20388",
           "roleId": "descender"
         }
       },
@@ -325,8 +298,35 @@
         "stage": 1,
         "type": "role_assigned",
         "payload": {
-          "playerId": "p_1bf070b52f587b17",
-          "roleId": "mourner"
+          "playerId": "p_1337cbdc0c89bce6",
+          "roleId": "civilian"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_2b1d2187b3de865b",
+          "roleId": "door"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_81b19353e18952dc",
+          "roleId": "researcher"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_78bebadee91fb718",
+          "roleId": "spirit"
         }
       },
       {
@@ -335,8 +335,8 @@
         "type": "spirit_knowledge",
         "payload": {
           "seats": [
-            3,
-            7
+            4,
+            13
           ]
         }
       },
@@ -347,8 +347,8 @@
         "payload": {
           "roomId": "faction_room",
           "memberSeats": [
-            3,
-            7
+            4,
+            13
           ]
         }
       },
@@ -409,9 +409,9 @@
       "public": [
         {
           "id": 1,
-          "messageId": "9760e510-dc69-4cb5-8d6b-e19c1bfa729a",
-          "senderId": "p_88b9550131511a83",
-          "senderSeat": 9,
+          "messageId": "a040800f-16b4-4369-a54b-d372e62b3b0d",
+          "senderId": "p_2b1d2187b3de865b",
+          "senderSeat": 11,
           "text": "contract message",
           "at": 91000
         }

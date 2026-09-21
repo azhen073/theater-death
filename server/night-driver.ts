@@ -64,6 +64,8 @@ export interface NightDriver {
   start(state: GameState): void;
   submit(command: GameCommand): SubmitResult;
   windows(): readonly LiveWindow[];
+  /** 公开夜幕时钟：当前夜间段的截止时间（不暴露段名/段数，见"公开时钟与角色窗口分开设计"） */
+  nightDeadline(): number | null;
   proposalState(playerId: string): ProposalView | null;
   snapshot(): GameState | null;
   done(): boolean;
@@ -557,6 +559,12 @@ export function createNightDriver(options: {
     },
     windows() {
       return allWindows().filter((w) => clock.now() < w.closesAt);
+    },
+    nightDeadline() {
+      if (state === null || phase === 'idle' || phase === 'done') return null;
+      if (phase === 'segment1') return factionClosesAt;
+      if (phase === 'segment2') return checkClosesAt;
+      return reviveClosesAt;
     },
     snapshot() {
       return state;

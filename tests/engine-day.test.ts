@@ -159,7 +159,7 @@ describe('白天流程：遗言与竞选（R-41–R-45）', () => {
     expect(speechResult.events.some((event) => event.type === 'election_finished')).toBe(true);
   });
 
-  it('竞选正常当选：候选人按座位发言、全体存活投票、当选者获得天理职务', () => {
+  it('竞选正常当选：候选人按座位发言、除候选外的存活玩家投票、当选者获得天理职务', () => {
     let current = begun();
     for (const candidateId of ['p_7', 'p_6', 'p_8']) {
       current = registerCandidacy(current, candidateId).state;
@@ -173,6 +173,7 @@ describe('白天流程：遗言与竞选（R-41–R-45）', () => {
     expect(afterFirst.events.some((event) => event.type === 'candidate_speech_finished')).toBe(true);
     const voting = advanceElectionSpeech(advanceElectionSpeech(afterFirst.state).state).state;
     expect(voting.day?.election?.phase).toBe('vote');
+    expect(submitElectionVoteIssue(voting, 'p_6', 'p_7')?.code).toBe('vote_forbidden_candidate');
 
     const voted = castElectionVotes(voting, [
       ['p_1', 'p_6'],
@@ -184,6 +185,45 @@ describe('白天流程：遗言与竞选（R-41–R-45）', () => {
     expect(result.state.day?.election?.winnerId).toBe('p_6');
     expect(result.state.day?.step).toBe('speech_round');
     expect(result.events.some((event) => event.type === 'sheriff_elected')).toBe(true);
+  });
+
+  it('R-42：候选不得投票，退选后恢复投票权；平票重投时平票者不得投票', () => {
+    let current = begun();
+    for (const candidateId of ['p_6', 'p_7', 'p_8']) {
+      current = registerCandidacy(current, candidateId).state;
+    }
+    current = startElectionSpeech(current).state;
+    current = withdrawCandidacy(current, 'p_6').state;
+    let guard = 0;
+    while (current.day?.election?.phase === 'speech' && guard < 20) {
+      current = advanceElectionSpeech(current).state;
+      guard += 1;
+    }
+    expect(current.day?.election?.phase).toBe('vote');
+    expect(submitElectionVoteIssue(current, 'p_6', 'p_7')).toBeNull();
+    expect(submitElectionVoteIssue(current, 'p_7', 'p_6')?.code).toBe('vote_forbidden_candidate');
+    expect(submitElectionVoteIssue(current, 'p_8', 'p_7')?.code).toBe('vote_forbidden_candidate');
+
+    const tied = settleElectionVote(
+      castElectionVotes(current, [
+        ['p_6', 'p_7'],
+        ['p_1', 'p_8'],
+      ]),
+    );
+    expect(tied.state.day?.election?.phase).toBe('revote');
+    expect(tied.state.day?.election?.tiedIds).toEqual(['p_7', 'p_8']);
+    expect(submitElectionVoteIssue(tied.state, 'p_7', 'p_8')?.code).toBe('vote_forbidden_candidate');
+    expect(submitElectionVoteIssue(tied.state, 'p_8', 'p_7')?.code).toBe('vote_forbidden_candidate');
+    expect(submitElectionVoteIssue(tied.state, 'p_6', 'p_7')).toBeNull();
+  });
+
+  it('R-42：全员报名导致没有投票人时本局无天理', () => {
+    const everyone = scenario().players.map((player) => player.playerId);
+    const finished = runElection(begun(), everyone);
+    expect(finished.day?.election?.phase).toBe('done');
+    expect(finished.day?.election?.winnerId).toBeNull();
+    expect(finished.sheriff.holderId).toBeNull();
+    expect(finished.day?.step).toBe('speech_round');
   });
 
   it('T-37：竞选平票重投一次，再次平票则本局无天理；重投可决出唯一当选', () => {
@@ -235,7 +275,7 @@ describe('白天流程：遗言与竞选（R-41–R-45）', () => {
     const voting = runElection(begun(), ['p_6', 'p_7']);
     const oneVote = submitElectionVote(voting, 'p_1', 'p_6');
     const progress = oneVote.events.find((event) => event.type === 'election_vote_progress');
-    expect(progress?.payload).toEqual({ votedCount: 1, eligibleCount: 13 });
+    expect(progress?.payload).toEqual({ votedCount: 1, eligibleCount: 11 });
     expect(progress?.visibility).toEqual({ kind: 'public' });
 
     const settled = settleElectionVote(castElectionVotes(oneVote.state, [['p_2', 'p_7']]));

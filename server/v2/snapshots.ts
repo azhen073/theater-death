@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { COMMAND_ACTIONS, CONTRACT_VERSION, type CommandAction, type DayDTO, type EventDTO, type JsonValue, type Permission, type Profile, type RoomMemberDTO, type RoomSnapshot, type SeatDTO, type SnapshotCapabilities, type SubmissionDTO } from '../../contracts/v2.ts';
-import { currentElectionSpeaker, currentLastWordsSpeaker, currentSpeechRoundSpeaker, currentTieSpeechSpeaker, voteEligibility } from '../../engine/day.ts';
+import { currentElectionSpeaker, currentLastWordsSpeaker, currentSpeechRoundSpeaker, currentTieSpeechSpeaker, electionVoterCount, voteEligibility } from '../../engine/day.ts';
 import type { GameState } from '../../engine/types.ts';
 import type { ClientEvent } from '../../visibility/projection.ts';
 import { publishedState } from '../../visibility/knowledge.ts';
@@ -28,10 +28,11 @@ function dayView(state: GameState): DayDTO | null {
   const day = state.day;
   if (!day) return null;
   const eligibleCount = state.players.filter((p) => voteEligibility(state, p.playerId) === 'ok').length;
+  const electionEligibleCount = electionVoterCount(state);
   return {
     step: day.step, speechPreparing: day.speechPreparing ?? false,
     currentSpeakerId: currentElectionSpeaker(state) ?? currentLastWordsSpeaker(state) ?? currentTieSpeechSpeaker(state) ?? currentSpeechRoundSpeaker(state),
-    election: day.election ? { phase: day.election.phase, candidates: day.election.candidates, withdrawn: day.election.withdrawn, speechOrder: day.election.speechOrder, round: day.election.round, votedCount: Object.keys(day.election.votes).length, eligibleCount, tiedIds: day.election.tiedIds, winnerId: day.election.winnerId } : null,
+    election: day.election ? { phase: day.election.phase, candidates: day.election.candidates, withdrawn: day.election.withdrawn, speechOrder: day.election.speechOrder, round: day.election.round, votedCount: Object.keys(day.election.votes).length, eligibleCount: electionEligibleCount, tiedIds: day.election.tiedIds, winnerId: day.election.winnerId } : null,
     ballot: day.ballot ? { phase: day.ballot.phase, round: day.ballot.round, votedCount: Object.keys(day.ballot.votes).length, eligibleCount, tiedIds: day.ballot.tiedIds, eliminatedId: day.ballot.eliminatedId } : null,
     speechRound: day.speechRound, lastWords: day.lastWords,
     handover: day.handover ? { deadSheriffId: day.handover.deadSheriffId, resolved: day.handover.resolved, heirId: day.handover.heirId } : null,
@@ -122,11 +123,12 @@ export class RoomSnapshots {
           return { userId: participant.userId, uid: participant.uid, nickname: participant.nickname, avatarUrl: profile?.avatarUrl ?? null, profileVersion: profile?.profileVersion ?? 0, playerId: p.playerId, memberId: current?.memberId ?? null, seat: p.seat, alive: p.life !== 'dead', revealedRoleId: p.revealed ? p.roleId : null, presence: current?.presence ?? 'left', isHost: current?.memberId === room.hostMemberId };
         }).sort((a, b) => a.seat - b.seat),
         events: events(projected.public.events ?? []), day: dayView(known), result: known.win,
+        night: known.phase === 'night' && projected.public.nightDeadline !== null ? { closesAt: projected.public.nightDeadline } : null,
         startedAt: room.matchStartedAt!, endedAt: room.matchEndedAt,
       } : null,
       private: privateView ? {
         self: { playerId: privateView.self.playerId, seat: privateView.self.seat, nickname: privateView.self.nickname, roleId: privateView.self.roleId, life: privateView.self.life, revealed: privateView.self.revealed, voteFrozen: privateView.self.voteFrozen, abilities: privateView.self.abilities, guardHistory: privateView.self.guardHistory },
-        events: events(privateView.events), targets: privateView.targets, proposal: privateView.proposal,
+        events: events(privateView.events), targets: privateView.targets, proposal: privateView.proposal, knowledge: privateView.knowledge,
         factionRoom: privateView.factionRoom ? { ...privateView.factionRoom, readOnly: readOnly || privateView.factionRoom.readOnly, canWrite: !readOnly && privateView.factionRoom.canWrite } : null,
       } : null,
       capabilities: caps, windows,

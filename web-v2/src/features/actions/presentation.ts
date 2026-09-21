@@ -77,7 +77,7 @@ export const actionButtonLabels: Record<CommandAction, { initial: string; modify
   SUBMIT_HANDOVER: { initial: '确认移交天理', modify: '更新移交对象' },
   REGISTER_CANDIDACY: { initial: '报名竞选', modify: '报名竞选' },
   WITHDRAW_CANDIDACY: { initial: '退出竞选', modify: '退出竞选' },
-  START_SPEECH: { initial: '开始发言', modify: '开始发言' },
+  START_SPEECH: { initial: '提前开始发言', modify: '提前开始发言' },
   END_ELECTION_SPEECH: { initial: '结束竞选发言', modify: '结束竞选发言' },
   END_SPEECH: { initial: '结束发言', modify: '结束发言' },
   END_TIE_SPEECH: { initial: '结束平票发言', modify: '结束平票发言' },
@@ -353,6 +353,8 @@ export function deriveActionPresentation({
     summary = (view.private?.proposal?.revision ?? 0) > 0
       ? `确认最新草稿 v${view.private!.proposal!.revision}`
       : '目前还没有可确认的草稿';
+  } else if (validTask.action === 'START_SPEECH') {
+    summary = '15 秒后自动开始；开始后麦克风会自动打开。';
   } else {
     summary = `准备执行：${title}`;
   }

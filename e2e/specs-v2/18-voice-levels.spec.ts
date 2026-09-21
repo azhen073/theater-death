@@ -114,9 +114,11 @@ test('语音条：关闭「音量指示」只隐藏电平，保留"谁在发言"
   await expect(bar.getByLabel('麦克风增益')).toBeVisible();
   await page.screenshot({ path: '/results/voice-levels-no-meter-' + testInfo.project.name + '.png' });
 
-  // 未加入：只有加入按钮与状态，没有电平/音量行
+  // 未加入：自动加入语音，并在轮到自己发言时自动开麦
   await mounted.setFixture(voiceFixture({ connection: 'idle', microphoneEnabled: false, level: 0, remoteLevel: 0, devices: [], activeDeviceId: '' }));
   const idle = page.getByRole('region', { name: '公共语音' });
-  await expect(idle.getByRole('button', { name: '加入语音', exact: true })).toBeVisible();
-  await expect(idle.locator('.voice-bar__levels')).toHaveCount(0);
+  await expect(idle.getByRole('button', { name: '加入语音', exact: true })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).toContain('join');
+  await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).toContain('mic');
+  await expect(idle.getByRole('button', { name: '关闭麦克风', exact: true })).toBeVisible();
 });

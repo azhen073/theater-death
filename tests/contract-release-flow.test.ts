@@ -71,7 +71,7 @@ describe('v2 release HTTP non-terminal election, elimination, and handover flow'
     const electionSpeech = await waitWindow(h, room.roomId, 'election_speech');
     await sendCommand(h, room.roomCode, candidateUser, { requestId: 'release-election-end', gameId, action: 'END_ELECTION_SPEECH', windowInstanceId: electionSpeech.instanceId });
     const electionVote = await waitWindow(h, room.roomId, 'election_vote');
-    for (const player of stable.runtime!.state!.players.filter((item) => item.life !== 'dead')) {
+    for (const player of stable.runtime!.state!.players.filter((item) => item.life !== 'dead' && item.playerId !== candidate.playerId)) {
       await sendCommand(h, room.roomCode, playerUser(h, room.roomId, player.playerId), { requestId: `release-election-vote-${player.playerId}`, gameId, action: 'SUBMIT_ELECTION_VOTE', windowInstanceId: electionVote.instanceId, targets: [candidate.playerId] });
     }
     expect(stable.runtime!.state!.sheriff.holderId).toBe(candidate.playerId);

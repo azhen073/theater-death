@@ -117,16 +117,16 @@ async function driveSpecialRound(
             shouldSubmit = true;
           } else if (task.action === 'START_SPEECH' || task.action === 'END_ELECTION_SPEECH' || task.action === 'END_SPEECH' || task.action === 'END_LAST_WORDS' || task.action === 'END_TIE_SPEECH') {
             shouldSubmit = true;
-          } else if (task.action === 'SUBMIT_ELECTION_VOTE') {
-            const researcher = playerFor('researcher'), door = playerFor('door');
-            if (day.election?.round === 1) {
-              const researcherVoters = new Set([userFor('laike'), userFor('death'), userFor('spirit')]);
-              const doorVoters = new Set([userFor('water'), userFor('civilian'), userFor('door')]);
-              if (researcherVoters.has(userId)) targets = [targetFor(view, task, researcher)];
-              else if (doorVoters.has(userId)) targets = [targetFor(view, task, door)];
-              else targets = [];
-            } else targets = [targetFor(view, task, researcher)];
-            shouldSubmit = true;
+        } else if (task.action === 'SUBMIT_ELECTION_VOTE') {
+          const researcher = playerFor('researcher'), door = playerFor('door');
+          if (day.election?.round === 1) {
+            const researcherVoters = new Set([userFor('laike'), userFor('death')]);
+            const doorVoters = new Set([userFor('water'), userFor('civilian')]);
+            if (researcherVoters.has(userId)) targets = [targetFor(view, task, researcher)];
+            else if (doorVoters.has(userId)) targets = [targetFor(view, task, door)];
+            else targets = [];
+          } else targets = [targetFor(view, task, researcher)];
+          shouldSubmit = true;
           } else if (task.action === 'SUBMIT_HANDOVER' && role === 'researcher') {
             targets = [targetFor(view, task, playerFor('door'))]; shouldSubmit = true;
           } else if (task.action === 'DESIGNATE_SPEECH' && role === 'door') {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { beginDay } from '../engine/day.ts';
 import { capabilities } from '../server/capabilities.ts';
-import type { BallotState, DayContext, GameState, NightContext } from '../engine/types.ts';
+import type { BallotState, DayContext, ElectionState, GameState, NightContext } from '../engine/types.ts';
 import { runNight, scenario, overrideLife, overridePlayer } from './helpers.ts';
 
 const open = (...ids: string[]) => ids.map((id) => ({ id, closesAt: 10_000 }));
@@ -44,6 +44,39 @@ describe('能力查询（后端 v2 02）', () => {
 
     expect(result.canVote).toBe(false);
     expect(result.allowedCommands).not.toContain('SUBMIT_DAY_VOTE');
+  });
+
+  it('R-42：竞选投票期间候选人没有投票能力，其他存活玩家可以投', () => {
+    const election: ElectionState = {
+      phase: 'vote',
+      candidates: ['p_1', 'p_2'],
+      withdrawn: [],
+      speechOrder: ['p_1', 'p_2'],
+      speechIndex: 2,
+      round: 1,
+      votes: {},
+      tiedIds: [],
+      winnerId: null,
+    };
+    const day: DayContext = {
+      dayNumber: 1,
+      step: 'election',
+      lastWordsScope: null,
+      lastWords: null,
+      election,
+      speechRound: null,
+      ballot: null,
+      eliminatedIds: [],
+      handover: null,
+    };
+    const state = { ...scenario(), phase: 'day' as const, day };
+    const candidate = capabilities(state, 'p_1', open('election_vote'), 0);
+    const voter = capabilities(state, 'p_3', open('election_vote'), 0);
+
+    expect(candidate.canVote).toBe(false);
+    expect(candidate.allowedCommands).not.toContain('SUBMIT_ELECTION_VOTE');
+    expect(voter.canVote).toBe(true);
+    expect(voter.allowedCommands).toContain('SUBMIT_ELECTION_VOTE');
   });
 
   it('夜间全体禁麦，且不可用技能不出现在 allowedCommands', () => {

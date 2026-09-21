@@ -4,11 +4,11 @@
   "roomId": "r_8fed98c9242223d966d396878da7d968",
   "gameId": "g_01bf3cb65d327c0a54c649e06de41000",
   "viewer": {
-    "userId": "m_AvN-1VZC51dC49LKkXr76MSfuOigPjyVjJsSfG1HE",
-    "memberId": "m_582c99a3e3a89c058cbf80ca732da070",
-    "kind": "public_spectator",
-    "subjectPlayerId": null,
-    "readOnly": true,
+    "userId": "0J6uL7WyDcJW3Hu9K29h8Kx7S6h05OUMcNsORZO2W8o",
+    "memberId": "m_f02ba78458a955bef6ca6d21ef5a48c1",
+    "kind": "formal",
+    "subjectPlayerId": "p_2454bbe6e505436d",
+    "readOnly": false,
     "isHost": false
   },
   "room": {
@@ -255,22 +255,7 @@
         "isHost": false
       }
     ],
-    "spectators": [
-      {
-        "userId": "m_AvN-1VZC51dC49LKkXr76MSfuOigPjyVjJsSfG1HE",
-        "uid": "10000014",
-        "nickname": "httpusern",
-        "avatarUrl": null,
-        "profileVersion": 0,
-        "memberId": "m_582c99a3e3a89c058cbf80ca732da070",
-        "kind": "public_spectator",
-        "playerId": null,
-        "ready": null,
-        "presence": "offline",
-        "joinedAt": 1000,
-        "isHost": false
-      }
-    ],
+    "spectators": [],
     "emptyDeadline": null
   },
   "public": {
@@ -561,38 +546,125 @@
     "startedAt": 1000,
     "endedAt": null
   },
-  "private": null,
+  "private": {
+    "self": {
+      "playerId": "p_2454bbe6e505436d",
+      "seat": 1,
+      "nickname": "httpuseri",
+      "roleId": "death",
+      "life": "alive",
+      "revealed": false,
+      "voteFrozen": false,
+      "abilities": {
+        "laikeBladeUsed": false,
+        "waterRescueUsed": false
+      },
+      "guardHistory": []
+    },
+    "events": [
+      {
+        "cursor": 1,
+        "type": "role_assigned",
+        "dayNumber": 1,
+        "stage": 1,
+        "payload": {
+          "playerId": "p_2454bbe6e505436d",
+          "roleId": "death"
+        }
+      },
+      {
+        "cursor": 2,
+        "type": "spirit_knowledge",
+        "dayNumber": 1,
+        "stage": 1,
+        "payload": {
+          "seats": [
+            4,
+            13
+          ]
+        }
+      }
+    ],
+    "targets": {
+      "EDIT_PROPOSAL": {
+        "playerIds": [
+          "p_2454bbe6e505436d",
+          "p_4bcaea130e6b614d",
+          "p_482324364db1c69c",
+          "p_06b5e64d00d74984",
+          "p_6b441345a3ab24f4",
+          "p_cec0bb04c636b208",
+          "p_6ec2351f17795148",
+          "p_66ecc03b4de6d828",
+          "p_e2eaf517f9d20388",
+          "p_1337cbdc0c89bce6",
+          "p_2b1d2187b3de865b",
+          "p_81b19353e18952dc",
+          "p_78bebadee91fb718"
+        ],
+        "maxTargets": 2,
+        "allowRepeated": true,
+        "canSkip": true,
+        "forbiddenPairs": []
+      }
+    },
+    "proposal": {
+      "pool": "death",
+      "activeMemberIds": [
+        "p_2454bbe6e505436d"
+      ],
+      "revision": 0,
+      "targetPlayerIds": [],
+      "confirmedBy": [],
+      "locked": false,
+      "effective": {
+        "revision": null,
+        "targetPlayerIds": [],
+        "basis": "empty"
+      }
+    },
+    "knowledge": {
+      "spiritSeats": [
+        4,
+        13
+      ]
+    },
+    "factionRoom": null
+  },
   "capabilities": {
     "canPostPublic": false,
     "canPostFaction": false,
     "canPublishVoice": false,
     "canVote": false,
-    "allowedCommands": [],
+    "allowedCommands": [
+      "EDIT_PROPOSAL",
+      "CONFIRM_PROPOSAL"
+    ],
     "supportsProposalEditConfirmation": true,
     "commandReasons": {
-      "SUBMIT_GUARD": "spectator_read_only",
-      "SUBMIT_LAIKE": "spectator_read_only",
-      "EDIT_PROPOSAL": "spectator_read_only",
-      "CONFIRM_PROPOSAL": "spectator_read_only",
-      "SUBMIT_CHECK": "spectator_read_only",
-      "SUBMIT_RESCUE": "spectator_read_only",
-      "SUBMIT_REVIVE": "spectator_read_only",
-      "REGISTER_CANDIDACY": "spectator_read_only",
-      "WITHDRAW_CANDIDACY": "spectator_read_only",
-      "START_SPEECH": "spectator_read_only",
-      "END_ELECTION_SPEECH": "spectator_read_only",
-      "SUBMIT_ELECTION_VOTE": "spectator_read_only",
-      "DESIGNATE_SPEECH": "spectator_read_only",
-      "END_SPEECH": "spectator_read_only",
-      "SUBMIT_DAY_VOTE": "spectator_read_only",
-      "END_TIE_SPEECH": "spectator_read_only",
-      "END_LAST_WORDS": "spectator_read_only",
-      "SUBMIT_HANDOVER": "spectator_read_only"
+      "SUBMIT_GUARD": "action_unavailable",
+      "SUBMIT_LAIKE": "action_unavailable",
+      "EDIT_PROPOSAL": null,
+      "CONFIRM_PROPOSAL": null,
+      "SUBMIT_CHECK": "action_unavailable",
+      "SUBMIT_RESCUE": "action_unavailable",
+      "SUBMIT_REVIVE": "action_unavailable",
+      "REGISTER_CANDIDACY": "action_unavailable",
+      "WITHDRAW_CANDIDACY": "action_unavailable",
+      "START_SPEECH": "action_unavailable",
+      "END_ELECTION_SPEECH": "action_unavailable",
+      "SUBMIT_ELECTION_VOTE": "action_unavailable",
+      "DESIGNATE_SPEECH": "action_unavailable",
+      "END_SPEECH": "action_unavailable",
+      "SUBMIT_DAY_VOTE": "action_unavailable",
+      "END_TIE_SPEECH": "action_unavailable",
+      "END_LAST_WORDS": "action_unavailable",
+      "SUBMIT_HANDOVER": "action_unavailable"
     },
     "room": {
       "ready": {
         "allowed": false,
-        "reason": "spectator_read_only"
+        "reason": "lobby_required"
       },
       "start": {
         "allowed": false,
@@ -600,7 +672,7 @@
       },
       "promote": {
         "allowed": false,
-        "reason": "lobby_required"
+        "reason": "already_formal"
       },
       "leave": {
         "allowed": true,
@@ -627,17 +699,57 @@
         "reason": "not_host"
       },
       "inviteSecondScreen": {
-        "allowed": false,
-        "reason": "spectator_read_only"
+        "allowed": true,
+        "reason": null
       },
       "revokeSecondScreen": {
-        "allowed": false,
-        "reason": "spectator_read_only"
+        "allowed": true,
+        "reason": null
       }
     }
   },
-  "windows": [],
-  "tasks": [],
+  "windows": [
+    {
+      "id": "faction",
+      "type": "faction",
+      "instanceId": "g_01bf3cb65d327c0a54c649e06de41000:night:1:faction",
+      "closesAt": 61000
+    }
+  ],
+  "tasks": [
+    {
+      "action": "EDIT_PROPOSAL",
+      "windowInstanceId": "g_01bf3cb65d327c0a54c649e06de41000:night:1:faction",
+      "closesAt": 61000,
+      "targets": {
+        "playerIds": [
+          "p_2454bbe6e505436d",
+          "p_4bcaea130e6b614d",
+          "p_482324364db1c69c",
+          "p_06b5e64d00d74984",
+          "p_6b441345a3ab24f4",
+          "p_cec0bb04c636b208",
+          "p_6ec2351f17795148",
+          "p_66ecc03b4de6d828",
+          "p_e2eaf517f9d20388",
+          "p_1337cbdc0c89bce6",
+          "p_2b1d2187b3de865b",
+          "p_81b19353e18952dc",
+          "p_78bebadee91fb718"
+        ],
+        "maxTargets": 2,
+        "allowRepeated": true,
+        "canSkip": true,
+        "forbiddenPairs": []
+      }
+    },
+    {
+      "action": "CONFIRM_PROPOSAL",
+      "windowInstanceId": "g_01bf3cb65d327c0a54c649e06de41000:night:1:faction",
+      "closesAt": 61000,
+      "targets": null
+    }
+  ],
   "submissionState": [],
   "chat": {
     "public": [],

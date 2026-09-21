@@ -88,14 +88,19 @@ test('v2 voice：双浏览器手动开麦、接收远端音频，发言结束后
 
     const voicePages = [host, speaker, ...extraPages];
     await Promise.all(voicePages.map(async page => {
-      await page.getByRole('button', { name: '加入语音', exact: true }).click();
-      await expect(page.getByText(/已连接 · 只听|旁听中/)).toBeVisible({ timeout: 20_000 });
+      const connected = page.getByText(/已连接 · 只听|旁听中|正在发言/);
+      const joinButton = page.getByRole('button', { name: '加入语音', exact: true });
+      await expect.poll(async () => await connected.isVisible() || await joinButton.isVisible(), { timeout: 20_000 }).toBe(true);
+      if (await joinButton.isVisible()) await joinButton.click();
+      await expect(connected).toBeVisible({ timeout: 20_000 });
     }));
     expect(voicePages).toHaveLength(13);
     await receiverPage(host, speaker, writer).screenshot({ path: '/results/voice-joined-listener.png', fullPage: true });
-    await expect(writer.getByRole('button', { name: '开启麦克风', exact: true })).toBeVisible();
-    await writer.getByRole('button', { name: '开启麦克风', exact: true }).click();
-    await expect(writer.getByRole('button', { name: '关闭麦克风', exact: true })).toBeVisible({ timeout: 30_000 });
+    const openMic = writer.getByRole('button', { name: '开启麦克风', exact: true });
+    const closeMic = writer.getByRole('button', { name: '关闭麦克风', exact: true });
+    await expect.poll(async () => await openMic.isVisible() || await closeMic.isVisible(), { timeout: 30_000 }).toBe(true);
+    if (await openMic.isVisible()) await openMic.click();
+    await expect(closeMic).toBeVisible({ timeout: 30_000 });
     const receiver = writer === host ? speaker : host;
     await expect.poll(async () => receiver.locator('audio').evaluateAll(elements => elements.some(element => (element as HTMLMediaElement).readyState >= 2 && (element as HTMLMediaElement).currentTime > 0)), { timeout: 30_000 }).toBe(true);
     await writer.screenshot({ path: '/results/voice-speaking.png', fullPage: true });

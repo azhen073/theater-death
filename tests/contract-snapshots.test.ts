@@ -153,6 +153,7 @@ describe('v2 RoomSnapshot contract', () => {
     const view = f.snapshots.read(room, players[0]!.session);
     expect(view.public?.day?.election).toMatchObject({ votedCount: 1 });
     expect(view.public?.day?.election && 'votes' in view.public.day.election).toBe(false);
+    expect(view.public?.night).toBeNull();
   });
 
   it('shows personal skill windows only to the matching player and keeps spectators/civilians free of them', async () => {
@@ -171,6 +172,29 @@ describe('v2 RoomSnapshot contract', () => {
     expect(civilianView.windows.some((window) => window.id === 'guard')).toBe(false);
     expect(spectatorView.tasks).toEqual([]);
     expect(spectatorView.windows).toEqual([]);
+    const factionClose = room.runtime!.driver!.windows().find((window) => window.id === 'faction')!.closesAt;
+    expect(doorView.public?.night).toEqual({ closesAt: factionClose });
+    expect(civilianView.public?.night).toEqual({ closesAt: factionClose });
+    expect(spectatorView.public?.night).toEqual({ closesAt: factionClose });
+  });
+
+  it('sends spirit identity knowledge only to death, mourner and spirits', async () => {
+    const f = setup();
+    const { room, players } = await fullMatch(f, 'snapshot_knowledge');
+    const runtime = room.runtime!;
+    const spiritSeats = runtime.state!.players.filter((player) => player.roleId === 'spirit').map((player) => player.seat).sort((a, b) => a - b);
+    expect(spiritSeats.length).toBeGreaterThan(0);
+    for (const player of players) {
+      const self = runtime.state!.players.find((item) => item.playerId === room.participants.get(player.userId)!.playerId)!;
+      const view = f.snapshots.read(room, player.session);
+      if (self.roleId === 'death' || self.roleId === 'mourner') {
+        expect(view.private?.knowledge).toEqual({ spiritSeats });
+      } else if (self.roleId === 'spirit') {
+        expect(view.private?.knowledge).toEqual({ spiritSeats: spiritSeats.filter((seat) => seat !== self.seat) });
+      } else {
+        expect(view.private?.knowledge).toEqual({ spiritSeats: [] });
+      }
+    }
   });
 
   it('projects effective proposal state to the player view while keeping proposal/private data out of public spectators', async () => {

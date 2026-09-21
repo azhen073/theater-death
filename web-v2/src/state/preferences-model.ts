@@ -12,6 +12,8 @@ export interface DisplayPreferences {
   voiceInput: number;
   /** 输出静音开关；静音时仍保留"谁在发言"的指示。 */
   voiceMuted: boolean;
+  /** 轮到自己发言时自动开麦（进对局自动加入语音）。 */
+  autoMic: boolean;
 }
 
 export const defaultPreferences: DisplayPreferences = {
@@ -22,6 +24,7 @@ export const defaultPreferences: DisplayPreferences = {
   voiceOutput: 100,
   voiceInput: 100,
   voiceMuted: false,
+  autoMic: true,
 };
 
 export function parsePreferences(value: unknown): DisplayPreferences {
@@ -34,5 +37,6 @@ export function parsePreferences(value: unknown): DisplayPreferences {
     voiceOutput: clampVoiceLevel(input.voiceOutput, defaultPreferences.voiceOutput),
     voiceInput: clampInputGain(input.voiceInput, defaultPreferences.voiceInput),
     voiceMuted: typeof input.voiceMuted === 'boolean' ? input.voiceMuted : false,
+    autoMic: typeof input.autoMic === 'boolean' ? input.autoMic : true,
   };
 }

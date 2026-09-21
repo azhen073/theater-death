@@ -152,6 +152,14 @@ describe('client contract OpenAPI verification', () => {
     expect(spiritView.private?.self?.roleId).toBe('spirit');
     expect(spiritView.private?.proposal?.effective).toBeDefined();
     await exportFixture('night-spirit-full.json', 'RoomSnapshot', 'GET /api/v2/rooms/{code}/view', 'started spirit effective proposal snapshot', spiritView);
+    const deathUser = roleUser('death');
+    const deathViewResponse = await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, deathUser);
+    expect(deathViewResponse.status).toBe(200);
+    const deathView = await json(deathViewResponse);
+    assertSchema(responseSchema('/rooms/{code}/view', 'get', '200'), deathView, 'started death private view');
+    expect(deathView.private?.self?.roleId).toBe('death');
+    expect(deathView.private?.knowledge?.spiritSeats?.length).toBeGreaterThan(0);
+    await exportFixture('night-death-full.json', 'RoomSnapshot', 'GET /api/v2/rooms/{code}/view', 'started death knowledge snapshot', deathView);
     const observer = await enter(h, room.roomCode, h.users[13]!, 'contract-public-observer');
     expect(observer.response.status).toBe(200);
     const publicViewResponse = await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[13]);

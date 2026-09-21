@@ -116,7 +116,7 @@ describe('v2 HTTP knowledge projection', () => {
     const otherVoter = state.players.find((player) => player.playerId !== victim.playerId && player.life === 'alive')!;
     const otherUser = playerUser(h, room.roomId, otherVoter.playerId);
     const victimVote = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'victim-vote', gameId, action: 'SUBMIT_ELECTION_VOTE', windowInstanceId: vote.instanceId, targets: [victim.playerId] }), victimUser);
-    expect(await victimVote.json()).toMatchObject({ status: 'accepted' });
+    expect(await victimVote.json()).toMatchObject({ status: 'rejected', code: 'action_forbidden' });
     const otherVote = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'other-vote', gameId, action: 'SUBMIT_ELECTION_VOTE', windowInstanceId: vote.instanceId, targets: [victim.playerId] }), otherUser);
     expect(await otherVote.json()).toMatchObject({ status: 'accepted' });
     const beforeAnnouncement = await (await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[13])).json() as Record<string, any>;

@@ -224,6 +224,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .seat-tools button { padding: 5px 9px; min-height: 28px; border: 0; border-radius: 4px; background: #eef2f8d9; color: #596d8b; font-size: 10px; }
 .seat-count { position: absolute; right: -9px; top: -11px; background: var(--accent); color: #fff; padding: 4px 7px; border-radius: 4px; font-size: 10px; }
 .seat-sheriff { position: absolute; right: 4px; top: 28px; writing-mode: vertical-rl; color: #81704c; font-size: 9px; }
+.seat-known { position: absolute; left: 4px; top: 28px; writing-mode: vertical-rl; color: #6b4c78; font-size: 9px; }
+.identity-known { padding: 6px 10px; border: 1px solid #d8c9de; border-radius: 6px; background: #f7f1fa; color: #5d4a66; font-size: 12px; }
 .stage-seat--selected .seat-main { border: 2px solid #455974; padding: 7px 4px; background: #eaf0f8; box-shadow: 0 0 0 4px #4559741a; }
 .stage-seat--unavailable .seat-main { background: #e7ebf0b0; color: #788393; }
 .stage-seat--dead .avatar { filter: grayscale(1); opacity: .65; }

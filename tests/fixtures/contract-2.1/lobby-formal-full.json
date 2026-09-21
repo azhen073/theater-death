@@ -1,18 +1,18 @@
 {
   "contractVersion": "2.2",
   "rulesVersion": "2.0",
-  "roomId": "r_e6eb381bafb021998218c79eca5a870d",
+  "roomId": "r_2de7242086b43743f1cd0db304109be1",
   "gameId": null,
   "viewer": {
-    "userId": "a27OykOH3pqkoCzSjzqmupsY2F3AsmVbuySgHrgw2XU",
-    "memberId": "m_c9d4fd85e6926a828a7e488c6a55ba1e",
+    "userId": "CZyLejA3W4Lb7EhP9cr8Ls6YKIIhOQM951HX1C_IznI",
+    "memberId": "m_6a1afefa4f953b73a4cc8408ebb15f86",
     "kind": "formal",
     "subjectPlayerId": null,
     "readOnly": false,
     "isHost": true
   },
   "room": {
-    "code": "UT3C36",
+    "code": "G9XWU4",
     "phase": "lobby",
     "config": {
       "rulesetId": "theater-death",
@@ -70,15 +70,15 @@
       "researcherCondition": "currently_dead"
     },
     "requiredPlayers": 13,
-    "hostMemberId": "m_c9d4fd85e6926a828a7e488c6a55ba1e",
+    "hostMemberId": "m_6a1afefa4f953b73a4cc8408ebb15f86",
     "formalMembers": [
       {
-        "userId": "a27OykOH3pqkoCzSjzqmupsY2F3AsmVbuySgHrgw2XU",
+        "userId": "CZyLejA3W4Lb7EhP9cr8Ls6YKIIhOQM951HX1C_IznI",
         "uid": "10000001",
         "nickname": "httpusera",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_c9d4fd85e6926a828a7e488c6a55ba1e",
+        "memberId": "m_6a1afefa4f953b73a4cc8408ebb15f86",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -87,12 +87,12 @@
         "isHost": true
       },
       {
-        "userId": "8QmCKCH9t5yPeEUYG5Qtd-dRxBXvOXDjPXvn4LO8qfg",
+        "userId": "SN3PbI6f5e0drgHQggSktbZxzK7JUAW5g6k_OFtWyQs",
         "uid": "10000002",
         "nickname": "httpuserb",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_77fb41b63c35fbc85253a8d66b2bbec7",
+        "memberId": "m_664697c3f575849f001c80ae0c781b1a",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -101,12 +101,12 @@
         "isHost": false
       },
       {
-        "userId": "dG7UrwfP7sn68ktTMg261LAXsLEVbJFCcd7CoLVURXU",
+        "userId": "DYwSYD-GR7bKSFm-OaOFbRGggJ69bO2t74A2UhTY1pI",
         "uid": "10000003",
         "nickname": "httpuserc",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_ef2c92edfaff727a6ee479c6af70366d",
+        "memberId": "m_ece784e676c6d604a290c0378d0a1f77",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -115,12 +115,12 @@
         "isHost": false
       },
       {
-        "userId": "Tgx5qKWAVbbGdkfQ4xqW0diDPHKi0TCxDiw3LyWGszE",
+        "userId": "M9qSle1lOA3hjU3tsSuxRRpiYrzhtI5TspyO7Dko_8o",
         "uid": "10000004",
         "nickname": "httpuserd",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_bef095dd94884556437d5d69431be717",
+        "memberId": "m_630c6f53dc9b15cbea74cb79080b15a5",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -129,12 +129,12 @@
         "isHost": false
       },
       {
-        "userId": "VtxuAQEx01IK5Y9xYJEoVZ7DTwQiaEvSC9-lH1MlZgk",
+        "userId": "OUmngTUP6u77RX-YrtjLf-16sevb767Qc0oFOxTUxWs",
         "uid": "10000005",
         "nickname": "httpusere",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_fe4100223836c2f9f233d74e777543b7",
+        "memberId": "m_9ec2e5cc7f99fb9309eea194f35bf09d",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -143,12 +143,12 @@
         "isHost": false
       },
       {
-        "userId": "zd7jJ3uzuq8i8qcNStFI04i2qfXK3SDTlbcLkpR34AU",
+        "userId": "zZudySM5hm2kNkfjOksAUlyI4sgTVTcxmm01sLjPvBQ",
         "uid": "10000006",
         "nickname": "httpuserf",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_dcbbaa81ee1caf4329643511fecb62f5",
+        "memberId": "m_9a7d7725b98280d4688f3e06b6149500",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -157,12 +157,12 @@
         "isHost": false
       },
       {
-        "userId": "GUMpHABKluebp3-Zr0GzbXGsOJ4Yk8KKLg5dKYa-jMg",
+        "userId": "xALoO5-bESQsq2X-Zqf1hZzrZdoeq5ZjL2irBcH2Gi4",
         "uid": "10000007",
         "nickname": "httpuserg",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_5be44cda470e9889380df3fde44d37c8",
+        "memberId": "m_d54b1e3f3411b2958731f9dfe31a3bd0",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -171,12 +171,12 @@
         "isHost": false
       },
       {
-        "userId": "AUhHIYnyoiQ4HFK-93rR7xznrTMccGXkapVCmTx3MJg",
+        "userId": "4tkaz2DQSML-qOLXVCzVbdFcxrfymUaiNYeRrZNIi1c",
         "uid": "10000008",
         "nickname": "httpuserh",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_a4ae7364c31ace6e1f525015327f0eb9",
+        "memberId": "m_c0b5321a16a407b1acb78f46a87ae6a7",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -185,12 +185,12 @@
         "isHost": false
       },
       {
-        "userId": "7yaJqqYZoTozzfPW4SeThavd3PS6dVhkSQXg2gXKrKg",
+        "userId": "CpyX9gttttW6Ao8C6r-9RD-N9tT8ps7o4yG6caxktuA",
         "uid": "10000009",
         "nickname": "httpuseri",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_0cda64ea4fa3eb7f3b22cebcbdeb46c6",
+        "memberId": "m_6c3dd398f4e264e6f3be5a3a9e936d3e",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -199,12 +199,12 @@
         "isHost": false
       },
       {
-        "userId": "DWa4WeUvexnzRmr165gTUI55gHL21MvPmYGn8FESsZ4",
+        "userId": "i9PR3i5B7UWfyz5N41muPcD_M-l8r5T0aSb3f8NrpK4",
         "uid": "10000010",
         "nickname": "httpuserj",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_1d9d13c7cd226a4b3aee941fd51d8867",
+        "memberId": "m_3e0c0d94a508246eacca817ae24452ec",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -213,12 +213,12 @@
         "isHost": false
       },
       {
-        "userId": "905GOQdM_Z9jI-GcYa5TDb3TFGWOFqqs4ASvsCqiD84",
+        "userId": "PISHpyRbjvIpsH9NLwz1x1T2x65Y0q9hAUecUSZTFwk",
         "uid": "10000011",
         "nickname": "httpuserk",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_65bcd1657f3c730eef7bb713897929aa",
+        "memberId": "m_8b1fead60967ce2a367cd20f6d3966c8",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -227,12 +227,12 @@
         "isHost": false
       },
       {
-        "userId": "v2Fy5VKX0A6vn2zZJWBizHL39--TBx0wWJVyLWsajEc",
+        "userId": "KrkaYKQJ5u_thHrwIbR_sWa3__Rz8Vm0KxKgB8ZXgZ8",
         "uid": "10000012",
         "nickname": "httpuserl",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_7491f8b36d0156913ff259046f227aef",
+        "memberId": "m_b6e33fe71fd54efba22b5e898d447a2a",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -241,12 +241,12 @@
         "isHost": false
       },
       {
-        "userId": "Sc5AXeDojwqI7kARfuzvJO_9n3aEOmFcjwzORX4-iB0",
+        "userId": "2bCUl2ppE0HObMQ2SQhBUcLdZDqjvkMIFYX7V-z33Uc",
         "uid": "10000013",
         "nickname": "httpuserm",
         "avatarUrl": null,
         "profileVersion": 0,
-        "memberId": "m_c0e347f67e7349dde5411a830ce82254",
+        "memberId": "m_f7e1d9c1382d620912138e04e88306df",
         "kind": "formal",
         "playerId": null,
         "ready": false,
@@ -266,6 +266,7 @@
     "canPublishVoice": false,
     "canVote": false,
     "allowedCommands": [],
+    "supportsProposalEditConfirmation": true,
     "commandReasons": {
       "SUBMIT_GUARD": "game_not_started",
       "SUBMIT_LAIKE": "game_not_started",

@@ -27,6 +27,7 @@ export function Stage({
 }) {
   const seats = view.public?.seats ?? [];
   const selectable = task?.targets;
+  const knownSpirits = new Set(view.private?.knowledge?.spiritSeats ?? []);
   // Taller task/observation content needs its own row rather than covering ring seats.
   const needsFlowLayout = view.viewer.readOnly || (!!task &&
     ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL', 'DESIGNATE_SPEECH'].includes(task.action));
@@ -235,6 +236,7 @@ export function Stage({
                   {seat.presence !== 'online' ? ` · ${presenceLabels[seat.presence]}` : ''}
                 </span>
                 {view.public?.sheriff.holderId === seat.playerId && <span className="seat-sheriff">天理</span>}
+                {knownSpirits.has(seat.seat) && <span className="seat-known">魂灵</span>}
                 {count > 0 && <span className="seat-count">已选{selectable?.allowRepeated ? ` ×${count}` : ''}</span>}
               </button>
               <div className="seat-tools">

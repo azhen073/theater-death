@@ -15,7 +15,7 @@ import {
 
 function snapshot(overrides: { phase?: 'day' | 'night' | 'morning' | 'ended'; speaker?: string | null } = {}): RoomSnapshot {
   return {
-    public: { phase: overrides.phase ?? 'day', day: { currentSpeakerId: overrides.speaker ?? null } },
+    public: { phase: overrides.phase ?? 'day', day: { currentSpeakerId: overrides.speaker ?? null }, night: null },
   } as unknown as RoomSnapshot;
 }
 

@@ -89,12 +89,15 @@ export async function botStep(
     return fire('END_ELECTION_SPEECH');
   }
   if (windowIds.has('election_vote') || windowIds.has('election_revote')) {
+    if (!alive || (options.candidacy ?? self.seat <= 2)) {
+      return null;
+    }
     const candidate = view.hints.candidateSeats[0];
     const targetId =
       candidate === undefined
         ? null
         : view.view.seats.find((seat) => seat.seat === candidate)?.playerId ?? null;
-    return alive ? fire('SUBMIT_ELECTION_VOTE', { target: targetId }) : null;
+    return fire('SUBMIT_ELECTION_VOTE', { target: targetId });
   }
   if (windowIds.has('speech_order')) {
     return null;

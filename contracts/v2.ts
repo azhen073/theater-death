@@ -62,6 +62,7 @@ export interface PublicGameDTO {
   phase: 'night' | 'morning' | 'day' | 'ended'; dayNumber: number; stage: 1 | 2;
   sheriff: { enabled: boolean; holderId: string | null };
   seats: SeatDTO[]; events: EventDTO[]; day: DayDTO | null;
+  night: { closesAt: number } | null;
   result: { winner: 'human' | 'death_faction'; dayNumber: number; reason: string } | null;
   startedAt: number; endedAt: number | null;
 }
@@ -69,6 +70,7 @@ export interface PrivateGameDTO {
   self: SelfDTO; events: EventDTO[];
   factionRoom: { roomId: string; readOnly: boolean; canWrite: boolean; members: readonly { playerId: string; seat: number; readOnly: boolean }[] } | null;
   targets: Partial<Record<CommandAction, TargetSelection>>;
+  knowledge: { spiritSeats: number[] };
   proposal: { pool: 'death' | 'spirit' | 'joint'; activeMemberIds: readonly string[]; revision: number; targetPlayerIds: readonly string[]; confirmedBy: readonly string[]; locked: boolean; effective: { revision: number | null; targetPlayerIds: readonly string[]; basis: 'unanimous' | 'latest_legal' | 'empty' } } | null;
 }
 export type RoomAction = 'ready' | 'start' | 'promote' | 'leave' | 'transferHost' | 'dissolve' | 'endReview' | 'kickFormal' | 'kickSpectator' | 'inviteSecondScreen' | 'revokeSecondScreen';

@@ -54,6 +54,12 @@
     "scenario": "started spirit effective proposal snapshot"
   },
   {
+    "file": "night-death-full.json",
+    "schema": "RoomSnapshot",
+    "endpoint": "GET /api/v2/rooms/{code}/view",
+    "scenario": "started death knowledge snapshot"
+  },
+  {
     "file": "started-public-observer-full.json",
     "schema": "RoomSnapshot",
     "endpoint": "GET /api/v2/rooms/{code}/view",

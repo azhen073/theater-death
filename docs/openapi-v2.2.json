@@ -3719,6 +3719,21 @@
                 "type": "null"
               }
             ]
+          },
+          "knowledge": {
+            "type": "object",
+            "properties": {
+              "spiritSeats": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
+            },
+            "required": [
+              "spiritSeats"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -3726,7 +3741,8 @@
           "events",
           "factionRoom",
           "targets",
-          "proposal"
+          "proposal",
+          "knowledge"
         ],
         "additionalProperties": false
       },
@@ -3797,6 +3813,25 @@
               }
             ]
           },
+          "night": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "closesAt": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "closesAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "result": {
             "anyOf": [
               {
@@ -3829,6 +3864,7 @@
           "seats",
           "events",
           "day",
+          "night",
           "result",
           "startedAt",
           "endedAt"

@@ -40,12 +40,33 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
   const playing = view?.room.phase === 'playing' && !!view.gameId;
   const joined = state.connection === 'connected' || state.connection === 'reconnecting';
   const outputVolume = preferences.voiceMuted ? 0 : preferences.voiceOutput;
+  const optedOutRef = useRef(false);
+  const autoMicKeyRef = useRef<string | null>(null);
   useEffect(() => session.subscribe(setState), [session]);
   useEffect(() => {
     session.setContext(enabled && playing ? { roomCode: view.room.code, gameId: view.gameId!, canPublish: view.capabilities.canPublishVoice, readOnly: view.viewer.readOnly, online, activePage } : null);
   }, [session, enabled, playing, view?.room.code, view?.gameId, view?.capabilities.canPublishVoice, view?.viewer.readOnly, online, activePage]);
   useEffect(() => { if (joined) session.setOutputVolume(outputVolume); }, [session, joined, outputVolume]);
   useEffect(() => { if (state.microphoneEnabled) session.setInputVolume(preferences.voiceInput); }, [session, state.microphoneEnabled, preferences.voiceInput]);
+  useEffect(() => { optedOutRef.current = false; autoMicKeyRef.current = null; }, [view?.gameId]);
+  // 进对局自动加入语音（订阅即可听）；本人手动离开后本局不再自动重连。
+  useEffect(() => {
+    if (!enabled || !playing || !activePage || !online || !view || view.viewer.readOnly) return;
+    if (optedOutRef.current || state.connection !== 'idle') return;
+    void session.join();
+  }, [session, enabled, playing, activePage, online, view, state.connection]);
+  // 轮到自己发言（服务端授予发布权）时自动开麦；每个发言窗口只自动开一次，手动关麦后不重开。
+  useEffect(() => {
+    if (!enabled || !playing || !activePage || !online || !view || view.viewer.readOnly) return;
+    if (state.connection === 'idle') { autoMicKeyRef.current = null; return; }
+    if (!preferences.autoMic || !joined || !view.capabilities.canPublishVoice) return;
+    const speakingWindow = view.windows.find(window => ['election_speech', 'speech_round', 'last_words', 'tie_speech'].includes(window.id));
+    const key = `${view.gameId}:${speakingWindow?.instanceId ?? view.public?.day?.currentSpeakerId ?? 'unknown'}`;
+    if (state.microphoneEnabled || state.requested) { autoMicKeyRef.current = key; return; }
+    if (autoMicKeyRef.current === key) return;
+    autoMicKeyRef.current = key;
+    void session.requestMicrophone();
+  }, [session, enabled, playing, activePage, online, view, joined, preferences.autoMic, state.microphoneEnabled, state.requested, state.connection]);
   useEffect(() => () => { void session.leave(); }, [session]);
   if (!enabled || !playing || (!activePage && state.connection === 'idle')) return null;
   const canOpen = joined && activePage && online && view.capabilities.canPublishVoice && !view.viewer.readOnly;
@@ -61,7 +82,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
       {!view.viewer.readOnly && (state.microphoneEnabled ? <button className="button button--danger" onClick={() => session.stopMicrophone()}>关闭麦克风</button> : <button className="button button--primary" disabled={!canOpen || state.requested} onClick={() => void session.requestMicrophone()}>{state.requested ? '正在开启…' : view.capabilities.canPublishVoice ? '开启麦克风' : '等待发言权限'}</button>)}
       {state.devices.length > 1 && <label className="voice-bar__device">麦克风<select value={state.activeDeviceId} onChange={event => void session.switchDevice(event.target.value)}>{state.devices.map((device, index) => <option key={device.deviceId || index} value={device.deviceId}>{device.label || `麦克风 ${index + 1}`}</option>)}</select></label>}
       {state.audioBlocked && <button className="button" onClick={() => void session.enableAudio()}>点击启用声音</button>}
-      <button className="text-button" onClick={() => void session.leave()}>离开语音</button>
+      <button className="text-button" onClick={() => { optedOutRef.current = true; void session.leave(); }}>离开语音</button>
     </>}
     {joined && <div className="voice-bar__levels">
       {ownLevelVisible(state.microphoneEnabled, preferences.voiceLevels) && <span className="voice-bar__own"><LevelMeter label="麦克风音量" level={state.level}/></span>}

@@ -87,7 +87,7 @@ function botAction(view, self) {
   if (windows.has('election_signup') && alive && self.seat <= 2) return ['REGISTER_CANDIDACY', {}];
   if (windows.has('election_speech')) return ['END_ELECTION_SPEECH', {}];
   if (windows.has('election_vote') || windows.has('election_revote'))
-    return alive ? ['SUBMIT_ELECTION_VOTE', { target: candidateId }] : null;
+    return alive && self.seat > 2 ? ['SUBMIT_ELECTION_VOTE', { target: candidateId }] : null;
   if (windows.has('speech_order')) return null;
   if (windows.has('speech_round')) return ['END_SPEECH', {}];
   if (windows.has('tie_speech')) return ['END_TIE_SPEECH', {}];

@@ -402,7 +402,7 @@ export function GameScene({
             <h1>{publicPhaseLabel(view)}</h1>
           </div>
           <div className="hud-meta">
-            <strong>{publicWindow ? formatCountdown(remaining(publicWindow.closesAt)) : '以当前任务为准'}</strong>
+            <strong>{publicWindow ? formatCountdown(remaining(publicWindow.closesAt)) : view.public?.night ? formatCountdown(remaining(view.public.night.closesAt)) : '以当前任务为准'}</strong>
             <span>
               公开存活 {view.public?.seats.filter(seat => seat.alive).length ?? 0} /{' '}
               {view.public?.seats.length ?? 0}

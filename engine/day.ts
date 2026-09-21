@@ -113,6 +113,23 @@ function eligibleVoters(state: GameState): readonly string[] {
     .map((player) => player.playerId);
 }
 
+/** 未退选的候选（R-42：候选不得投票，含平票重投时的平票者） */
+function activeCandidates(state: GameState): readonly string[] {
+  const election = state.day?.election;
+  return (election?.candidates ?? []).filter((id) => !(election?.withdrawn ?? []).includes(id));
+}
+
+/** 竞选投票人：除未退选候选外的有资格玩家 */
+function electionVoters(state: GameState): readonly string[] {
+  const candidates = new Set(activeCandidates(state));
+  return eligibleVoters(state).filter((playerId) => !candidates.has(playerId));
+}
+
+/** 竞选应投人数（服务端用于满员提前结算与快照展示） */
+export function electionVoterCount(state: GameState): number {
+  return electionVoters(state).length;
+}
+
 function buildSpeechOrder(
   state: GameState,
   startPlayerId: string,
@@ -545,9 +562,17 @@ export function advanceElectionSpeech(state: GameState): { state: GameState; eve
         emitter,
       );
     }
+    if (electionVoters(state).length === 0) {
+      const finished = finishElection(state, election, emitter, null, 'no_votes');
+      return result(
+        finished.state,
+        { ...day, step: finished.step, election: finished.election },
+        emitter,
+      );
+    }
     emitter.emit(
       'election_vote_started',
-      { round: 1, eligibleSeats: eligibleVoters(state).map((id) => seatOf(state, id)) },
+      { round: 1, eligibleSeats: electionVoters(state).map((id) => seatOf(state, id)) },
       { kind: 'public' },
     );
     updated = {
@@ -582,6 +607,9 @@ export function submitElectionVoteIssue(
   if (eligibility !== 'ok') {
     return issue(`vote_forbidden_${eligibility}`, '该玩家没有竞选投票资格');
   }
+  if (activeCandidates(state).includes(voterId)) {
+    return issue('vote_forbidden_candidate', '候选人不得投票');
+  }
   if (voterId in election.votes) {
     return issue('already_voted', '已经投过票');
   }
@@ -611,7 +639,7 @@ export function submitElectionVote(
   const votes = { ...election.votes, [voterId]: targetId };
   emitter.emit(
     'election_vote_progress',
-    { votedCount: Object.keys(votes).length, eligibleCount: eligibleVoters(state).length },
+    { votedCount: Object.keys(votes).length, eligibleCount: electionVoters(state).length },
     { kind: 'public' },
   );
   return result(state, { ...day, election: { ...election, votes } }, emitter);
@@ -696,7 +724,7 @@ export function settleElectionVote(state: GameState): { state: GameState; events
       'election_revote_started',
       {
         seats: topIds.map((id) => seatOf(state, id)).sort((a, b) => a - b),
-        eligibleSeats: eligibleVoters(state).map((id) => seatOf(state, id)),
+        eligibleSeats: electionVoters(state).map((id) => seatOf(state, id)),
       },
       { kind: 'public' },
     );

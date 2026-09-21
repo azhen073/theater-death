@@ -17,7 +17,7 @@ describe('v2 display preference model', () => {
   it('keeps only the allowed non-sensitive fields and strips tokens/user objects', () => {
     const parsed = parsePreferences({ motion: 'full', deathEffects: false, scale: 110, token: 'secret', user: { id: 'u1' }, room: 'room' });
     expect(parsed).toEqual({ ...defaultPreferences, motion: 'full', deathEffects: false, scale: 110 });
-    expect(Object.keys(parsed).sort()).toEqual(['deathEffects', 'motion', 'scale', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+    expect(Object.keys(parsed).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
     expect(parsed).not.toHaveProperty('token');
     expect(parsed).not.toHaveProperty('user');
   });
@@ -41,6 +41,8 @@ describe('v2 display preference model', () => {
     expect(parsePreferences({ voiceOutput: '60', voiceInput: null })).toMatchObject({ voiceOutput: 100, voiceInput: 100 });
     expect(parsePreferences({ voiceInput: 130 })).toMatchObject({ voiceInput: 130 });
     expect(parsePreferences({ voiceLevels: 'yes', voiceMuted: 1 })).toMatchObject({ voiceLevels: true, voiceMuted: false });
+    expect(parsePreferences({ autoMic: 'yes' })).toMatchObject({ autoMic: true });
+    expect(parsePreferences({ autoMic: false })).toMatchObject({ autoMic: false });
   });
 });
 

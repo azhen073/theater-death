@@ -53,7 +53,7 @@ function eligibleIds(state: GameState): readonly string[] {
 }
 
 describe('v2 首日预公告竞选', () => {
-  it('首夜实际死亡者仍可报名、被投票并当选；竞选完成后才公告死讯，再进入遗言', () => {
+  it('首夜实际死亡者仍可报名、被投票并当选；候选本人不得投票；竞选完成后才公告死讯，再进入遗言', () => {
     const firstNight = startFirstNight([], ['p_6']);
     const { clock, driver, steps } = electionDriver(firstNight.state);
 
@@ -63,8 +63,10 @@ describe('v2 首日预公告竞选', () => {
     clock.advance(30_000);
     clock.advance(135_000);
     expect(driver.snapshot()?.day?.election?.phase).toBe('vote');
+    expect(driver.submit({ type: 'SUBMIT_ELECTION_VOTE', playerId: 'p_6', targetId: 'p_6' }).code).toBe('vote_forbidden_candidate');
 
     for (const voterId of eligibleIds(firstNight.state)) {
+      if (voterId === 'p_6') continue;
       expect(driver.submit({ type: 'SUBMIT_ELECTION_VOTE', playerId: voterId, targetId: 'p_6' }).accepted).toBe(true);
     }
 
@@ -90,16 +92,17 @@ describe('v2 首日预公告竞选', () => {
     expect(currentLastWordsSpeaker(driver.snapshot() as GameState)).toBe('p_6');
   });
 
-  it('首日竞选平票重投仍按入夜快照保留全 13 名资格', () => {
+  it('首日竞选平票重投仍按入夜快照保留资格（候选除外）', () => {
     const firstNight = startFirstNight();
-    const { clock, driver } = electionDriver(firstNight.state);
+    const { clock, driver, steps } = electionDriver(firstNight.state);
     expect(driver.submit({ type: 'REGISTER_CANDIDACY', playerId: 'p_6' }).accepted).toBe(true);
     expect(driver.submit({ type: 'REGISTER_CANDIDACY', playerId: 'p_7' }).accepted).toBe(true);
     clock.advance(30_000);
     clock.advance(270_000);
     expect(driver.snapshot()?.day?.election?.phase).toBe('vote');
 
-    const voters = eligibleIds(firstNight.state);
+    const voters = eligibleIds(firstNight.state).filter((voterId) => voterId !== 'p_6' && voterId !== 'p_7');
+    expect(voters).toHaveLength(11);
     for (const [index, voterId] of voters.entries()) {
       const targetId = index === 0 ? 'p_6' : index === 1 ? 'p_7' : null;
       expect(driver.submit({ type: 'SUBMIT_ELECTION_VOTE', playerId: voterId, targetId }).accepted).toBe(true);
@@ -108,9 +111,9 @@ describe('v2 首日预公告竞选', () => {
     const revote = driver.snapshot()?.day?.election;
     expect(revote?.phase).toBe('revote');
     expect(revote?.round).toBe(2);
-    const event = driver
-      .snapshot();
-    expect(event?.day?.election?.tiedIds).toEqual(['p_6', 'p_7']);
+    expect(revote?.tiedIds).toEqual(['p_6', 'p_7']);
+    const revoteEvent = steps.flatMap((step) => step.events).find((event) => event.type === 'election_revote_started');
+    expect(revoteEvent?.payload).toMatchObject({ seats: [6, 7], eligibleSeats: [1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13] });
   });
 
   it('首晨已达到胜负条件时仍先完成竞选，再晨间立即终局且无遗言', () => {
@@ -142,7 +145,7 @@ describe('v2 首日预公告竞选', () => {
         dayNumber: 1,
         stage: 1,
         type: 'election_vote_progress',
-        payload: { votedCount: 1, eligibleCount: 13 },
+        payload: { votedCount: 1, eligibleCount: 11 },
         visibility: { kind: 'public' },
       }),
     ];

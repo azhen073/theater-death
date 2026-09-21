@@ -53,6 +53,14 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     expect(doorTask).toBeTruthy();
     expect(doorTask.closesAt - doorView.serverTime).toBeGreaterThanOrEqual(29_000);
     expect(doorTask.closesAt - doorView.serverTime).toBeLessThanOrEqual(30_000);
+    expect(doorView.public.night.closesAt - doorView.serverTime).toBeGreaterThanOrEqual(59_000);
+    await expect(door.locator('.hud-meta strong')).toHaveText(/^\d{2}:\d{2}$/);
+    const idleIndex = views.findIndex(view => (view.tasks ?? []).length === 0);
+    expect(idleIndex).toBeGreaterThanOrEqual(0);
+    const idleView = views[idleIndex]!;
+    expect(idleView.windows).toEqual([]);
+    expect(idleView.public.night.closesAt - idleView.serverTime).toBeGreaterThan(0);
+    await expect(contexts[idleIndex]!.page.locator('.hud-meta strong')).toHaveText(/^\d{2}:\d{2}$/);
     const targetId = doorTask.targets.playerIds[0];
     let doorCommands = 0;
     door.on('request', request => { if (request.method() === 'POST' && request.url().endsWith('/command')) doorCommands += 1; });
