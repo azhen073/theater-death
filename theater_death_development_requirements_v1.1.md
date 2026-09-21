@@ -1,8 +1,8 @@
 # 《剧院死神》在线法官 · 开发需求文档
 
-版本：v2.0.3-alpha · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更）；v2.0.1-beta 变更：房间解散任意阶段生效 + 遗弃房间 24 小时回收；v2.0.2-alpha 记录：舞台行动 UX 整合（PR #5）+ 团队方案原子提交 + 布局竞态修复；v2.0.2-beta 变更：遗言顺序明文 + 账户显示设置修复 + 文档审计；v2.0.3-alpha（进行中）变更：局内语音音量显示与调节，见文末版本记录）  
+版本：v2.0.4-alpha · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更）；v2.0.1-beta 变更：房间解散任意阶段生效 + 遗弃房间 24 小时回收；v2.0.2-alpha 记录：舞台行动 UX 整合（PR #5）+ 团队方案原子提交 + 布局竞态修复；v2.0.2-beta 变更：遗言顺序明文 + 账户显示设置修复 + 文档审计；v2.0.3-alpha 变更：局内语音音量显示与调节；v2.0.4-alpha 变更：竞选投票资格修正（R-42）+ 夜间公开时钟 + 死神知识呈现 + 语音自动化，见文末版本记录）  
 适用读者：给 Codex 与项目维护者  
-整理日期：2026-09-16 · 增补记录 2026-09-17 起 · 最近整理 2026-09-21（v2.0.3-alpha）
+整理日期：2026-09-16 · 增补记录 2026-09-17 起 · 最近整理 2026-09-21（v2.0.4-alpha）
 
 > **交付目标**  
 > 实现一套服务端裁定的在线游戏，默认 13 人、9 种身份；支持可验证的板子配置、文字交流、公共语音控制、刷新恢复、日志与终局复盘。同一套代码支持玩家电脑托管和第三方服务器托管。
@@ -777,7 +777,7 @@ https://docs.docker.com/get-started/
 - **全量 md 审计（md-1 / md-2 已修）**：25 个受控 md，内部链接 **0 处失效**；计数断言实测无误（v2 17 spec / 49 例、v1 11 spec / 18 例即 22 次运行、契约夹具 19 + 8 份）。修 `M4_ACCEPTANCE_REPORT.md` 抬头的过期版本号与 `PROGRESS.md` 的旧 E2E 口径注记；历史项（M4 正文数据、M4b LiveKit 记录、旧版本计数）刻意不改。
 - **测试与部署**：以上 E2E 均在容器内 acceptance 栈 + seed 上实跑；单测沿用 `main` 的 556 例 / 87 文件记录（本版未重跑镜像构建，如实标注）；**未部署**。
 
-### v2.0.3-alpha（2026-09-21，进行中）· 局内语音音量显示与调节（贡献 kiahir，用户（阿真）确认）
+### v2.0.3-alpha（2026-09-21，已整合进 main）· 局内语音音量显示与调节（贡献 kiahir，用户（阿真）确认）
 
 - **版本号**：沿用「版本名 = 分支名」约定，本版 = **`2.0.3-alpha`**；分支自上一版 `2.0.2-beta` 的 tip（`c5df078`）拉出，并**承接了 `2.0.2-beta` 这个远端分支名**（原 `2.0.2-beta` 已在远端改名为 `2.0.3-alpha`）。因此 **2.0.2-beta 的全部内容（遗言 G4/G5、账户显示 F2/F5、全量 md 审计）即本版基线**；与规则版本 2.0、客户端契约 2.1/2.2 仍是三套独立编号；文件名保留基线名 `theater_death_development_requirements_v1.1.md`。
 
@@ -804,3 +804,24 @@ https://docs.docker.com/get-started/
 - **上一版遗留（未做）**：**F1/F3**（账号页 `!saved` 分支未覆盖、`saved` 初值恒真）、**F4**（补 `docs/frontend-v2-display.md`）、**P1/P2**（`duplicateTargetPolicy: 'forbid'` 与 `attackOrder`/`stage1SpiritQuota`/`stage1OverkillThreshold`/`stageTriggerSnapshot`/`replayDisclosure`/`simultaneousWinPriority`/`researcherCondition` 等策略字段只声明不实现）。**已确认不改**：v1 入口身份提示文案（科研员「被公开时…」、魂灵「与死神协商夜袭方案」）。
 
 - **部署**：**未部署**（服务器更新仍需另行执行 `git pull` → `.env` 换 `AGORA_*` → `./deploy/update.sh`）。
+
+### v2.0.4-alpha（2026-09-21） 竞选投票资格修正 + 夜间公开时钟 + 死神知识呈现 + 语音自动化
+
+- **版本号**：`v2.0.4-alpha`（分支名同名）。基线 `main` 的 `3980344`；本批包含 **规则变更**（R-42），须按规则改动口径同步条款引用、测试与版本记录。
+
+- **更新说明**
+  1. **规则变更：竞选投票资格（R-42）**。候选与平票重投时的平票者均不得投票；除候选外的存活玩家（2.0 含尚未公告夜死者中的非候选）投票；**无投票人（如全员报名）时本局无天理**；退选者在投票开始前退选即恢复投票权。同步 `theater_death_rulebook_v1.1.md`、`docs/rules-v2-full.md`、`docs/rules-v2.md`（V2-02 措辞）与规则目录夹具（`tests/fixtures/contract-2.1/catalog-full.json`）。实现：`engine/day.ts` 新增 `activeCandidates`/`electionVoters`/`electionVoterCount`，`submitElectionVoteIssue` 增加 `vote_forbidden_candidate`，开窗与重投空票时按 `no_votes` 结算；`server/day-driver.ts` 的竞选满员判定改用 `electionVoterCount`；`server/v2/snapshots.ts` 的竞选 `eligibleCount` 排除候选（放逐路径不变）。v2 HTTP 边界对候选投票返回 `action_forbidden`（能力层已排除）。
+  2. **夜间公开时钟**。`RoomSnapshot.public.night = {closesAt} | null`：夜间阶段下发**当前夜间段**的截止时间（段1=协商截止、段2=查验截止、回归段=回归截止；idle/done 与白天为 null），供全桌（含无夜间任务者与观战者）显示剩余时间；不含段名/段数，不随提前提交缩短（符合需求「公开时钟与角色窗口分开设计」）。实现：`server/night-driver.ts` 新增 `nightDeadline()`，`server/v2/view.ts` 透出，`web-v2/src/features/game/scene.tsx` 的 HUD 在无公开窗口时回落到夜间时钟。
+  3. **死神/魂灵知识呈现**。`RoomSnapshot.private.knowledge.spiritSeats`：死神与丧亲者知晓全部魂灵（R-27、R-31），魂灵知晓其他魂灵（R-30，不含自己），其余为空；服务端按规则构建、只发给本人（含绑定第二屏）。UI：座位卡新增私有「魂灵」徽标（`stage.tsx`），身份弹窗新增「已知身份」区块（`identity.tsx`）。此前该知识只以 `spirit_knowledge` 事件出现在「情报」标签。
+  4. **语音自动化与发言文案**。正式玩家进入对局且在线时**自动加入语音**（手动「离开语音」后本局不再自动重连；观战者与第二屏保持手动旁听）；新增本地偏好 **`autoMic`（默认开）**：进入自己的正式发言窗口时**自动开麦**，每个发言窗口只自动开一次、手动关麦后不重开、权限被拒后本窗口不重试；显示与动画设置新增「轮到我发言时自动开麦」开关。`START_SPEECH` 按钮文案改为「提前开始发言」，行动卡说明「15 秒后自动开始；开始后麦克风会自动打开」（准备窗口倒计时已有，V2-03 语义不变）。
+  5. **契约与夹具**。`contracts/v2.ts` 的 `PublicGameDTO.night`、`PrivateGameDTO.knowledge`；`docs/openapi-v2.2.json` 两处 schema（含 required）；`docs/client-contract-2.2.md` 新增「公开夜幕时钟与私人身份知识」；`tests/fixtures/contract-2.1/` 全量重导出（新增 `night-death-full.json`，`full-index.json` 同步）。
+
+- **明确不变的边界**：放逐投票资格不变（死者不得投、莱莱禁投、候选可投）；R-43 语音时段与 R-35 死者只读不变；自动开麦只在服务端 `canPublishVoice=true` 的窗口内发生，不上报、不可远程调控他人；夜间时钟只暴露"当前段截止"，与"天亮时刻"同质，不泄露角色窗口名/段数；v1 入口共用同一引擎（规则变更对 v1 同样生效）。
+
+- **验证（2026-09-21，容器内）**：见 `PROGRESS.md`「测试状态」与本次执行记录（增量单测、契约夹具校验、全量镜像构建、双浏览器 E2E 分批实测）。
+
+- **未覆盖 / 未实现（如实记录）**：真实媒体（声网凭据）下的自动开麦与听感未验（`16-voice` 环境门控，spec 已按新交互更新）；`13-release-smoke`/`15-admin` 环境门控未跑；`11-special-actions` 的平票驱动已改为非候选投票，需按新规则实跑复核。
+
+- **上一版遗留（未做）**：F1/F3/F4、P1/P2、`lastWords.firstNight`/`otherNights` 死配置、座位卡电平环与每玩家音量、「开麦但无电平」提示。
+
+- **部署**：**未部署**。

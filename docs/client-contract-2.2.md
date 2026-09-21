@@ -19,3 +19,9 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 `POST /api/v2/rooms/{code}/command` 的 `EDIT_PROPOSAL` 可选携带 `confirmSelf:true` 和 `expectedRevision`（非负整数）。两字段必须同时出现，并显式提供 `targets`；服务端在房间串行队列中校验当前最新版本等于 `expectedRevision`，再原子创建新版本并确认提交者本人。成功仍返回一个既有 `CommandReceipt`，同一请求ID重放不会创建重复版本。
 
 快照能力 `capabilities.supportsProposalEditConfirmation=true` 表示支持此扩展，不代表当前玩家具有编辑或确认权限。缺省或 false 时，客户端继续使用独立的 `EDIT_PROPOSAL` 与 `CONFIRM_PROPOSAL`。组合参数错误返回 `invalid_proposal_options`；依据版本已变化返回 `proposal_changed`，状态不产生部分写入。旧的、不带扩展字段的编辑语义保持不变。
+
+## 公开夜幕时钟与私人身份知识
+
+`RoomSnapshot.public.night` 为 `{closesAt}` 或 `null`：夜间阶段给出**当前夜间段**的截止时间，供全桌（含无夜间任务者与观战者）显示剩余时间；不包含段名与段数，白天与大厅为 `null`。该字段与角色私有窗口（`windows`/`tasks`）相互独立，不随提前提交缩短。
+
+`RoomSnapshot.private.knowledge.spiritSeats` 为**本人已知的魂灵座位号**（升序，含已出局者）：死神与丧亲者知晓全部魂灵（R-27、R-31），魂灵知晓其他魂灵（R-30，不含自己），其余身份为空数组。该字段只出现在本人（含绑定第二屏）的私人视图，用于座位标记与身份弹窗；公共视图与观战者没有该字段。
