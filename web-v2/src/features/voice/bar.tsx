@@ -72,7 +72,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
       <button className="text-button" aria-pressed={preferences.voiceMuted} onClick={() => update({ voiceMuted: !preferences.voiceMuted })}>{preferences.voiceMuted ? '取消静音' : '静音'}</button>
       {state.microphoneEnabled && <label className="voice-bar__volume">麦克风增益<input type="range" min={0} max={VOICE_INPUT_MAX} step={5} aria-label="麦克风增益" value={draftInput ?? preferences.voiceInput}
         onChange={event => { const next = Number(event.target.value); setDraftInput(next); session.setInputVolume(next); }}
-        onPointerUp={commitInput} onKeyUp={commitInput} onBlur={commitInput}/><span aria-hidden="true">{draftInput ?? preferences.voiceInput}</span>{!agcEnabledFor(draftInput ?? preferences.voiceInput) && <em className="voice-bar__agc" title="增益超过 110 时关闭自动增益控制，避免手动放大被压回">AGC 已关闭</em>}</label>}
+        onPointerUp={commitInput} onKeyUp={commitInput} onBlur={commitInput}/><span aria-hidden="true">{draftInput ?? preferences.voiceInput}</span>{!agcEnabledFor(draftInput ?? preferences.voiceInput) && <em className="voice-bar__agc" title="增益超过 125 时关闭自动增益控制，避免手动放大被压回">AGC 已关闭</em>}</label>}
     </div>}
     {state.microphoneError && <span className="voice-bar__error">{state.microphoneError}</span>}
     {joined && !view.viewer.readOnly && !view.capabilities.canPublishVoice && <span className="voice-bar__hint">当前未获得发言权限</span>}

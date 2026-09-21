@@ -31,15 +31,17 @@ describe('v2 voice level model（A+B：自己的电平 + 当前发言者电平�
     }
   });
 
-  it('clamps the microphone gain into 0–150 and turns AGC off above 110', () => {
+  it('clamps the microphone gain into 0–150 and turns AGC off above 125', () => {
     expect(clampInputGain(-5)).toBe(0);
     expect(clampInputGain(120.4)).toBe(120);
     expect(clampInputGain(999)).toBe(VOICE_INPUT_MAX);
     expect(clampInputGain('x')).toBe(100);
     expect(VOICE_INPUT_MAX).toBe(150);
+    expect(VOICE_AGC_MAX_GAIN).toBe(125);
     expect(agcEnabledFor(0)).toBe(true);
     expect(agcEnabledFor(VOICE_AGC_MAX_GAIN)).toBe(true);
     expect(agcEnabledFor(VOICE_AGC_MAX_GAIN + 1)).toBe(false);
+    expect(agcEnabledFor(130)).toBe(false);
     expect(agcEnabledFor(150)).toBe(false);
     expect(agcEnabledFor(999)).toBe(false);
   });

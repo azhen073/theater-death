@@ -60,8 +60,12 @@ test('语音条：自己的电平、当前发言者、输出音量与静音、�
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}').voiceInput)).toBe(30);
   await expect(bar.locator('.voice-bar__agc')).toHaveCount(0);
 
-  // 增益上限 150；超过 110 时关闭 AGC 并给出提示
+  // 增益上限 150；超过 125 时关闭 AGC 并给出提示（阈值边界：125 不提示、130 提示）
   await expect(gain).toHaveAttribute('max', '150');
+  await gain.fill('125');
+  await expect(bar.locator('.voice-bar__agc')).toHaveCount(0);
+  await gain.fill('130');
+  await expect(bar.locator('.voice-bar__agc')).toHaveText('AGC 已关闭');
   await gain.fill('150');
   await expect(bar.locator('.voice-bar__agc')).toHaveText('AGC 已关闭');
   await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).toContain('input:150');

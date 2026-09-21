@@ -172,7 +172,7 @@ export class VoiceSession {
   }
 
   /** 自己麦克风采集增益 0–100；每次重新开麦都会新建轨道，故值由会话记住并在开麦后重新应用。 */
-  /** 自己麦克风采集增益 0–150；跨过 AGC 阈值（110）时重建采集轨道。每次重新开麦也会新建轨道，故值由会话记住。 */
+  /** 自己麦克风采集增益 0–150；跨过 AGC 阈值（125）时重建采集轨道。每次重新开麦也会新建轨道，故值由会话记住。 */
   setInputVolume(volume: number) {
     const next = clampInputGain(volume);
     const needsRebuild = agcEnabledFor(next) !== this.#agcEnabled;
@@ -221,7 +221,7 @@ export class VoiceSession {
       await client.setClientRole('host').catch(() => undefined);
       if (this.#track === null) {
         const deviceId = this.#state.activeDeviceId;
-        // AGC 是建轨参数：增益 >110 手动放大时关闭它，避免自动增益把手动放大压回
+        // AGC 是建轨参数：增益 >125 手动放大时关闭它，避免自动增益把手动放大压回
         this.#agcEnabled = agcEnabledFor(this.#inputVolume);
         this.#track = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: this.#agcEnabled, ...(deviceId === '' ? {} : { microphoneId: deviceId }) });
       }

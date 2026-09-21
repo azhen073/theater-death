@@ -8,7 +8,7 @@ export interface DisplayPreferences {
   voiceLevels: boolean;
   /** 远端播放音量 0–100；本地偏好，不上报服务端。 */
   voiceOutput: number;
-  /** 自己麦克风采集增益 0–150（>110 时关闭 AGC）；本地偏好，不上报服务端。 */
+  /** 自己麦克风采集增益 0–150（>125 时关闭 AGC）；本地偏好，不上报服务端。 */
   voiceInput: number;
   /** 输出静音开关；静音时仍保留"谁在发言"的指示。 */
   voiceMuted: boolean;

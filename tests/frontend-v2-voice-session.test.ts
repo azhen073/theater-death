@@ -156,26 +156,31 @@ describe('v2 voice volume（音量指示 + 输出/输入音量，纯本地）', 
     expect(second.setVolume).toHaveBeenLastCalledWith(30);
   });
 
-  it('keeps AGC up to 110 and rebuilds the capture track above it（增益可到 150）', async () => {
+  it('keeps AGC up to 125 and rebuilds the capture track above it（增益可到 150）', async () => {
     const { session, client } = await connectedSession();
 
     // 低于阈值：建轨带 AGC
-    session.setInputVolume(110);
+    session.setInputVolume(125);
     await session.requestMicrophone();
     const agcTrack = mocks.tracks.at(-1)!;
     expect(agcTrack.options).toMatchObject({ AEC: true, ANS: true, AGC: true });
-    expect(agcTrack.setVolume).toHaveBeenLastCalledWith(110);
+    expect(agcTrack.setVolume).toHaveBeenLastCalledWith(125);
 
     // 跨过阈值：旧轨道被停用，新轨道带 AGC:false 并重新应用增益
-    session.setInputVolume(150);
+    session.setInputVolume(130);
     await vi.waitFor(() => expect(mocks.tracks.length).toBe(2));
     const boosted = mocks.tracks.at(-1)!;
     expect(agcTrack.stop).toHaveBeenCalled();
     expect(agcTrack.close).toHaveBeenCalled();
     expect(boosted.options).toMatchObject({ AGC: false });
-    expect(boosted.setVolume).toHaveBeenLastCalledWith(150);
+    expect(boosted.setVolume).toHaveBeenLastCalledWith(130);
     expect(client.published).toContain(boosted);
     expect(client.published).not.toContain(agcTrack);
+
+    // 继续加大不再重建（AGC 已经是关的），只改轨道音量
+    session.setInputVolume(150);
+    expect(mocks.tracks.length).toBe(2);
+    expect(boosted.setVolume).toHaveBeenLastCalledWith(150);
 
     // 落回阈值内：再建一条带 AGC 的轨道
     session.setInputVolume(100);
