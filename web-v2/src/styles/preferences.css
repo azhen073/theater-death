@@ -23,6 +23,7 @@ html[data-reduced-motion='true'] *::after {
 .voice-bar__volume { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
 .voice-bar__volume input[type='range'] { width: 88px; min-width: 0; }
 .voice-bar__volume > span { min-width: 22px; font-variant-numeric: tabular-nums; }
+.voice-bar__agc { font-style: normal; font-size: 10px; color: #8a6d3b; border: 1px solid #e0cfa8; background: #fdf7e8; border-radius: 4px; padding: 1px 5px; }
 .level-meter { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
 .level-meter__segment { width: 3px; height: 5px; border-radius: 1px; background: #c9d1d8; }
 .level-meter__segment--on { height: 12px; background: var(--accent); }

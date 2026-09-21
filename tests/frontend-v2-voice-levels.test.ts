@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { RoomSnapshot } from '../contracts/v2.ts';
 import {
+  VOICE_AGC_MAX_GAIN,
+  VOICE_INPUT_MAX,
   VOICE_LEVEL_SEGMENTS,
+  agcEnabledFor,
+  clampInputGain,
   clampVoiceLevel,
   levelSegments,
   ownLevelVisible,
@@ -25,6 +29,19 @@ describe('v2 voice level model（A+B：自己的电平 + 当前发言者电平�
     for (const value of [undefined, null, 'x', Number.NaN, Number.POSITIVE_INFINITY, {}]) {
       expect(clampVoiceLevel(value, 100)).toBe(100);
     }
+  });
+
+  it('clamps the microphone gain into 0–150 and turns AGC off above 110', () => {
+    expect(clampInputGain(-5)).toBe(0);
+    expect(clampInputGain(120.4)).toBe(120);
+    expect(clampInputGain(999)).toBe(VOICE_INPUT_MAX);
+    expect(clampInputGain('x')).toBe(100);
+    expect(VOICE_INPUT_MAX).toBe(150);
+    expect(agcEnabledFor(0)).toBe(true);
+    expect(agcEnabledFor(VOICE_AGC_MAX_GAIN)).toBe(true);
+    expect(agcEnabledFor(VOICE_AGC_MAX_GAIN + 1)).toBe(false);
+    expect(agcEnabledFor(150)).toBe(false);
+    expect(agcEnabledFor(999)).toBe(false);
   });
 
   it('quantizes levels into discrete segments, so reduced motion needs no extra branch', () => {

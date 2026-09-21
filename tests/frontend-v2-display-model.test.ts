@@ -35,10 +35,11 @@ describe('v2 display preference model', () => {
     expect(defaultPreferences).toMatchObject({ voiceLevels: true, voiceOutput: 100, voiceInput: 100, voiceMuted: false });
   });
 
-  it('clamps stored voice volumes into 0–100 and rejects non-numeric volumes', () => {
-    expect(parsePreferences({ voiceOutput: -3, voiceInput: 250 })).toMatchObject({ voiceOutput: 0, voiceInput: 100 });
+  it('clamps stored voice volumes into 0–100（输出）and 0–150（增益）and rejects non-numeric volumes', () => {
+    expect(parsePreferences({ voiceOutput: -3, voiceInput: 250 })).toMatchObject({ voiceOutput: 0, voiceInput: 150 });
     expect(parsePreferences({ voiceOutput: 60.6, voiceInput: 0 })).toMatchObject({ voiceOutput: 61, voiceInput: 0 });
     expect(parsePreferences({ voiceOutput: '60', voiceInput: null })).toMatchObject({ voiceOutput: 100, voiceInput: 100 });
+    expect(parsePreferences({ voiceInput: 130 })).toMatchObject({ voiceInput: 130 });
     expect(parsePreferences({ voiceLevels: 'yes', voiceMuted: 1 })).toMatchObject({ voiceLevels: true, voiceMuted: false });
   });
 });

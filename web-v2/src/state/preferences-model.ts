@@ -1,4 +1,4 @@
-import { clampVoiceLevel } from '../presentation/voice-levels.ts';
+import { clampInputGain, clampVoiceLevel } from '../presentation/voice-levels.ts';
 
 export interface DisplayPreferences {
   motion: 'system' | 'reduced' | 'full';
@@ -8,7 +8,7 @@ export interface DisplayPreferences {
   voiceLevels: boolean;
   /** 远端播放音量 0–100；本地偏好，不上报服务端。 */
   voiceOutput: number;
-  /** 自己麦克风采集增益 0–100；本地偏好，不上报服务端。 */
+  /** 自己麦克风采集增益 0–150（>110 时关闭 AGC）；本地偏好，不上报服务端。 */
   voiceInput: number;
   /** 输出静音开关；静音时仍保留"谁在发言"的指示。 */
   voiceMuted: boolean;
@@ -32,7 +32,7 @@ export function parsePreferences(value: unknown): DisplayPreferences {
     scale: input.scale === 90 || input.scale === 110 ? input.scale : 100,
     voiceLevels: typeof input.voiceLevels === 'boolean' ? input.voiceLevels : true,
     voiceOutput: clampVoiceLevel(input.voiceOutput, defaultPreferences.voiceOutput),
-    voiceInput: clampVoiceLevel(input.voiceInput, defaultPreferences.voiceInput),
+    voiceInput: clampInputGain(input.voiceInput, defaultPreferences.voiceInput),
     voiceMuted: typeof input.voiceMuted === 'boolean' ? input.voiceMuted : false,
   };
 }

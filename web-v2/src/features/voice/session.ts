@@ -1,5 +1,6 @@
 import AgoraRTC, { type IAgoraRTCClient, type IMicrophoneAudioTrack } from 'agora-rtc-sdk-ng';
 import type { VoiceCredentials } from '../../../../contracts/v2.ts';
+import { VOICE_INPUT_DEFAULT, agcEnabledFor, clampInputGain } from '../../presentation/voice-levels.ts';
 import { errorMessage, post } from '../../transport/http.ts';
 import { newRequestId } from '../../transport/ids.ts';
 
@@ -76,7 +77,9 @@ export class VoiceSession {
   #retryCount = 0;
   #uid = 0;
   #outputVolume = 100;
-  #inputVolume = 100;
+  #inputVolume = VOICE_INPUT_DEFAULT;
+  #agcEnabled = true;
+  #rebuilding = false;
   #listeners = new Set<(state: VoiceState) => void>();
 
   state() { return this.#state; }
@@ -169,10 +172,23 @@ export class VoiceSession {
   }
 
   /** 自己麦克风采集增益 0–100；每次重新开麦都会新建轨道，故值由会话记住并在开麦后重新应用。 */
+  /** 自己麦克风采集增益 0–150；跨过 AGC 阈值（110）时重建采集轨道。每次重新开麦也会新建轨道，故值由会话记住。 */
   setInputVolume(volume: number) {
-    this.#inputVolume = Math.min(100, Math.max(0, Math.round(volume)));
+    const next = clampInputGain(volume);
+    const needsRebuild = agcEnabledFor(next) !== this.#agcEnabled;
+    this.#inputVolume = next;
+    if (needsRebuild) this.#agcEnabled = agcEnabledFor(next);
     const track = this.#track;
-    if (track) track.setVolume(this.#inputVolume);
+    if (track === null) return;
+    if (needsRebuild) { void this.#rebuildTrack().catch(() => undefined); return; }
+    track.setVolume(this.#inputVolume);
+  }
+  /** AGC 开关只存在于建轨参数里，因此跨阈值时重建轨道并在新轨道上重新应用增益。 */
+  async #rebuildTrack(): Promise<void> {
+    if (this.#rebuilding || this.#track === null) return;
+    this.#rebuilding = true;
+    try { await this.#stopTrack(); await this.#applyMicrophone(); }
+    finally { this.#rebuilding = false; }
   }
   async enableAudio() {
     const client = this.#client;
@@ -205,7 +221,9 @@ export class VoiceSession {
       await client.setClientRole('host').catch(() => undefined);
       if (this.#track === null) {
         const deviceId = this.#state.activeDeviceId;
-        this.#track = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: true, ...(deviceId === '' ? {} : { microphoneId: deviceId }) });
+        // AGC 是建轨参数：增益 >110 手动放大时关闭它，避免自动增益把手动放大压回
+        this.#agcEnabled = agcEnabledFor(this.#inputVolume);
+        this.#track = await AgoraRTC.createMicrophoneAudioTrack({ AEC: true, ANS: true, AGC: this.#agcEnabled, ...(deviceId === '' ? {} : { microphoneId: deviceId }) });
       }
       await client.publish([this.#track]);
       this.#track.setVolume(this.#inputVolume);

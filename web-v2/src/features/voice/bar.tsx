@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RoomSnapshot } from '../../../../contracts/v2.ts';
-import { VOICE_LEVEL_SEGMENTS, levelSegments, ownLevelVisible, voiceLevelDisplay } from '../../presentation/voice-levels.ts';
+import { VOICE_INPUT_MAX, VOICE_LEVEL_SEGMENTS, agcEnabledFor, levelSegments, ownLevelVisible, voiceLevelDisplay } from '../../presentation/voice-levels.ts';
 import { usePreferences } from '../../state/preferences.ts';
 import { VoiceSession, type VoiceState } from './session.ts';
 
@@ -68,11 +68,11 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
       {display.speakingPlayerId !== null && <span className="voice-bar__speaker">{speakerSeat === null ? '' : `${speakerSeat}号 `}{display.muted ? '已静音' : display.showLevel ? `正在发言 · ${display.speakerLevel}%` : '正在发言'}</span>}
       <label className="voice-bar__volume">输出音量<input type="range" min={0} max={100} step={5} aria-label="输出音量" value={draftOutput ?? preferences.voiceOutput}
         onChange={event => { const next = Number(event.target.value); setDraftOutput(next); session.setOutputVolume(preferences.voiceMuted ? 0 : next); }}
-        onPointerUp={commitOutput} onKeyUp={commitOutput} onBlur={commitOutput}/><span aria-hidden="true">{preferences.voiceOutput}</span></label>
+        onPointerUp={commitOutput} onKeyUp={commitOutput} onBlur={commitOutput}/><span aria-hidden="true">{draftOutput ?? preferences.voiceOutput}</span></label>
       <button className="text-button" aria-pressed={preferences.voiceMuted} onClick={() => update({ voiceMuted: !preferences.voiceMuted })}>{preferences.voiceMuted ? '取消静音' : '静音'}</button>
-      {state.microphoneEnabled && <label className="voice-bar__volume">麦克风增益<input type="range" min={0} max={100} step={5} aria-label="麦克风增益" value={draftInput ?? preferences.voiceInput}
+      {state.microphoneEnabled && <label className="voice-bar__volume">麦克风增益<input type="range" min={0} max={VOICE_INPUT_MAX} step={5} aria-label="麦克风增益" value={draftInput ?? preferences.voiceInput}
         onChange={event => { const next = Number(event.target.value); setDraftInput(next); session.setInputVolume(next); }}
-        onPointerUp={commitInput} onKeyUp={commitInput} onBlur={commitInput}/><span aria-hidden="true">{preferences.voiceInput}</span></label>}
+        onPointerUp={commitInput} onKeyUp={commitInput} onBlur={commitInput}/><span aria-hidden="true">{draftInput ?? preferences.voiceInput}</span>{!agcEnabledFor(draftInput ?? preferences.voiceInput) && <em className="voice-bar__agc" title="增益超过 110 时关闭自动增益控制，避免手动放大被压回">AGC 已关闭</em>}</label>}
     </div>}
     {state.microphoneError && <span className="voice-bar__error">{state.microphoneError}</span>}
     {joined && !view.viewer.readOnly && !view.capabilities.canPublishVoice && <span className="voice-bar__hint">当前未获得发言权限</span>}

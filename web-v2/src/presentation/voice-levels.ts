@@ -9,11 +9,27 @@ import type { RoomSnapshot } from '../../../contracts/v2.ts';
 export const VOICE_LEVEL_SEGMENTS = 5;
 export const VOICE_LEVEL_MIN = 0;
 export const VOICE_LEVEL_MAX = 100;
+/** 麦克风增益允许放大到 150（远端播放音量仍限 100）。 */
+export const VOICE_INPUT_MAX = 150;
+/** 增益超过该值即关闭 AGC（自动增益控制）：手动放大时不再被自动压回来。 */
+export const VOICE_AGC_MAX_GAIN = 110;
+/** 用户设定的默认值（增益默认 100，即 AGC 生效）。 */
+export const VOICE_INPUT_DEFAULT = 100;
 
 /** 音量唯一的合法性定义（偏好持久化与 UI 共用）。非法值回落到 fallback。 */
-export function clampVoiceLevel(value: unknown, fallback = VOICE_LEVEL_MAX): number {
+export function clampVoiceLevel(value: unknown, fallback = VOICE_LEVEL_MAX, max = VOICE_LEVEL_MAX): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
-  return Math.min(VOICE_LEVEL_MAX, Math.max(VOICE_LEVEL_MIN, Math.round(value)));
+  return Math.min(max, Math.max(VOICE_LEVEL_MIN, Math.round(value)));
+}
+
+/** 麦克风增益 0–150。 */
+export function clampInputGain(value: unknown, fallback = VOICE_INPUT_DEFAULT): number {
+  return clampVoiceLevel(value, fallback, VOICE_INPUT_MAX);
+}
+
+/** 增益 ≤110 时保留 AGC；放大超过 110 时关闭，避免自动增益把手动放大压回。 */
+export function agcEnabledFor(gain: number): boolean {
+  return clampInputGain(gain) <= VOICE_AGC_MAX_GAIN;
 }
 
 /** 0–100 量化成 0…segments；只要能听见就至少亮一段，0 表示静默。 */
