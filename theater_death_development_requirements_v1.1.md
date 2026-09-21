@@ -784,10 +784,10 @@ https://docs.docker.com/get-started/
   - **局内语音音量显示与调节（A+B + 输出/输入增益，已实现；贡献 kiahir，用户（阿真）确认）**：
     - **显示**：A = 自己开麦后的 5 段离散电平（`role="meter"`）；B = 当前发言者「N号 正在发言 · X%」，输出静音时显示「N号 已静音」并**保留"谁在发言"**（用户裁定）。只在 R-43 四个开麦时段出现（服务端 `day.currentSpeakerId` 非空），投票/夜间/晨间结算等窗口不显示。
     - **调节**：输出音量 0–100 + 一键静音（远端播放）；麦克风增益 0–100（仅开麦时显示，**每次重新开麦与换设备后自动重新应用**）。默认 `100 / 100 / 不静音`；每玩家音量不做。
-    - **边界**：纯本地信号与偏好（`localStorage` 四个新字段，不上报服务端、不入日志与复盘）；不改变任何人的发言权与计时；数值钳制 0–100；「音量指示」关闭时连"谁在发言"一并隐藏；减少动画下无需特殊分支（离散段、无过渡）。
+    - **边界**：纯本地信号与偏好（`localStorage` 四个新字段，不上报服务端、不入日志与复盘）；不改变任何人的发言权与计时；数值钳制 0–100；「音量指示」关闭时**只隐藏电平**（自己的电平条与发言者百分比），**"谁在发言"照旧显示**（保留座位号，静音时显示「已静音」），音量调节不受影响；减少动画下无需特殊分支（离散段、无过渡）。
     - **实现**：`web-v2/src/presentation/voice-levels.ts`（纯模型）、`features/voice/session.ts`（`enableAudioVolumeIndicator(200ms)` + `setOutputVolume`/`setInputVolume`）、`features/voice/bar.tsx`、`state/preferences-model.ts`（+4 字段）、`features/account/display-settings.tsx`（新增「音量指示」开关）、`styles/preferences.css`。
     - **实测**（2026-09-21，容器内）：`tests/frontend-v2-voice-levels.test.ts` 5 例 + `frontend-v2-voice-session.test.ts` 6 例 + `frontend-v2-display-model.test.ts` 7 例 = **18 例全过**；`typecheck:web:v2` 与 `typecheck:web:v2-tests` 通过（首轮 typecheck 抓到 2 处真错误——输入模型字段名写错、`setVolume` 在 typings 里返回 `void`——已修）。
-    - **界面 E2E（补齐）**：夹具页原本不挂 app shell，故给 `VoiceBar` 加了可注入会话的 seam（`session?: VoiceSessionLike`），harness 用一个状态来自夹具、记录音量调用的会话桩渲染它；新增 `e2e/specs-v2/18-voice-levels.spec.ts`（2 例，断言电平段数与 `aria-valuenow`、发言者/静音文案、输出与增益滑杆即时生效并落库、关麦后隐藏、偏好关闭后整体隐藏、未加入只有加入按钮）——**chromium 2/2、webkit 2/2 通过**。v2 入口静态清点随之更新为 **18 个 spec / 51 例**。
+    - **界面 E2E（补齐）**：夹具页原本不挂 app shell，故给 `VoiceBar` 加了可注入会话的 seam（`session?: VoiceSessionLike`），harness 用一个状态来自夹具、记录音量调用的会话桩渲染它；新增 `e2e/specs-v2/18-voice-levels.spec.ts`（2 例，断言电平段数与 `aria-valuenow`、发言者/静音文案、输出与增益滑杆即时生效并落库、关麦后隐藏、偏好关闭后只隐藏电平并保留"谁在发言"、未加入只有加入按钮）——**chromium 2/2、webkit 2/2 通过**。v2 入口静态清点随之更新为 **18 个 spec / 51 例**。
     - **未覆盖/未实现（如实记录）**：**真实媒体仍未验**（加入频道、开麦、增益与 `AGC` 的听感需要声网凭据，`16-voice` 环境门控）；**座位卡电平环**、**每玩家音量**、「开麦但无电平」提示未做；`agora-rtc-sdk-ng` 的音量 API 名称与 `setVolume` 取值范围待按实际 typings 复核（现以结构化垫片调用，缺失时只是没有电平，不影响通话）。详见 `docs/frontend-v2-voice.md`。
   - **上一版遗留**：**F4** 补 `docs/frontend-v2-display.md`；**F1/F3**（账号页 `!saved` 分支未覆盖、`saved` 初值恒真）；**P1/P2**（`duplicateTargetPolicy: 'forbid'` 与 `attackOrder`/`stage1SpiritQuota`/`stage1OverkillThreshold`/`stageTriggerSnapshot`/`replayDisclosure`/`simultaneousWinPriority`/`researcherCondition` 等策略字段只声明不实现）。
   - **已确认不改**：v1 入口的身份提示文案（科研员「被公开时…」、魂灵「与死神协商夜袭方案」）本轮维持原样，仅留档待议。

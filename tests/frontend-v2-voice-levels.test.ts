@@ -47,14 +47,15 @@ describe('v2 voice level model（A+B：自己的电平 + 当前发言者电平�
 
   it('keeps the speaker identity while the output is muted（答案 4：显示「已静音」但保留"谁在发言"）', () => {
     const muted = voiceLevelDisplay({ view: snapshot({ speaker: 'p_4' }), remoteLevel: 72, outputVolume: 100, muted: true, showLevels: true });
-    expect(muted).toEqual({ speakingPlayerId: 'p_4', speakerLevel: 72, muted: true });
+    expect(muted).toEqual({ speakingPlayerId: 'p_4', speakerLevel: 72, showLevel: true, muted: true });
     expect(voiceLevelDisplay({ view: snapshot({ speaker: 'p_4' }), remoteLevel: 72, outputVolume: 0, muted: false, showLevels: true }).muted).toBe(true);
     expect(voiceLevelDisplay({ view: snapshot({ speaker: 'p_4' }), remoteLevel: 72, outputVolume: 100, muted: false, showLevels: true })).toMatchObject({ speakerLevel: 72, muted: false });
-    expect(voiceLevelDisplay({ view: snapshot({ phase: 'night', speaker: 'p_4' }), remoteLevel: 72, outputVolume: 100, muted: false, showLevels: true })).toEqual({ speakingPlayerId: null, speakerLevel: 0, muted: false });
+    expect(voiceLevelDisplay({ view: snapshot({ phase: 'night', speaker: 'p_4' }), remoteLevel: 72, outputVolume: 100, muted: false, showLevels: true })).toEqual({ speakingPlayerId: null, speakerLevel: 0, showLevel: true, muted: false });
   });
 
-  it('hides both meters when the preference is off, and only shows the own meter while publishing', () => {
-    expect(voiceLevelDisplay({ view: snapshot({ speaker: 'p_4' }), remoteLevel: 72, outputVolume: 100, muted: false, showLevels: false })).toEqual({ speakingPlayerId: null, speakerLevel: 0, muted: false });
+  it('hides only the level meters when the preference is off, keeping "who is speaking"', () => {
+    expect(voiceLevelDisplay({ view: snapshot({ speaker: 'p_4' }), remoteLevel: 72, outputVolume: 100, muted: false, showLevels: false })).toEqual({ speakingPlayerId: 'p_4', speakerLevel: 0, showLevel: false, muted: false });
+    expect(voiceLevelDisplay({ view: snapshot({ speaker: 'p_4' }), remoteLevel: 72, outputVolume: 100, muted: true, showLevels: false })).toMatchObject({ speakingPlayerId: 'p_4', showLevel: false, muted: true });
     expect(ownLevelVisible(true, true)).toBe(true);
     expect(ownLevelVisible(false, true)).toBe(false);
     expect(ownLevelVisible(true, false)).toBe(false);

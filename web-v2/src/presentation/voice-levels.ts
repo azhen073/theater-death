@@ -44,15 +44,19 @@ export interface VoiceLevelInput {
 export interface VoiceLevelDisplay {
   /** 输出静音时仍要保留"谁在发言"，只把电平换成「已静音」。 */
   readonly speakingPlayerId: string | null;
+  /** 关闭「音量指示」时为 0：文案只保留"谁在发言"，不显示百分比。 */
   readonly speakerLevel: number;
+  /** 是否允许显示电平数值（关闭音量指示后为 false，但身份照旧显示）。 */
+  readonly showLevel: boolean;
   readonly muted: boolean;
 }
 
 export function voiceLevelDisplay(input: VoiceLevelInput): VoiceLevelDisplay {
-  const speaker = input.showLevels ? speakingPlayerId(input.view) : null;
+  const speaker = speakingPlayerId(input.view);
   return {
     speakingPlayerId: speaker,
-    speakerLevel: speaker === null ? 0 : clampVoiceLevel(input.remoteLevel, 0),
+    speakerLevel: speaker === null || !input.showLevels ? 0 : clampVoiceLevel(input.remoteLevel, 0),
+    showLevel: input.showLevels,
     muted: input.muted || clampVoiceLevel(input.outputVolume, VOICE_LEVEL_MAX) === VOICE_LEVEL_MIN,
   };
 }

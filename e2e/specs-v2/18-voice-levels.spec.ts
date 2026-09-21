@@ -82,13 +82,19 @@ test('语音条：自己的电平、当前发言者、输出音量与静音、�
   await expect(bar.getByLabel('麦克风增益')).toHaveCount(0);
 });
 
-test('语音条：关闭「音量指示」后连"谁在发言"一并隐藏，未加入时只显示加入按钮', async ({ page }) => {
+test('语音条：关闭「音量指示」只隐藏电平，保留"谁在发言"；未加入时只显示加入按钮', async ({ page }, testInfo) => {
   await page.addInitScript(() => localStorage.setItem('theater-death-display-v1', JSON.stringify({ voiceLevels: false })));
   const mounted = await mount(page, voiceFixture(connectedVoice));
   const bar = page.getByRole('region', { name: '公共语音' });
+  // 电平全隐：自己的电平条不出现
   await expect(bar.getByRole('meter', { name: '麦克风音量' })).toHaveCount(0);
-  await expect(bar.locator('.voice-bar__speaker')).toHaveCount(0);
+  // 但"谁在发言"保留，且不带百分比
+  await expect(bar.locator('.voice-bar__speaker')).toContainText('4号 正在发言');
+  await expect(bar.locator('.voice-bar__speaker')).not.toContainText('%');
+  // 音量调节不受影响
   await expect(bar.getByLabel('输出音量')).toBeVisible();
+  await expect(bar.getByLabel('麦克风增益')).toBeVisible();
+  await page.screenshot({ path: '/results/voice-levels-no-meter-' + testInfo.project.name + '.png' });
 
   // 未加入：只有加入按钮与状态，没有电平/音量行
   await mounted.setFixture(voiceFixture({ connection: 'idle', microphoneEnabled: false, level: 0, remoteLevel: 0, devices: [], activeDeviceId: '' }));

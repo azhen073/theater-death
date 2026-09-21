@@ -65,7 +65,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
     </>}
     {joined && <div className="voice-bar__levels">
       {ownLevelVisible(state.microphoneEnabled, preferences.voiceLevels) && <span className="voice-bar__own"><LevelMeter label="麦克风音量" level={state.level}/></span>}
-      {display.speakingPlayerId !== null && <span className="voice-bar__speaker">{speakerSeat === null ? '' : `${speakerSeat}号 `}{display.muted ? '已静音' : `正在发言 · ${display.speakerLevel}%`}</span>}
+      {display.speakingPlayerId !== null && <span className="voice-bar__speaker">{speakerSeat === null ? '' : `${speakerSeat}号 `}{display.muted ? '已静音' : display.showLevel ? `正在发言 · ${display.speakerLevel}%` : '正在发言'}</span>}
       <label className="voice-bar__volume">输出音量<input type="range" min={0} max={100} step={5} aria-label="输出音量" value={draftOutput ?? preferences.voiceOutput}
         onChange={event => { const next = Number(event.target.value); setDraftOutput(next); session.setOutputVolume(preferences.voiceMuted ? 0 : next); }}
         onPointerUp={commitOutput} onKeyUp={commitOutput} onBlur={commitOutput}/><span aria-hidden="true">{preferences.voiceOutput}</span></label>
