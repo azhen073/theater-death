@@ -1,6 +1,6 @@
 # 《剧院死神》在线法官 · 开发需求文档
 
-版本：v2.0.2-beta · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更）；v2.0.1-beta 变更：房间解散任意阶段生效 + 遗弃房间 24 小时回收；v2.0.2-alpha 记录：舞台行动 UX 整合（PR #5）+ 团队方案原子提交 + 布局竞态修复；v2.0.2-beta（进行中）变更：本分支新改动，见文末版本记录）  
+版本：v2.0.2-beta · 整合工作版（并入 S3 裁定；v1.2 增补：观战；v1.3 增补：房主踢人；v1.4 增补：实验模式板子编辑器；v1.5 增补：终局退出；v1.6 变更：语音媒体服务替换为声网；v1.7 变更：天理夜死移交时机对齐 + 规则 2.0 命名预设；v1.8 增补：账号体系与 v2 服务端/前端体系准入；v1.9 整理：文档一致性核对（无玩法变更）；v2.0.1-beta 变更：房间解散任意阶段生效 + 遗弃房间 24 小时回收；v2.0.2-alpha 记录：舞台行动 UX 整合（PR #5）+ 团队方案原子提交 + 布局竞态修复；v2.0.2-beta（进行中）变更：遗言顺序明文 + 账户显示设置修复 + 文档审计，见文末版本记录）  
 适用读者：给 Codex 与项目维护者  
 整理日期：2026-09-16 · 增补记录 2026-09-17 起 · 最近整理 2026-09-21（v2.0.2-beta）
 
@@ -761,27 +761,18 @@ https://docs.docker.com/get-started/
 - **测试与记录**：`main` 记录为全量 **87 文件 556 例**通过 + 双类型检查 + `build:web` / `build:web:v2`；E2E（2026-09-21）v1 入口 **21/21**，v2 入口受验收服务 IP 限流（登录/注册 30 次/分钟）影响按增量分批复核，既有失败已在 main 基线复现（明细见 `PROGRESS.md`「测试状态」）。**本版未新增或修改玩法规则，未部署。**
 - **与 v2.0.1-beta 的关系**：v2.0.1-beta 的房间解散 / 房主离开 / 遗弃回收语义**全部不变**，本版只是把其后整合进 `main` 的舞台 UX 变更纳入同一版本序列记录。
 
-### v2.0.2-beta（2026-09-21 起，进行中）· 本分支新改动（待逐条补记）
+### v2.0.2-beta（2026-09-21 起，进行中）· 遗言顺序明文 + 账户显示设置修复 + 文档审计（贡献 kiahir，用户（阿真）确认）
 
-- **版本号说明**：沿用「版本名 = 推送分支名」约定，本文档版本名 = **`2.0.2-beta`**（分支由 `2.0.2-alpha` **改名**而来，内容基线即上一节：`main` 的 `de68a89`）。与**规则版本 2.0**、**客户端契约 2.1/2.2** 仍是三套独立编号；文件名继续保留基线名 `theater_death_development_requirements_v1.1.md`（「文件名=基线版本、内容=累积版本」）。
-- **内容**：本版承载**接下来在 `2.0.2-beta` 分支上开发的新改动**，落地后在此逐条补记（改动范围、涉及文件与规则条款、测试与实测结果）。
-- **遗言系统复核与补齐（G4 / G5，贡献 kiahir，用户（阿真）确认）**：对遗言链路做了逐条静态核对（R-41 / R-45 / R-46 与 V2-01 / V2-02），确认实现与规则一致；本次只补**文档口径**与**缺失的界面验收**，**不改任何行为**：
-  - **G5 顺序明文（无行为变更）**：R-45 补写「同日有多名出局者时，按座位号升序依次发言，每人各自 60 秒，本人可提前结束自己的遗言」。此前该顺序只存在于实现（`engine/day.ts` 的 `lastWords.queue` 按座位升序）而未见于权威文档，属**记录缺口**而非行为变更；同步更新 `theater_death_rulebook_v1.1.md`、`docs/rules-v2-full.md`、本文档 §白天流程实现依据与 T-39。
-  - **G4 遗言界面 E2E**：新增 `e2e/specs-v2/17-last-words.spec.ts`（夹具界面链路）——首夜遗言者看到并点击「结束遗言」（提交 `END_LAST_WORDS`，目标为空、无 `confirmSelf`/`expectedRevision`）、同窗口可发公屏；活人旁观者可发公屏但**没有**「结束遗言」；另一名死者**没有**「结束遗言」且公屏为只读（输入框禁用 + 「当前频道仅可阅读…」提示）。
-    - **实测**（2026-09-21，容器内）：`docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=<chromium|webkit>` → **chromium 2/2、webkit 2/2 通过**（1.5s / 3.5s）。截图：`test-results-frontend-v2/last-words-{speaker,observer}-<project>.png`。v2 入口静态清点随之更新为 17 个 spec / 49 例。
-  - **未覆盖并如实记录**：麦克风许可在夹具界面里不可断言（`VoiceBar` 挂在 app shell，「开启麦克风」需真实语音连接才出现），该维度由 `tests/capabilities.test.ts`「遗言者可发公屏和开麦，其他人不能代发」在服务端权限层覆盖，真实语音链路由 `e2e/specs-v2/16-voice.spec.ts`（环境门控）覆盖。
-  - **未处理项（另行定案）**：`lastWords.firstNight` / `lastWords.otherNights` 两个规则策略字段目前只被声明与校验、未被任何逻辑读取（首夜遗言由 `dayNumber === 1` 硬编码决定），属配置面空承诺，留待单独变更。
-- **我的账户「显示与动画」复核与 F2 修复（贡献 kiahir，用户（阿真）确认）**：入口有两个——账号页「我的账户 → 显示与动画」（`web-v2/src/features/account/account.tsx:17`）与游戏内「导航 → 显示设置」弹窗（`features/game/scene.tsx:561`），两处渲染**同一个** `DisplaySettings` 组件、共用 `localStorage['theater-death-display-v1']`。核对结论：取值白名单校验、跨标签页同步、`html[data-reduced-motion]` 关闭 `animation`/`transition`/`scroll-behavior`、`--display-scale` 经 `html { zoom }` 生效、死亡特效只对游标之后的**公开**死讯显示 1.8 秒且不重播，均与设计一致。
-  - **F2 已修（可访问性）**：「死亡特效」复选框此前无显式名字，可访问名把帮助文本一并读入（「死亡特效只在新的公开死讯后显示，不影响行动和记录。」）；现补 `aria-label="死亡特效"`（`web-v2/src/features/account/display-settings.tsx`），并把 `e2e/specs-v2/08-display.spec.ts` 的三处复选框定位收紧为 `getByRole('checkbox', { name: '死亡特效', exact: true })`——**修复前该定位不会命中**，因此是真正的回归保护。
-  - **F1 最小切片（账号页覆盖）**：在既有真实栈用例 `e2e/specs-v2/01-account.spec.ts` 中补账号页断言：区块 `region[显示与动画设置]` 可达、三项控件按可访问名定位、默认值（`system` / `100` / 勾选）、改动**即时生效**（`documentElement.dataset.reducedMotion`、计算 `zoom` 1.1、localStorage 载荷），并产出截图 `test-results-frontend-v2/account-display-<project>.png`。账号页 `!saved`（浏览器不允许保存）提示分支仍未被覆盖。
-  - **F5 已修 + 该区块字号统一（用户（阿真）要求）**：账号页「死亡特效」行与其后的「界面缩放」原本**贴在一起**（`.setting-row` 没有下边距，而 `.select-field` 只有 `margin-bottom: 18px`）；同时三处标签字号不统一（两个下拉走 `.select-field` 的 12px，「死亡特效」是裸 `<span>` 用继承字号 ≈16px，帮助文字又被 `.muted` 提到 14px）。现给区块加 `display-settings` 类并在 `preferences.css` **定点**收口：三个标签统一 **14px**（与账号页「账户安全」的 `.setting-row strong` 一致）、`select` 文本保持 12px、帮助文字降为 12px、该行补 `margin-bottom: 18px`。**未改全局样式**——`.setting-row` 仍被 admin 面板与账号页「账户安全」复用。
-  - **F5 / 字号回归断言**：`01-account.spec.ts` 量取三个标签的计算字号必须相同、帮助文字字号小于标签、该行与下一项的垂直间距 ≥16px（修复前该间距约为 0，断言会失败）。
-  - **实测**（2026-09-21，容器内 acceptance 栈 + seed）：`01-account.spec.ts 08-display.spec.ts --project=chromium` → **8/8 通过**（12.9s / F5 修复后复跑 12.5s，含上述字号与间距断言）。
-  - **未修（待定案）**：**F3** `saved` 初值恒为 `true`，读 localStorage 失败不提示；**F4** `docs/` 缺 display 说明文档（`frontend-v2-{admin,assets,room-exit,stage-ux,voice}.md` 之外没有对应文件）。
-- **全量 md 审计与两处过期指针修复（md-1 / md-2，贡献 kiahir，用户（阿真）确认）**：逐个核对**受版本控制的 25 个 md**（根 5 + `deploy/` 1 + `docs/` 16 + `tests/fixtures/contract-2.1/` 1 + `web-v2/public/assets/` 1；另有不入库的 `e2e-results/pr-body.md`）。
-  - **实测结论**：内部链接 **0 处失效**（抽取全部行内链接与引用式链接定义，跳过 http/mailto/锚点后逐一判存在，含 `../` 相对路径）；计数类断言全部正确——v2 E2E 逐文件清点 `^test(` 为 **17 个 spec / 49 例**、v1 为 **11 个 spec / 18 个 `test()`（22 次运行）**、契约夹具索引为 **19 份完整快照 + 8 个人工小样例**。单测 556 例 / 87 文件沿用 `main` 的 2026-09-21 实测记录（本轮未重跑镜像构建，如实标注）。
-  - **md-1 已修**：`M4_ACCEPTANCE_REPORT.md` 的历史快照抬头把「当前工程规格」写成 `（v1.9）`，现改为 `（当前 v2.0.2-beta，见该文档表头与文末版本记录）`。
-  - **md-2 已修**：`PROGRESS.md` 的「E2E 用例口径提醒」停在 2026-09-20 的 `16 个 spec / 42 例`，现补 2026-09-21 更新：PR #5 整合后 16/47、新增 `specs-v2/17-last-words.spec.ts` 后 **17/49**，并注明以「测试状态」为准。
-  - **属历史、刻意不改**：`M4_ACCEPTANCE_REPORT.md` 正文数据（187 单测 / E2E 14/14 / LiveKit Cloud）、`PROGRESS.md` 的 M4b LiveKit 记录（第 367 行已明文标记为历史）、各版本记录内的旧计数（84 文件 527 例 / 16 spec 42 例 / 24 个 md）；`docs/*` 中 `voice/livekit.ts`、`openapi-v2.1.json`、`backend-v2-plan.md` 等字样均出现在「已替换 / 未启用 / 未随仓库入库」的说明里。
-  - **操作提示**：PowerShell 5.1 的 `Get-Content -Raw` 会把 UTF-8 的 md 按 GBK 解出乱码（本轮 `web-v2/public/assets/README.md` 一度误判）；审计脚本一律用 `[IO.File]::ReadAllText($p, [Text.Encoding]::UTF8)`。
-- **待补记项**：改动内容 / 是否触碰玩法规则 / 增量测试命令与结果 / 是否部署。
+- **版本号**：沿用「版本名 = 分支名」约定，本版 = **`2.0.2-beta`**（由 `2.0.2-alpha` 改名；内容基线 `main` 的 `de68a89`，即上一节）。与规则版本 2.0、客户端契约 2.1/2.2 仍是三套独立编号；文件名保留基线名 `theater_death_development_requirements_v1.1.md`。
+- **遗言系统（G4 / G5，均无行为变更）**：R-41 / R-45 / R-46、V2-01 / V2-02 逐条复核，实现与规则一致。
+  - **G5**：R-45 补明文「同日有多名出局者时，按座位号升序依次发言，每人各自 60 秒，本人可提前结束自己的遗言」。此前该顺序只存在于实现（`engine/day.ts` 的 `lastWords.queue`），属记录缺口；同步 `theater_death_rulebook_v1.1.md`、`docs/rules-v2-full.md`、本文档 §白天流程实现依据与 T-39。
+  - **G4**：新增 `e2e/specs-v2/17-last-words.spec.ts`——遗言者可结束遗言（`END_LAST_WORDS`，无 `confirmSelf`）并在同窗口公屏发言；活人旁观者无遗言行动；其他死者无遗言行动且公屏只读。
+  - **实测**：该 spec **chromium 2/2、webkit 2/2 通过**；v2 入口静态清点为 **17 个 spec / 49 例**。
+  - **未决**：`lastWords.firstNight` / `otherNights` 只声明不实现（首夜遗言由 `dayNumber === 1` 硬编码）；麦克风许可在夹具页无法断言，仅由 `tests/capabilities.test.ts` 覆盖。
+- **账户「显示与动画」（F2 / F5 已修）**：账号页与游戏内「显示设置」弹窗渲染同一个 `DisplaySettings`、共用 `localStorage['theater-death-display-v1']`；实现核对通过（取值白名单、跨标签页同步、减少动画覆盖 `animation`/`transition`/`scroll-behavior`、`zoom` 缩放、死亡特效只对公开死讯显示 1.8 秒）。
+  - **F2**：「死亡特效」复选框补 `aria-label`（原先可访问名把帮助文本一并读入）；`08-display.spec.ts` 三处定位收紧为按可访问名匹配。
+  - **F5 + 字号统一**：区块加 `display-settings` 类并在 `preferences.css` 定点收口——三个标签统一 14px、`select` 文本 12px、帮助文字 12px、死亡特效行补 `margin-bottom: 18px`（原先紧贴「界面缩放」）；**未改全局样式**。
+  - `01-account.spec.ts` 补账号页断言（区块与默认值、改动即时生效、字号一致、行间距 ≥16px），截图 `test-results-frontend-v2/account-display-<project>.png`。**实测 8/8 通过**（`01-account` + `08-display`，chromium）。
+  - **未决**：F1 账号页 `!saved` 分支未覆盖；F3 `saved` 初值恒真（读 localStorage 失败不提示）；F4 缺 `docs/frontend-v2-display.md`。
+- **全量 md 审计（md-1 / md-2 已修）**：25 个受控 md，内部链接 **0 处失效**；计数断言实测无误（v2 17 spec / 49 例、v1 11 spec / 18 例即 22 次运行、契约夹具 19 + 8 份）。修 `M4_ACCEPTANCE_REPORT.md` 抬头的过期版本号与 `PROGRESS.md` 的旧 E2E 口径注记；历史项（M4 正文数据、M4b LiveKit 记录、旧版本计数）刻意不改。
+- **测试与部署**：以上 E2E 均在容器内 acceptance 栈 + seed 上实跑；单测沿用 `main` 的 556 例 / 87 文件记录（本版未重跑镜像构建，如实标注）；**未部署**。
