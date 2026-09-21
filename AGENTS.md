@@ -23,7 +23,8 @@
 - 语音关键约束（2026-09-19 起）：服务器语音采用 **声网 Agora 免费层**（App ID / App Certificate 只入 `.env`，不入库；项目须在控制台**开启「连麦鉴权」**发布权限控制才生效）；R-43 发布权通过短期 token 实现——加入 = 订阅角色（可听不可发），发言 = 服务端下发发布凭证（TTL 10 分钟）+ 前端 `renewToken` 即时生效，收回 = 订阅凭证即时降权 + TTL 到期兜底；踢人/关房走频道管理 REST（一次性踢出，可立即重进）。上一代 LiveKit 实现与其残留已清理（`deploy/livekit*.yaml`、`deploy/frontend-local.ps1` 的 `livekit` 服务、各 compose 中的 `LIVEKIT_*` / `VOICE_SERVICE_URL` / `VOICE_ADMIN_URL` 环境变量）；仅 `docs/openapi-v2.2.json` 的 `/voice/webhook`（`livekitSignature`）与 `server/v2/app.ts` 中未被注入的 `verifyWebhook` 路由仍为历史遗留（**未启用**，待定）。
 - 关于夜间窗口"无事可做提前结束"的提案已讨论并否决：固定时长是防泄露设计（需求明文），不要重新引入。
 - **v2.0.2-alpha 完成（贡献提案 syhneversigh，阿真确认）**：舞台行动 UX 已整合进 main（2026-09-21）：舞台内行动交互与竖屏适配 + 边界修复 + 团队方案“发布并确认本人”单请求原子操作（保留全队逐版确认与固定窗口，R-47 语义不变）。维护方复核后修复环形/文档流判定的竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）并补回归 E2E；未部署。
-- **v2.0.2-beta（进行中，贡献 kiahir）**：分支 `2.0.2-beta`（由 `2.0.2-alpha` 改名，基线 `main` 的 `de68a89`）。遗言复核 + R-45 顺序明文（无行为变更）+ `e2e/specs-v2/17-last-words.spec.ts`；账户「显示与动画」F2/F5 修复（`aria-label`、`display-settings` 定点样式）+ 账号页断言；md 审计修 md-1/md-2。实测：遗言 **2/2（两浏览器）**、账户与显示 **8/8**（chromium）。未决：F1/F3/F4、`lastWords.firstNight`/`otherNights` 死配置、麦克风仅单测覆盖。
+- **v2.0.2-beta（已完成，待 PR 合并；贡献 kiahir）**：分支 `2.0.2-beta`（由 `2.0.2-alpha` 改名，基线 `main` 的 `de68a89`，已推送 `c5df078`）。遗言复核 + R-45 顺序明文（无行为变更）+ `e2e/specs-v2/17-last-words.spec.ts`；账户「显示与动画」F2/F5 修复（`aria-label`、`display-settings` 定点样式）+ 账号页断言；md 审计修 md-1/md-2。实测：遗言 **2/2（两浏览器）**、账户与显示 **8/8**（chromium）。
+- **v2.0.3-alpha（进行中，贡献 kiahir）**：分支**自 `2.0.2-beta` 的 tip（`c5df078`）拉出**，其上内容即本版基线。计划：**局内麦克风音量显示**（方案 A / A+B / A+B+C 待定；纯本地信号、不上报服务端、受 R-43 时段门控、尊重「减少动画」、不改规则语义）+ 上一版遗留 F1/F3/F4、P1/P2、`lastWords.firstNight`/`otherNights` 死配置。
 - 构建/测试命令：`docker compose -f deploy/docker-compose.yml build`（构建即跑全部测试）。
 
 ## 裁定状态
