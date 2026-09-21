@@ -61,4 +61,4 @@
 - **「音量指示」关闭时**：自己的电平、当前发言者整条（含"谁在发言"）一起隐藏；若希望只隐藏电平而保留"谁在发言"，需另开开关。
 - **未实现**：座位卡上的电平环（需要独立订阅，避免 200ms 一次把整块棋盘重渲染）、每玩家单独音量、以及"开着麦但没有电平"的排障提示。
 - **待核对**：`enableAudioVolumeIndicator` / `disableAudioVolumeIndicator` / `volume-indicator` 与 `setVolume` 的取值范围需按 `agora-rtc-sdk-ng` 实际 typings 复核（当前用结构化垫片调用，缺失时只是没有电平，不影响通话）；本机采集增益与 `AGC: true` 的相互作用需实机听感确认。
-- **验收状态（2026-09-21）**：纯模型与 `VoiceSession` 由容器内单测覆盖（`tests/frontend-v2-voice-levels.test.ts`、`tests/frontend-v2-voice-session.test.ts`、`tests/frontend-v2-display-model.test.ts`，18 例全过）+ `typecheck:web:v2` 通过；**语音条界面本身没有 E2E**（夹具页不挂 app shell，`16-voice` 需声网凭据），真实听感未在容器内验证。
+- **验收状态（2026-09-21）**：纯模型、`VoiceSession` 与偏好模型由容器内单测覆盖（`tests/frontend-v2-voice-levels.test.ts`、`frontend-v2-voice-session.test.ts`、`frontend-v2-display-model.test.ts`，18 例全过）+ `typecheck:web:v2` / `typecheck:web:v2-tests` 通过；**语音条界面**由夹具页用例覆盖（`e2e/specs-v2/18-voice-levels.spec.ts`：电平段数与 `aria-valuenow`、发言者与静音文案、输出/增益滑杆即时生效与落库、关麦后隐藏、偏好关闭后整体隐藏、未加入只有加入按钮；chromium 2/2 + webkit 2/2）。**真实媒体仍未验**：加入频道、开麦、麦克风增益与 `AGC` 的实际听感需要声网凭据（`16-voice` 环境门控）。

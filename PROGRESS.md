@@ -21,7 +21,7 @@
 | PR#3 选定移植（贡献提案 syhneversigh） | ✅ | A 组（公开知识泄露修复 + 目标/能力查询 + 加固模块）`4688b49`；B 组（天理夜死移交时机对齐 + 规则 2.0 命名预设）`4d0d71e`；D 组（账号 / v2 房间模型 / 服务端 v2 / web-v2 / 契约）本批完成（v2 语音改造为声网） |
 | 舞台行动 UX（v2.0.2-alpha，PR #5，贡献 syhneversigh） | ✅ | PR #5 全部 4 个提交已整合进 main（`b085f1b`）：舞台内行动交互与竖屏适配、边界修复、`EDIT_PROPOSAL` 原子“发布并确认本人”（版本冲突/幂等/旧服务端回退，R-47 语义不变）。维护方复核修复环形/文档流判定的竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）并补回归 E2E；全量 87 文件 556 单测、双浏览器 E2E 与类型构建通过。未部署。 |
 | 2.0.2-beta（遗言 + 账户显示设置 + 文档审计，贡献 kiahir） | ✅ | **遗言**：R-41/R-45/R-46、V2-01/V2-02 复核一致；G5 把「同日多名出局者按座位号升序、每人 60 秒」写入规则书 R-45 与 `docs/rules-v2-full.md`（无行为变更）；G4 新增 `e2e/specs-v2/17-last-words.spec.ts`——**2/2（chromium + webkit）实测通过**。**显示与动画**：三设置核对通过；F2「死亡特效」补 `aria-label` 并收紧 E2E 定位；F5 + 字号统一（三标签 14px、帮助 12px、行距 18px，定点不改全局）；`01-account` 补账号页断言与截图——**8/8 实测通过**。**md 审计**：25 个受控 md、链接 0 失效、计数实测无误，修 md-1/md-2。分支 `2.0.2-beta` 已推送（`c5df078`），**待 PR 合并**；未决：F1/F3/F4、`lastWords.firstNight`/`otherNights` 死配置、麦克风仅单测覆盖 |
-| 2.0.3-alpha（局内语音音量显示与调节，贡献 kiahir） | 🚧 | 分支自 `2.0.2-beta` 的 tip（`c5df078`）拉出。**已实现 A+B + 输出/输入增益**：自己的 5 段电平、当前发言者「N号 正在发言 · X%」（静音时「已静音」但保留"谁在发言"）、输出音量 0–100 + 一键静音、麦克风增益 0–100（重开麦/换设备自动重应用）；纯本地偏好（`localStorage` 四字段），受 R-43 时段门控。**实测：容器内 18 例单测全过 + `typecheck:web:v2` 通过**。未覆盖：语音条无 E2E（夹具页不挂 shell、`16-voice` 需声网凭据）、真实听感未验；未实现：座位卡电平环、每玩家音量、无电平提示；待核：声网音量 API 名称与 `setVolume` 范围。遗留仍在：F1/F3/F4、P1/P2 |
+| 2.0.3-alpha（局内语音音量显示与调节，贡献 kiahir） | 🚧 | 分支自 `2.0.2-beta` 的 tip（`c5df078`）拉出。**已实现 A+B + 输出/输入增益**：自己的 5 段电平、当前发言者「N号 正在发言 · X%」（静音时「已静音」但保留"谁在发言"）、输出音量 0–100 + 一键静音、麦克风增益 0–100（重开麦/换设备自动重应用）；纯本地偏好（`localStorage` 四字段），受 R-43 时段门控。**实测：容器内 18 例单测全过 + 双 typecheck 通过 + 界面 E2E `18-voice-levels.spec.ts`（chromium 2/2、webkit 2/2，含电平段数/发言者与静音文案/滑杆即时生效与落库/关麦隐藏/偏好关闭隐藏）**。未覆盖：真实媒体（需声网凭据）未验；未实现：座位卡电平环、每玩家音量、无电平提示；待核：声网音量 API 名称与 `setVolume` 范围。遗留仍在：F1/F3/F4、P1/P2 |
 
 ## 接续指引（compact 后先读这里）
 
@@ -238,7 +238,7 @@ theater_death/
 556 passed / 87 files（容器内 `npm run test`，2026-09-21 全量实测；镜像构建同样强制执行，并执行 `typecheck`（服务端）、`typecheck:web` / `typecheck:web:v2`（前端）与 `build:web` / `build:web:v2`）。
 
 E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行受验收服务 **IP 限流**（登录/注册 30 次/分钟）影响会出现登录 429 级联失败，需按增量策略分批跑——本次已逐 spec 复核：03/04/05/07/08/09/10/11 全过，12 仅 AC09/AC19 失败（main 基线同样失败，既有），02 与 06 的失败在 main 基线同样复现（既有）。`13-release-smoke`（需 `FRONTEND_BASE_URL`）、`15-admin`（需 `ADMIN_TEST_PASSWORD`）、`16-voice`（需语音配置）为环境门控，不在本编排运行。
-E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **17 个 spec / 49 例**。
+E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **18 个 spec / 51 例**（其中 `18-voice-levels.spec.ts` 为 v2.0.3-alpha 新增）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 

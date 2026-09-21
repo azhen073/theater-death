@@ -4,12 +4,40 @@ import type { RoomSnapshot } from '../contracts/v2.ts';
 import { useKeyboardViewport } from '../web-v2/src/state/keyboard-viewport.ts';
 import { useDisplayPreferences } from '../web-v2/src/state/preferences.ts';
 import { GameScene } from '../web-v2/src/features/game/scene.tsx';
+import { VoiceBar, type VoiceSessionLike } from '../web-v2/src/features/voice/bar.tsx';
+import type { VoiceState } from '../web-v2/src/features/voice/session.ts';
 import { Lobby } from '../web-v2/src/features/room/lobby.tsx';
 import { ReviewPage } from '../web-v2/src/features/review/page.tsx';
 import '../web-v2/src/styles/main.css';
 import '../web-v2/src/styles/preferences.css';
 
-export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean }
+/** 只驱动界面的语音会话桩：状态来自夹具，音量调用记录到 window.__voiceCalls 供用例断言。 */
+const voiceStub = (() => {
+  const base: VoiceState = { connection: 'idle', requested: false, microphoneEnabled: false, audioBlocked: false, error: '', microphoneError: '', devices: [], activeDeviceId: '', level: 0, remoteLevel: 0 };
+  let state: VoiceState = base;
+  const listeners = new Set<(next: VoiceState) => void>();
+  const calls: string[] = [];
+  const push = (patch: Partial<VoiceState>) => { state = { ...state, ...patch }; for (const listener of listeners) listener(state); };
+  const session: VoiceSessionLike & { hydrate(next?: Partial<VoiceState>): void; calls: string[] } = {
+    calls,
+    state: () => state,
+    subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    setContext: () => undefined,
+    join: async () => push({ connection: 'connected' }),
+    leave: async () => push({ connection: 'idle', microphoneEnabled: false, level: 0, remoteLevel: 0 }),
+    requestMicrophone: async () => push({ requested: false, microphoneEnabled: true }),
+    stopMicrophone: () => push({ requested: false, microphoneEnabled: false, level: 0 }),
+    switchDevice: async () => undefined,
+    enableAudio: async () => push({ audioBlocked: false }),
+    setOutputVolume: (volume) => { calls.push(`output:${volume}`); },
+    setInputVolume: (volume) => { calls.push(`input:${volume}`); },
+    hydrate: (next) => { state = { ...base, ...(next ?? {}) }; for (const listener of listeners) listener(state); },
+  };
+  (window as unknown as { __voiceCalls?: string[] }).__voiceCalls = calls;
+  return session;
+})();
+
+export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; voice?: Partial<VoiceState> }
 const updateEvent = 'v2-game-fixture-update';
 
 function sceneKey(view: RoomSnapshot): string {
@@ -35,6 +63,8 @@ export function GameHarness() {
     window.addEventListener(updateEvent, onUpdate);
     return () => { active = false; window.removeEventListener(updateEvent, onUpdate); };
   }, []);
+  const voiceKey = JSON.stringify(fixture?.voice ?? null);
+  useEffect(() => { voiceStub.hydrate(voiceKey === 'null' ? undefined : JSON.parse(voiceKey) as Partial<VoiceState>); }, [voiceKey]);
   if (terminal) return <main className="splash"><p role="status">测试终态：{terminal}</p></main>;
   if (!fixture) return <main className="splash"><p role="status">正在加载隔离对局夹具…</p></main>;
   const { view, catalog, online } = fixture;
@@ -52,7 +82,10 @@ export function GameHarness() {
     : view.room.phase === 'review'
       ? <ReviewPage key={sceneKey(view)} {...props}/>
       : <Lobby key={sceneKey(view)} {...props}/>;
-  return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation" aria-hidden="true"/><section className="home-main">{content}</section></main>;
+  return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation" aria-hidden="true"/><section className="home-main">
+    {fixture.voice && <VoiceBar enabled view={view} online={online} activePage={view.room.phase === 'playing'} session={voiceStub}/>}
+    {content}
+  </section></main>;
 }
 
 function applyFixture(next: GameHarnessFixture): void {

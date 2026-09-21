@@ -13,9 +13,24 @@ function LevelMeter({ label, level }: { label: string; level: number }) {
   );
 }
 
-export function VoiceBar({ enabled, view, online, activePage }: { enabled: boolean; view: RoomSnapshot | null; online: boolean; activePage: boolean }) {
-  const sessionRef = useRef<VoiceSession | null>(null);
-  if (sessionRef.current === null) sessionRef.current = new VoiceSession();
+/** 可注入的会话形状：真实 `VoiceSession` 与测试桩都满足（供夹具页渲染语音条）。 */
+export interface VoiceSessionLike {
+  state(): VoiceState;
+  subscribe(listener: (state: VoiceState) => void): () => void;
+  setContext(context: import('./session.ts').VoiceContext | null): void;
+  join(): Promise<void>;
+  leave(): Promise<void>;
+  requestMicrophone(): Promise<void>;
+  stopMicrophone(): void;
+  switchDevice(deviceId: string): Promise<void>;
+  enableAudio(): Promise<void>;
+  setOutputVolume(volume: number): void;
+  setInputVolume(volume: number): void;
+}
+
+export function VoiceBar({ enabled, view, online, activePage, session: injected }: { enabled: boolean; view: RoomSnapshot | null; online: boolean; activePage: boolean; session?: VoiceSessionLike }) {
+  const sessionRef = useRef<VoiceSessionLike | null>(null);
+  if (sessionRef.current === null) sessionRef.current = injected ?? new VoiceSession();
   const session = sessionRef.current;
   const [state, setState] = useState<VoiceState>(() => session.state());
   // 滑杆拖动过程中先用本地草稿立即生效，松手/失焦时才写偏好，避免每个 input 事件都落一次 localStorage。
