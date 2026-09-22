@@ -14,6 +14,8 @@
 
 2026-09-22 夜间舞台氛围（UI 2/5）：`feat/ui-night-atmosphere`（基线 `b3f5a1e`；**已合并进 main `7c426e5`**，保留贡献提交 `589ca64`/`6bf6adb`/`e89f9fe`）只读公开夜晚状态叠银蓝夜景（光晕/暗角/雾 + 24 粒飘尘，5 秒后卸载只留静态层），按房间/局/轮去重不补播，隐藏/离线/离场/减少动画停止；已预留 #15 亮度层兼容（`--stage-brightness`、`:has(> .stage-backdrop)`）。无冲突直接合并；素材补 SHA256。复核：增量 8 文件 64 例 + 全量 **91 文件 590 例全过** + `21-night-atmosphere`/`03-actions`/`22-speech-attention`/`20-death-effects`/`08-display` 双浏览器 50/50。未部署。详情见 [夜景验收记录](docs/frontend-v2-night-atmosphere-verification.md)。
 
+2026-09-22 分阶段身份能力说明（UI 4/5）：`feat/ui-phase-identity`（基线 `b3f5a1e`；**已合并进 main `4d58eb0`**，保留贡献提交 `c894d44`）九身份 × 两阶段规则摘要（带 R 条款与规则版本，标注以服务端舞台任务为准），只挂授权情报面板与「我的身份」弹窗；维护方抽查 R-15/18/19/20/21/25/28 与规则书一致（硬编码文案，规则变更需同步）。无冲突直接合并。复核：增量 9 文件 65 例 + 全量 **92 文件 602 例全过** + `23-phase-identity`/`05-information`/`19-identity-reveal`/`22-speech-attention`/`08-display` 双浏览器 46/46。未部署。详情见 [身份能力说明验收记录](docs/frontend-v2-phase-identity-verification.md)。
+
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
 | 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.5-alpha**，Q-01–Q-08 全量定值（规则书第 09 章） |
@@ -247,7 +249,7 @@ theater_death/
 
 ## 测试状态
 
-590 passed / 91 files（2026-09-22 全量实测（含 v2.0.5-alpha、公开死亡特效与阶段转场）：容器内 `vitest run` **91 文件 590 例全过**（16.4s）。较上一版 90 文件 585 例新增 `frontend-v2-phase-transition` 5 例（该 PR 未改选择器用例）。
+602 passed / 92 files（2026-09-22 全量实测（含 v2.0.5-alpha 与 UI 优化批次：死亡特效/阶段转场/发言聚焦/上警名单/夜景氛围/身份说明）：容器内 `vitest run` **92 文件 602 例全过**（15.6s）。较上一版 91 文件 590 例新增 `frontend-v2-phase-ability` 12 例（9 身份 it.each + 3 断言组）。
 
 E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行受验收服务 **IP 限流**（登录/注册 30 次/分钟）影响会出现登录 429 级联失败，需按增量策略分批跑——本次已逐 spec 复核：03/04/05/07/08/09/10/11 全过，12 仅 AC09/AC19 失败（main 基线同样失败，既有），02 与 06 的失败在 main 基线同样复现（既有）。`13-release-smoke`（需 `FRONTEND_BASE_URL`）、`15-admin`（需 `ADMIN_TEST_PASSWORD`）、`16-voice`（需语音配置）为环境门控，不在本编排运行。
 E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **18 个 spec / 52 例**（`18-voice-levels.spec.ts` 为 v2.0.3-alpha 新增，`05-information` 的「死神/魂灵知识」为 v2.0.4-alpha 新增）。
@@ -258,6 +260,7 @@ E2E（公开死亡特效 + 阶段转场，2026-09-22，维护方实测）：`20-
 E2E（发言聚焦与提示音，2026-09-22，维护方实测）：`22-speech-attention` 3 例 + `18-voice-levels`/`20-death-effects`/`08-display`/`03-actions` 双浏览器集成集 **48/48**（含光环与死亡星芒共存、头像圆形裁切保持）。v2 静态口径更新为 **22 个 spec / 72 例**（69 + 3）。
 E2E（上警名单与公屏，2026-09-22，维护方实测）：`24-election-chat` 3 例 + `05-information`/`22-speech-attention`/`20-death-effects`/`08-display` 双浏览器集成集 **42/42**（含 XSS 文本转义、160 条分页锚点、长昵称/长文本、4 断点无溢出）。v2 静态口径更新为 **23 个 spec / 75 例**（72 + 3）。
 E2E（夜间舞台氛围，2026-09-22，维护方实测）：`21-night-atmosphere` 3 例 + `03-actions`/`22-speech-attention`/`20-death-effects`/`08-display` 双浏览器集成集 **50/50**（含 5 秒 motion 卸载、四档宽度可点、资源 200 + image/png、运行中切减少动画）。v2 静态口径更新为 **24 个 spec / 78 例**（75 + 3）。
+E2E（分阶段身份能力说明，2026-09-22，维护方实测）：`23-phase-identity` 5 例 + `05-information`/`19-identity-reveal`/`22-speech-attention`/`08-display` 双浏览器集成集 **46/46**（九身份两阶段、死亡/已用状态、观众/错配/第二屏边界、390 无溢出）。v2 静态口径更新为 **25 个 spec / 83 例**（78 + 5）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
