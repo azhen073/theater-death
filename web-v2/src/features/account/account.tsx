@@ -14,7 +14,7 @@ export function AccountPage({ bootstrap, profile, onProfile, onExpired }: {
   return <><PageHeading eyebrow="YOUR IDENTITY" title="你的账户">名字留在剧院，身份留在每一场演出里。</PageHeading>
     <section className="panel account-profile"><Avatar url={profile.avatarUrl} name={profile.nickname} size="large"/><div><h2>{profile.nickname}</h2><p className="muted">登录 UID：{profile.uid}</p><div className="button-row"><button className="button" onClick={() => void navigator.clipboard.writeText(profile.uid)}>复制 UID</button><button className="button" onClick={() => setModal('nickname')}>修改昵称</button>{bootstrap.features.avatars && <button className="button" onClick={() => setModal('avatar')}>更换头像</button>}</div></div></section>
     <section className="panel"><h2>账户安全</h2><div className="setting-row"><div><strong>登录密码</strong><p className="muted">修改后所有设备需重新登录。</p></div><button className="button" onClick={() => setModal('password')}>修改密码</button></div></section>
-    <DisplaySettings/>
+    <DisplaySettings showStageBrightness/>
     {modal === 'avatar' && <AvatarEditor limits={bootstrap.avatar} userId={profile.userId} onSave={onProfile} onClose={() => setModal(null)} onExpired={onExpired}/>}
     {modal === 'password' && <PasswordEditor limits={bootstrap.auth.password} onClose={() => setModal(null)} onExpired={onExpired}/>}
     {modal === 'nickname' && <NicknameEditor profile={profile} onSave={value => { onProfile(value); setModal(null); }} onClose={() => setModal(null)} onExpired={onExpired}/>}
