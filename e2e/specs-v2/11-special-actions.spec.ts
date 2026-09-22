@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { dismissIdentityEntryReveal } from '../helpers-v2/rooms.ts';
 import {
   advanceToNextWindow,
   authorizedViews,
@@ -201,6 +202,7 @@ test('七人实验分支：守护/刺杀/救援/平票/移交/水妖复活', asy
     }
     await sessions[0]!.page.getByRole('button', { name: '开始游戏', exact: true }).click();
     await expect(sessions[0]!.page.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 30_000 });
+    for (const session of sessions) await dismissIdentityEntryReveal(session.page);
     const requests = sessions.map(session => session.page.request);
     const initialViews = await authorizedViews(requests, code);
     const roles = roleUsers(initialViews);

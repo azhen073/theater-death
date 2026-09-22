@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
 async function open(browser: Browser, account: RoomAccount): Promise<{ context: BrowserContext; page: Page }> {
@@ -26,7 +26,10 @@ async function setupSix(browser: Browser, accounts: RoomAccount[]) {
   const observer = await open(browser, accounts[6]!); contexts.push(observer); await enterRoom(observer.page, code);
   for (const item of contexts.slice(0, 6)) { await item.page.getByRole('button', { name: '准备', exact: true }).click(); await expect(item.page.getByRole('button', { name: '取消准备', exact: true })).toBeVisible(); }
   await host.page.getByRole('button', { name: '开始游戏', exact: true }).click();
-  for (const item of contexts) await expect(item.page.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 20_000 });
+  for (const item of contexts) {
+    await expect(item.page.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 20_000 });
+    if (contexts.indexOf(item) < 6) await dismissIdentityEntryReveal(item.page);
+  }
   return { contexts, code };
 }
 

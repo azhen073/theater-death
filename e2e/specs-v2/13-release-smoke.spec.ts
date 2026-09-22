@@ -1,6 +1,6 @@
 import { expect, request as apiRequest, test, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
 import { loadAccountCase, staticPng, type RoomAccount } from '../helpers-v2/account.ts';
-import { enterRoom, loginRoomAccount } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, enterRoom, loginRoomAccount } from '../helpers-v2/rooms.ts';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ART_ASSETS = [
@@ -170,6 +170,7 @@ test('release smoke：candidate同源静态产物、注册头像与真实五人S
     await page.getByRole('button', { name: '开始游戏', exact: true }).click();
     expect((await startRequest).postDataJSON().requestId).toMatch(UUID_V4);
     await expect(page.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 30_000 });
+    await dismissIdentityEntryReveal(page);
     await page.screenshot({ path: `/results/release-stage-${testInfo.project.name}.png` });
 
     const forbidden = requestedUrls.filter(url => /\/(?:@vite|@fs)\/|\/(?:src|source)\/|game-test|\.tsx(?:\?|$)|\.ts(?:\?|$)/i.test(new URL(url).pathname));

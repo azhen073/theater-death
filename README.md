@@ -3,9 +3,9 @@
 13 人 9 身份的社交推理游戏**在线法官**：服务端持有真实状态并做全部裁决，纯规则引擎 + Socket.IO 实时推送 + 网页前端；支持「玩家电脑 / 第三方服务器」两种托管（同一 Docker 镜像）。
 
 - 玩法权威：`theater_death_rulebook_v1.1.md`（1.1 默认预设，含 S3 裁定与追加记录）；规则 2.0 命名预设见 `docs/rules-v2-full.md`
-- 工程规格：`theater_death_development_requirements_v1.1.md`（当前 v2.0.3-alpha）
+- 工程规格：`theater_death_development_requirements_v1.1.md`（当前 v2.0.5-alpha）
 - 进度与交接：`PROGRESS.md`
-- 版本号约定：**版本名 = 推送分支名**（当前 `2.0.3-alpha`）；工程版本与**规则版本**（1.1 / 2.0）、**客户端契约版本**（2.1 / 2.2）是三套独立编号，不互相换算
+- 版本号约定：**版本名 = 推送分支名**（当前 `2.0.5-alpha`）；工程版本与**规则版本**（1.1 / 2.0）、**客户端契约版本**（2.1 / 2.2）是三套独立编号，不互相换算
 
 ## 快速开始（Docker）
 
@@ -76,6 +76,6 @@ gh pr create
 | `web-v2/` | 新版前端（React + Vite，同镜像交付，默认入口） |
 | `contracts/` | 新版客户端契约类型 |
 | `docs/` | 契约文档、规则 2.0 增补与前端说明 |
-| `tests/` | Vitest 全量测试（568 用例 / 88 文件）+ `fixtures/contract-2.1` 契约快照 |
+| `tests/` | Vitest 测试（576 用例 / 89 文件；本版新增 4 例已增量通过）+ `fixtures/contract-2.1` 契约快照 |
 | `e2e/` | Playwright 端到端验收（`specs/` 旧版、`specs-v2/` 新版） |
 | `deploy/` | Dockerfile、compose、安装/更新脚本、运行手册 |

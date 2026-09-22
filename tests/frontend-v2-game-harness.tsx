@@ -4,6 +4,7 @@ import type { RoomSnapshot } from '../contracts/v2.ts';
 import { useKeyboardViewport } from '../web-v2/src/state/keyboard-viewport.ts';
 import { useDisplayPreferences } from '../web-v2/src/state/preferences.ts';
 import { GameScene } from '../web-v2/src/features/game/scene.tsx';
+import { identityRevealKey } from '../web-v2/src/features/game/identity-reveal-model.ts';
 import { VoiceBar, type VoiceSessionLike } from '../web-v2/src/features/voice/bar.tsx';
 import type { VoiceState } from '../web-v2/src/features/voice/session.ts';
 import { Lobby } from '../web-v2/src/features/room/lobby.tsx';
@@ -37,7 +38,7 @@ const voiceStub = (() => {
   return session;
 })();
 
-export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; voice?: Partial<VoiceState> }
+export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; voice?: Partial<VoiceState>; identityReveal?: 'enabled' | 'seen' }
 const updateEvent = 'v2-game-fixture-update';
 
 function sceneKey(view: RoomSnapshot): string {
@@ -54,6 +55,8 @@ export function GameHarness() {
     let active = true;
     const apply = (next: GameHarnessFixture) => {
       if (!active) return;
+      const revealKey = identityRevealKey(next.view);
+      if (revealKey && next.identityReveal !== 'enabled') sessionStorage.setItem(revealKey, 'test-seen');
       setFixture(next);
       const now = performance.now();
       if (!sample.current || next.view.serverTime > sample.current.server) sample.current = { server: next.view.serverTime, local: now };
