@@ -1,0 +1,26 @@
+.phase-transition {
+  position: fixed; inset: 18% 12% auto; height: min(52vh, 420px); z-index: 35;
+  display: grid; place-items: center; overflow: hidden; pointer-events: none;
+  isolation: isolate; border-radius: 24px;
+  background: radial-gradient(ellipse, #120d20e8 12%, #090c1680 60%, transparent 75%);
+  animation: phase-reveal 2.2s ease both;
+}
+.phase-transition__art { position: absolute; inset: 0; z-index: -1; }
+.phase-transition__curtain {
+  position: absolute; width: 65%; height: 90%; top: 0; left: -10%; opacity: .65;
+  mask-image: radial-gradient(ellipse, #000 20%, transparent 70%);
+  animation: phase-curtain 2.2s ease both;
+}
+.phase-transition__curtain--right { left: auto; right: -10%; scale: -1 1; }
+.phase-transition__clock {
+  position: absolute; inset: 8% 0; margin: auto; width: 70%; height: 84%; opacity: .28;
+  mask-image: radial-gradient(ellipse, #000 35%, transparent 70%);
+}
+.phase-transition p { display: grid; gap: 12px; margin: 0; text-align: center; padding: 24px; text-shadow: 0 2px 12px #000; }
+.phase-transition p span { color: #dfcfae; font-size: 14px; letter-spacing: .15em; }
+.phase-transition strong { color: #fff2d7; font-size: clamp(26px, 4vw, 48px); letter-spacing: .12em; }
+@keyframes phase-reveal { 0%, 100% { opacity: 0; } 15%, 76% { opacity: 1; } }
+@keyframes phase-curtain { from { translate: -8% 0; } to { translate: 10% 0; } }
+@media (max-width: 680px) { .phase-transition { inset: 20% 0 auto; height: 260px; } }
+@media (prefers-reduced-motion: reduce) { :root:not([data-reduced-motion="false"]) .phase-transition { display: none; } }
+:root[data-reduced-motion="true"] .phase-transition { display: none; }
