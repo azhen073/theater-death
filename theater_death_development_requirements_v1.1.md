@@ -826,42 +826,24 @@ https://docs.docker.com/get-started/
 
 - **部署**：**未部署**。
 
-### v2.0.4-beta（2026-09-21，进行中）· 声网媒体回收可靠性 + 发布凭证 TTL 收紧 + 客户端连接可靠性 + 真机验收与鉴权实测（贡献 kiahir，用户（阿真）确认）
+### v2.0.4-beta（2026-09-21，进行中）· 声网语音可靠性收口（媒体回收 / 发布 TTL / 客户端）+ 真机验收与鉴权实测（贡献 kiahir，用户（阿真）确认）
 
-- **版本号**：沿用「版本名 = 分支名」约定，本版 = **`2.0.4-beta`**；分支自 `main` 的 `9c86a90`（已含整合后的 v2.0.4-alpha）拉出。与**规则版本 2.0**、**客户端契约 2.1/2.2** 仍是三套独立编号；文件名保留基线名 `theater_death_development_requirements_v1.1.md`。
-- **本版性质**：一次**声网语音系统审计**（核心链路逐文件复核 + 测试覆盖审计 + 部署与契约面审计）之后的可靠性修复。**不含玩法变更、不含契约字段变更、前端与客户端行为不变。**
+- **版本号**：沿用「版本名 = 分支名」，本版 = **`2.0.4-beta`**，分支自 `main` 的 `9c86a90` 拉出。与规则版本 2.0、客户端契约 2.1/2.2 仍是三套独立编号；文件名保留基线名。**不含玩法与契约字段变更。**
+- **本版性质**：一次**声网语音审计**（核心链路逐文件复核 + 测试覆盖审计 + 部署与契约面审计）之后的可靠性收口。
 
-- **更新说明（已实现）**
-  1. **踢出失败不再永久丢失**（`server/v2/media.ts`）：`revoke` 与 `sync` 原先「先删身份映射、再调 REST 踢人」，一旦失败该身份从此不再被重试（声网官方明确：一次性踢出在「SDK 当时与边缘节点断开」时会失败、需要再次调用）。现改为**踢成功后才删映射**，失败保留、交由下一次 `sync` 重试；`sync` 改为逐身份捕获失败，单个失败不影响其余身份回收，并统计失败数——`required`（HTTP `/voice/sync`）时仍抛出以映射为 503。
-  2. **媒体队列不再被 rejected promise 吞掉任务**（同文件 `enqueue`）：原实现在 `required` 调用失败后把 rejected promise 留在队列里，下一次入队任务的 work 会被 `.then` 跳过（静默丢一次踢人/关房）。现改为队列链**永不 reject**，rejection 只回给调用方。
-  3. **频道管理 REST 加超时与退避重试**（`voice/agora.ts`）：每次请求带 `AbortSignal.timeout`（默认 15s，可配），5xx / 超时 / 网络错误按 250ms→1s 退避重试（默认最多 3 次尝试），**4xx 视为永久失败、不重试**；错误信息区分超时与 HTTP 状态并带尝试次数。依据声网《Ban user privileges best practices》的「客户端超时 ≥5 秒、5xx 或超时按递增间隔重试」。
-  4. **发布凭证 TTL 收紧为 150 秒**（同文件 `DEFAULT_PUBLISH_TTL_SECONDS`，原 600 秒）：声网没有「服务端实时改权限」API，权限收回依赖前端 `renewToken`；把发布凭证压到「最长发言窗口 120 秒 + 30 秒缓冲」，即把「客户端不配合时窗口外仍能发麦」的最坏时长从 10 分钟压到 2.5 分钟内。**只收紧发布权限的到期时间**，加入凭证仍为 1800 秒，故不会踢掉收听连接（订阅不受影响）；v1 入口与两个前端共用同一默认值。
+- **已实现**
+  1. **踢出失败不再永久丢失 + 队列不再吞任务**（`server/v2/media.ts`）：`revoke`、`sync` 改为**踢成功后才删身份映射**，失败留给下一次 `sync` 重试，`sync` 逐身份捕获失败并在 `required` 时抛出（映射 503）；`enqueue` 队列链改为**永不 reject**，修掉「`required` 失败后下一次入队的 work 被静默跳过」（声网一次性踢出在断连时会失败，官方要求重调）。
+  2. **频道管理 REST 加超时与退避重试**（`voice/agora.ts`）：`AbortSignal.timeout`（默认 15s）+ 5xx/超时/网络错误按 250ms→1s 重试（默认 3 次尝试），4xx 视为永久失败不重试（依据官方 best practices）。
+  3. **发布凭证 TTL 600 秒 → 150 秒**（同文件 `DEFAULT_PUBLISH_TTL_SECONDS`）：覆盖最长发言窗口 120 秒 + 30 秒缓冲，只收紧发布权限、加入凭证仍 1800 秒（不影响收听）。这是「撤销强度」的**方案①**——声网无服务端实时降权 API，被改客户端「窗口外仍能发麦」的最坏时长由 10 分钟压到 2.5 分钟内；**方案②（失去发布权即踢 uid）保留待定案**。
+  4. **客户端连接可靠性**（v2 `web-v2/.../voice/session.ts`、`bar.tsx` + v1 `web/src/voice.tsx`）：补齐 `token-privilege-will-expire`（过期前 30 秒 `renewToken`）与 `token-privilege-did-expire`（重新 `join`，原在发言则恢复开麦）——此前两个客户端都没订阅，长局中纯听众 30 分钟后必然掉线、v1 更无自动重连；自动开麦只在 `connected` 时记窗口键（不再被「重连中」偷走机会）；重连期间开麦按钮禁用 +「重连中…」；`#stopTask` 串行化（关麦后立刻重开不再短暂双发）；电平按 `client.join()` 返回的 uid 归属、离开复位 `AgoraRTC.onAutoplayFailed`、订阅 `exception` 把音频质量码写成界面提示、所选麦克风设备会话内保留。
 
-- **客户端连接可靠性（本轮一并收口）**：以 SDK 官方 typings（`agora-rtc-sdk-ng@4.24.8` 的 `token-privilege-will-expire` / `token-privilege-did-expire` / `exception` 事件说明与《Use tokens》文档）为据，逐条复核 v2（`web-v2/src/features/voice/session.ts`、`bar.tsx`）与 v1（`web/src/voice.tsx`）两个客户端，修掉 5 类问题：
-  1. **加入凭证到期不再"必然掉线"**：加入凭证 TTL 1800 秒，两个客户端原先都**没有订阅凭证事件**——`token-privilege-will-expire`（过期前 30 秒，官方要求 `renewToken`）与 `token-privilege-did-expire`（过期后，官方要求重新 `join`）。现补上：前者重新取 token 并 `renewToken`；后者重新 `join`，且**原本正在发言时自动恢复开麦**（v1 同时保留观战身份与发布意图）。此前 13 人长局（>30 分钟）中纯听众的凭证不会续期，v1 更是完全没有自动重连（必须手点「加入语音」）。
-  2. **自动开麦不再被"重连中"偷走机会**：`bar.tsx` 原先用 `joined`（含 `reconnecting`）判定**并先记窗口键再发请求**，而 `requestMicrophone()` 在非 `connected` 时静默返回——重连期间轮到自己时键已被消耗，恢复连接后整个发言窗口都不会自动开麦。现改为只有 `connected` 才记键并请求。
-  3. **重连期间的开麦按钮**：由"可点但点了毫无反应"改为**禁用** + 文案「重连中…」。
-  4. **关麦→立刻重开不再短暂双发**：`#stopTrack()` 原先先清空引用再 `await unpublish`，await 期间并发的 `#applyMicrophone()` 会新建并发布第二条轨道（短暂双发、可能自听回声）。现引入 `#stopTask`：新建轨道前必须等上一次取消发布/关轨结束。
-  5. **硬化与可观测性**：自己的电平改按 `client.join()` 返回的 uid 归属（与服务端签发值不一致时不会串位）；离开时复位全局 `AgoraRTC.onAutoplayFailed`（不再把自动播放失败写到已销毁的会话上）；订阅 `exception` 并把与本项目相关的音频质量事件码（2001/2002/2003/2005 与恢复项 4001/4002/4003）写成界面提示——此前这类异常在客户端**完全不可见**；所选麦克风设备在会话内保留（原先 `leave()` 会重置回系统默认设备，v1 反而保留）。
+- **验证（2026-09-21，容器内 + 真机）**
+  - 单测：后端增量 **5 文件 40 例**（voice-agora 10 / v2-media 9 / voice-policy 10 / voice-api 7 / v2-voice-api 4）+ 客户端 **2 文件 19 例**（voice-session 13 / voice-levels 6）**全过**；服务端 `typecheck` 与 `typecheck:web:v2`、`typecheck:web:v2-tests`、`typecheck:web`（v1）均通过；界面 E2E `18-voice-levels` **chromium 3/3 + webkit 3/3**。
+  - **回归有效性**：把改前的 `media.ts` / `session.ts` / `bar.tsx` 分别临时 stash 回去跑同一批用例 → **2 failed / 6 failed / 1 failed**，恢复后全绿（确认新断言真能拦住缺陷）。
+  - **真机验收**：真实声网凭据下 `16-voice` **1 passed（12.3s）**——13 客户端真机入频道、候选开麦发布、**接收方远端电平 35–42%（真实收流）**、无自动播放拦截、结束发言即时撤权；为此修掉该 spec 两处**自声网迁移起就坏掉**的断言（文案定位器被 v2.0.3-alpha 的 `.voice-bar__speaker` 撞成 strict 双命中；`<audio>` 元素断言在 WebAudio 播放模式下不成立）。**v1 `02-voice` 仍需客户 ID/密钥，未跑。**
+  - **鉴权强制力实测（真实项目）**：加入频道**强制校验 token**（无 token → `dynamic use static key`；错证书 → `invalid token, authorized failed`）✅；但**发布权限位无约束力**——订阅角色 token 在 rtc 与 live（`audience`→`host`）两种模式下都能 `publish`，`pubAudio` 仅 20 秒的凭证 35 秒后仍能发麦 → 判定该项目**「连麦鉴权」尚未开启**。**部署前必须在控制台启用**（项目 → 编辑 → 功能 → 连麦鉴权，约 5 分钟生效），启用后重跑探针应变为 rejected；此前的「真实云联调 3 例全过」只断言频道在线 + 界面文案，**结构上查不出这一项**。探针为临时用例，已删除。
+  - 静态清点：`tests/` **88 文件 / 584 例**；`e2e/specs-v2` **18 spec / 53 例**。
 
-- **撤销强度：按方案①收口（已实现）**：v2 没有 token 推送，权限收回靠「快照变化 → 客户端重新取 token → `renewToken`」；服务端不会因失去发布权而踢人（失去发布权者仍是合法听众），因此**被修改过的客户端可在窗口结束后继续发麦**。本轮取**方案①**：把发布凭证默认 TTL 由 **600 秒收紧为 150 秒**（见上节第 4 条），最坏时长从 10 分钟压到 2.5 分钟内。**方案②（失去发布权时主动踢该 uid，可近乎即时失效，代价是一次短暂断音）与方案③（维持现状、仅文档明示）本轮不做；方案② 保留待后续定案**（若将来需要"窗口一结束就必须静音"的强保证，②是唯一不依赖客户端配合的做法）。
-
-- **验证（2026-09-21，容器内）**
-  - 增量单测 **5 文件 40 例全过**：`tests/voice-agora.test.ts` 10 例（新增：发布凭证默认 TTL 的上下限、5xx 退避重试后成功、4xx 不重试、超时耗尽后报错且每次尝试都带 `AbortSignal`）、`tests/v2-media.test.ts` 9 例（新增：踢出失败保留映射并在后续 `sync` 重试成功、`required` 失败后队列不被吞）、`voice-policy` 10 例、`voice-api` 7 例、`v2-voice-api` 4 例。
-  - `npm run typecheck`（服务端 `tsc --noEmit`）通过。
-  - **回归有效性验证**：把 `server/v2/media.ts` 临时 stash 回旧实现后，两条新增用例**均失败**（`2 failed`）；恢复新实现后全绿——确认这两条断言确实拦得住本次修复的两个缺陷（第一版「队列不被吞」用例因为 `await` 已让 cleanup 微任务跑完而没有牙，已改为在第一次失败落定前入队并复验）。
-  - 静态清点：`tests/` **88 文件 / 584 例**（原 572 + 本版新增 12）；`e2e/specs-v2` 静态 **18 个 spec / 53 例**。
-  - **客户端连接可靠性验证（2026-09-21，容器内）**：单测 `tests/frontend-v2-voice-session.test.ts` **13 例**（新增 6 例：即将过期续期、已过期重新 join 并恢复开麦、质量异常提示与恢复清除、关麦后立刻重开不双发、按 SDK 返回 uid 归属电平、离开后保留设备）+ `frontend-v2-voice-levels.test.ts` 6 例，**合计 19 例全过**；`typecheck:web:v2` / `typecheck:web:v2-tests` / `typecheck:web`（v1 前端）三个工程均通过；界面 E2E `e2e/specs-v2/18-voice-levels.spec.ts` **chromium 3/3 + webkit 3/3**（新增「重连中禁用开麦且不消耗自动开麦机会，恢复连接后才自动开麦」）。
-  - **回归有效性（新增用例是否真能拦住旧实现）**：把 `web-v2/src/features/voice/session.ts` 临时 stash 回旧实现 → 6 条新用例**全部失败**（6 failed / 7 passed）；把 `bar.tsx` 临时 stash 回旧实现并重启 dev server → 新 E2E 用例**失败**（1 failed）。恢复后全绿。
-  - **真实媒体验收（2026-09-21，声网真机首次跑到）**：`docker compose -f deploy/compose.frontend-acceptance.yml -f deploy/compose.frontend-voice-acceptance.yml --profile acceptance --env-file .env up -d api web` → `run --rm seed` → `run --rm browser npx playwright test --config=playwright.v2.config.ts 16-voice.spec.ts --project=chromium` → **1 passed（12.3s）**：13 个客户端真机加入声网频道、候选开麦发布真实音频、**接收方语音条显示当前发言者远端电平 35–42%（真实收到音频流）**、未触发浏览器自动播放拦截、结束发言后发布权即时收回（`等待发言权限` 出现且麦克风按钮消失）。截图见 `test-results-frontend-v2/voice-{joined-listener,speaking,permission-revoked}.png`。
-  - 为跑通上面这条，修掉两处**自声网迁移后从未被跑到**的 spec 缺陷：① 文案定位器 `/已连接 · 只听|旁听中|正在发言/` 在 v2.0.3-alpha 引入 `.voice-bar__speaker`（「N号 正在发言 · X%」）后 strict mode 命中两个元素（本条 spec 自该功能合并起一直是坏的）→ 收窄为只在 `.voice-bar__status span` 内匹配；② 「收到远端音频」原断言查 `<audio>` 元素的 `readyState/currentTime`，但 **Agora Web SDK v4 用 WebAudio 播放、页面里不存在 audio 元素**（诊断实测两页 `audioCount` 均为 0）→ 改为断言接收方 `.voice-bar__speaker` 的远端电平 > 0，并断言无「点击启用声音」按钮。**v1 入口 `02-voice` 仍需控制台「客户 ID/密钥」，本轮未跑。**
-  - **鉴权强制力实测（2026-09-21，真实项目）**：用服务端 `voice/agora.ts` 自签 token 在真实声网频道上做探针（Chromium + `agora-rtc-sdk-ng` v4，rtc 与 live 两种 mode），结论——
-    - **加入频道强制校验 token**：不带 token → `CAN_NOT_GET_GATEWAY_SERVER: dynamic use static key`；用错误 App 证书签的 token → `invalid token, authorized failed`（均被拒）✅
-    - **发布权限位当前无约束力**：持**订阅角色** token（无发布权限）在 rtc 模式下 `publish` **成功**；在 **live 模式**下 `setClientRole('audience')` → 加入 → `setClientRole('host')` → `publish` 也**成功**。按声网官方文档（开启「连麦鉴权」后发流须同时满足「token role = kRolePublisher」与「setClientRole = BROADCASTER」），可判定该项目的**「连麦鉴权」尚未开启**；另签的 `pubAudio` 仅 20 秒的发布凭证在 35 秒后仍能再次 `publish`，与之吻合。
-    - **影响与要求**：R-43 的发布权目前**只由我们服务端签发/撤回**（依赖客户端 `renewToken`），声网侧不做强制；被修改的客户端在窗口内可发麦、窗口结束后最多还能发 150 秒（本版已把发布 TTL 从 600 秒收紧）。**部署前必须开启「连麦鉴权」**（控制台 → 项目 → 编辑 → 功能 → 连麦鉴权 → Enable，约 5 分钟生效），开启后应重跑本探针，期望订阅 token 的 `publish` 变为 rejected。
-    - **验证盲区说明**：此前的「真实云联调 3 例全过」（2026-09-19）只断言「频道在线 + 界面文案 + 无麦克风错误」，**结构上无法发现该项未开启**；探针为临时用例，验证后已删除（不入库）。
-
-- **未覆盖 / 未实现（如实记录）**：**v2 入口的真实媒体已验**（`16-voice` 真机通过：加入频道 → 候选开麦发布 → 接收方真实收流 → 撤权，见上）；**仍未验**——麦克风增益 150 与 AGC 的**实际听感/响度**、踢人与终局关房在真实声网 REST 上的调用（需控制台「客户 ID/密钥」）、v1 入口 `02-voice`；本版**未跑全量**（只跑上列增量集与服务端类型检查，两个前端的 typecheck/构建未跑）。
-- **审计发现但本版未处理（供后续定案）**：`docs/openapi-v2.2.json` 的 `/rooms/{code}/voice/token` 200 响应仍写作 LiveKit 形态 `{url,token,roomName}`（实现返回 `{appId,channel,uid,token}`，且该 schema 的 `additionalProperties:false` 会把真实响应判为非法，契约测试不校验 voice）；`VOICE_ENABLED=true` 但凭据不全时 v2 **崩溃重启循环**（`server/v2/config.ts` 直接抛错、无降级），与 RUNBOOK/README 的「文字测试模式」承诺不符（v2 前端并不显示该文案）；`deploy/compose.v2.release.yml` 允许 `VOICE_ENABLED=true` 却不注入任何 `AGORA_*`；`install.sh` / `install.ps1` 生成的 `.env` 漏 `AGORA_CUSTOMER_KEY` / `AGORA_CUSTOMER_SECRET`（踢人/关房会静默失败）；`AGORA_REST_BASE_URL` 只有 E2E 读取、服务端恒用中国区 `api.sd-rtn.com`（非中国区账号会静默失败）；v1 **不回收玩家**媒体参与者（只回收观战者）且 uid = 座位号（座位复用会撞 uid）；`autoMic` 与媒体重连叠加会「自己发言途中短暂断线后本窗口不再自动开麦」（v1 反而会自动恢复发布）；`docs/frontend-v2-voice.md` 把四个语音偏好写成「钳制到 0–100」（`voiceInput` 实为 0–150）且偏好键清单漏 `autoMic`；单测从未校验 token 的**角色与权限位**（只断言 `007e` 前缀，改错角色/权限仍全绿）；`docker-compose.yml` 首次安装默认 `NODE_ENV=production` + `PUBLIC_BASE_URL=http://…` 与 `config.ts` 的 HTTPS 要求相冲（install 脚本不写 `NODE_ENV`）。**客户端侧本轮已修 8 条、仍余 1 条**：v1 客户端既无自动重连、**uid 又等于座位号**，同一账号开两个标签页（或刷新后旧连接未及时断开）会以同一 uid 争抢同一频道（SDK 错误码 `UID_CONFLICT`）；v2 用 `v2:gameId:player:epoch` 分配唯一 uid 已规避。本轮按约定不动 v1 的 uid 分配，待后续定案。
-
-- **部署**：**未部署**（服务器更新仍需另行执行 `git pull` → `.env` 换 `AGORA_*` → `./deploy/update.sh`）。
+- **未覆盖 / 未实现**：v2 入口真实媒体已验（见上）；**仍未验**——麦克风增益 150 与 AGC 的实际听感/响度、踢人与终局关房的真实 REST 调用（需客户 ID/密钥）、v1 `02-voice`；本版**未跑全量**。
+- **审计发现但本版未处理**：① `openapi-v2.2.json` 的 voice/token 响应仍是 LiveKit 形态（`{url,token,roomName}`，与实现 `{appId,channel,uid,token}` 不符）；② `VOICE_ENABLED=true` 但凭据不全时 v2 **崩溃重启**（v1 降级），且「文字测试模式」文案只在 v1；③ `compose.v2.release.yml` 可开语音却不注入 `AGORA_*`；④ install 脚本生成的 `.env` 漏客户 ID/密钥（踢人/关房静默失败）；⑤ `AGORA_REST_BASE_URL` 服务端未接通（恒用中国区）；⑥ v1 不回收玩家媒体且 uid = 座位号（多标签页 `UID_CONFLICT`）；⑦ `docs/frontend-v2-voice.md` 的偏好钳制范围与键清单过期；⑧ 单测未校验 token 角色与权限位；⑨ 首次安装 `NODE_ENV=production` + http 地址与 HTTPS 校验相冲。
+- **部署**：**未部署**（服务器更新仍需 `git pull` → `.env` 换 `AGORA_*` → `./deploy/update.sh`）。
