@@ -29,6 +29,17 @@ describe('声网 VoiceAdapter', () => {
     expect(grant.expiresAt - before).toBeLessThanOrEqual(121_000);
   });
 
+  it('发布授权默认 TTL 为 150 秒：覆盖最长发言窗口 120 秒且不超过上限', () => {
+    const service = createAgoraVoiceService({ appId: APP_ID, appCertificate: APP_CERTIFICATE });
+    const before = Date.now();
+    const grant = service.issuePublishGrant({ roomName: 'g_test', uid: 7 });
+    const ttl = grant.expiresAt - before;
+    // 规则 2.0 最长发言窗口 = 120 秒（rulesets/theater-death-13-v2.ts 的 timersSeconds.speech）
+    expect(ttl).toBeGreaterThan(120_000);
+    // 服务端无法实时降权，故默认不得放宽到 150 秒以上
+    expect(ttl).toBeLessThanOrEqual(150_000);
+  });
+
   it('订阅凭证与发布凭证：均为合法 AccessToken2 且互不相同（用于即时降权）', () => {
     const service = createAgoraVoiceService({ appId: APP_ID, appCertificate: APP_CERTIFICATE });
     const subscriber = service.issueSubscriberGrant({ roomName: 'g_test', uid: 7 }).token;

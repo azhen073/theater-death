@@ -40,7 +40,7 @@ export interface AgoraVoiceOptions {
   readonly customerSecret?: string;
   /** Token 与加入频道权限的有效期（秒），默认 1800 */
   readonly tokenTtlSeconds?: number;
-  /** 发布授权有效期（秒），默认 600；需覆盖最长发言窗口（90 秒）并留足缓冲 */
+  /** 发布授权有效期（秒），默认 150：覆盖最长发言窗口（规则 2.0 发言轮 120 秒）并留 30 秒缓冲 */
   readonly publishTtlSeconds?: number;
   /** 频道管理 REST 基地址；中国区账号为 api.sd-rtn.com */
   readonly restBaseUrl?: string;
@@ -58,6 +58,12 @@ const DEFAULT_REST_BASE_URL = 'https://api.sd-rtn.com';
 const DEFAULT_REST_TIMEOUT_MS = 15_000;
 const DEFAULT_REST_RETRIES = 2;
 const DEFAULT_REST_RETRY_DELAY_MS = 250;
+/**
+ * 发布授权（开麦权）有效期上限：声网没有"服务端实时改权限"API，权限收回靠前端 `renewToken` 换订阅凭证，
+ * 客户端不配合时只能等发布凭证自然过期。因此把它压到「最长发言窗口 + 30 秒」＝150 秒，
+ * 作为"被改客户端在窗口外继续发麦"的最坏时长上限（原默认 600 秒）。
+ */
+const DEFAULT_PUBLISH_TTL_SECONDS = 150;
 
 /** 频道管理 REST 的失败：带状态码，供重试判定（4xx 视为永久失败，5xx 可重试）。 */
 class AgoraRestError extends Error {
@@ -94,7 +100,7 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
   const customerKey = options.customerKey ?? '';
   const customerSecret = options.customerSecret ?? '';
   const tokenTtl = options.tokenTtlSeconds ?? 1800;
-  const publishTtl = options.publishTtlSeconds ?? 600;
+  const publishTtl = options.publishTtlSeconds ?? DEFAULT_PUBLISH_TTL_SECONDS;
   const restBaseUrl = options.restBaseUrl ?? DEFAULT_REST_BASE_URL;
   const restTimeoutMs = options.restTimeoutMs ?? DEFAULT_REST_TIMEOUT_MS;
   const restRetries = Math.max(0, Math.trunc(options.restRetries ?? DEFAULT_REST_RETRIES));
