@@ -65,4 +65,10 @@ docker.exe compose -p ui-night-sol-0922 -f deploy/compose.frontend-acceptance.ym
 
 ## 结论与未执行项
 
+### 2026-09-22 独立亮度 PR 兼容增量
+
+夜景背景改为通过可选CSS变量 `--stage-scenery` 提供；仅检测到独立背景层时让该层承载背景，氛围自身读取 `--stage-brightness`（缺省1）。没有亮度PR也保持原夜景，不导入亮度组件或账户设置，仍可独立合并。
+
+隔离项目 `night-independent`：display-model/stage-layout单测10/10、两个前端typecheck与build通过；`21-night-atmosphere` + `03-actions` Chromium/WebKit 20/20。原预览资源、短时动画及操作可读性保持不变。
+
 未发现夜间氛围产品缺陷。未运行全量 Vitest、全量 v2 E2E 或 v1 E2E；未使用真实多人房间或真实语音；未提交、未推送、未部署。

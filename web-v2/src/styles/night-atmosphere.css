@@ -1,8 +1,11 @@
 .theater-stage.theater-stage--night {
-  background: linear-gradient(#13233bd6, #17253fd9), url('/assets/theater.png') center/cover;
+  --stage-scenery: linear-gradient(#13233bd6, #17253fd9), url('/assets/theater.png') center/cover;
+  background: var(--stage-scenery);
   border-color: #708aab; isolation: isolate;
 }
-.night-atmosphere { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+/* Standalone: use the parent scenery. With an independent backdrop: let it own brightness. */
+.theater-stage.theater-stage--night:has(> .stage-backdrop) { background: #26354d; }
+.night-atmosphere { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; filter: brightness(var(--stage-brightness, 1)); }
 .night-atmosphere__glow { position: absolute; inset: 0; background: url('/assets/ui-night/climax.png') center/cover; opacity: .2; }
 .night-atmosphere__vignette { position: absolute; inset: 0; background: url('/assets/ui-night/vignette.png') center/100% 100%; opacity: .6; }
 .night-atmosphere__motion { position: absolute; inset: 0; }

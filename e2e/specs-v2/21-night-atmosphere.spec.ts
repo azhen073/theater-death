@@ -26,10 +26,11 @@ test('夜间银蓝静态层和原素材可见，座位行动在四档宽度仍�
   await expect(stage.locator('.night-atmosphere__motion i')).toHaveCount(24);
   const visual = await stage.evaluate(element => {
     const stageStyle = getComputedStyle(element);
+    const sceneryStyle = getComputedStyle(element.querySelector('.stage-backdrop') ?? element);
     const glow = getComputedStyle(element.querySelector('.night-atmosphere__glow')!);
     const vignette = getComputedStyle(element.querySelector('.night-atmosphere__vignette')!);
     return {
-      stageBackground: stageStyle.backgroundImage,
+      stageBackground: sceneryStyle.backgroundImage,
       border: stageStyle.borderColor,
       glowBackground: glow.backgroundImage,
       glowOpacity: Number(glow.opacity),
