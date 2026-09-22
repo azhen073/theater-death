@@ -20,3 +20,5 @@ sources.json中theater.png和death-overlay.png的source字段是ZIP内条目路�
 | frames/death.png | IdentityCards/frames/frame_death.png | 0d4bf34a28bad6814f459b1c20d74a910d7f02b7a0228cb6dafb2f46d66af940 |
 
 默认头像通过SVG viewBox（928,213,472,472）显示合图中的头像区域，原位图保持不变。实际桌面/手机产物截图已核验裁切与布局；截图中的纯黑头像是测试上传的一像素图片，不是默认头像素材。
+
+2026-09-22 死亡特效迭代复用同一合图的主星芒区域（48,110,490,675）作为 `DeathMark`，通过 CSS 渐隐遮罩与 multiply 混合覆盖头像。已重新核实合图与工作区原件 SHA-256 一致；原位图不改动，没有新增或生成美术素材。烟雾与碎片由有数量上限的 Canvas 粒子绘制。旧 `death-overlay.png` 保留为既有资源，但不再用于右上角 48px 死亡提示。
