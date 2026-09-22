@@ -70,7 +70,7 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
   await dialog.getByLabel('动画偏好').selectOption('system');
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}') as Record<string, unknown>);
-  expect(Object.keys(stored).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+  expect(Object.keys(stored).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
   expect(stored).toMatchObject({ deathEffects: true, motion: 'system', scale: 110 });
 
   await page.getByRole('button', { name: '关闭' }).click();

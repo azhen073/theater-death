@@ -8,6 +8,15 @@ function event(cursor: number, type: string, payload: unknown): EventDTO {
 }
 
 describe('v2 display preference model', () => {
+  it('migrates old preferences and clamps scenery brightness without trusting invalid values', () => {
+    for (const value of [undefined, null, '80', NaN, Infinity, -Infinity, true]) {
+      expect(parsePreferences({ stageBrightness: value }).stageBrightness).toBe(100);
+    }
+    expect(parsePreferences({ stageBrightness: 0 }).stageBrightness).toBe(50);
+    expect(parsePreferences({ stageBrightness: 500 }).stageBrightness).toBe(130);
+    expect(parsePreferences({ stageBrightness: 86.7 }).stageBrightness).toBe(87);
+    expect(parsePreferences({ motion: 'reduced', scale: 110 })).toMatchObject({ stageBrightness: 100, motion: 'reduced', scale: 110 });
+  });
   it('returns the full default for absent, null, primitive, array, and invalid local data', () => {
     for (const value of [undefined, null, 'token', 42, [], { motion: 'unexpected', deathEffects: 'yes', scale: 125 }]) {
       expect(parsePreferences(value)).toEqual(defaultPreferences);
@@ -17,7 +26,7 @@ describe('v2 display preference model', () => {
   it('keeps only the allowed non-sensitive fields and strips tokens/user objects', () => {
     const parsed = parsePreferences({ motion: 'full', deathEffects: false, scale: 110, token: 'secret', user: { id: 'u1' }, room: 'room' });
     expect(parsed).toEqual({ ...defaultPreferences, motion: 'full', deathEffects: false, scale: 110 });
-    expect(Object.keys(parsed).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+    expect(Object.keys(parsed).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
     expect(parsed).not.toHaveProperty('token');
     expect(parsed).not.toHaveProperty('user');
   });

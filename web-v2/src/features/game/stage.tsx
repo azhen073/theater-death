@@ -275,6 +275,7 @@ export function Stage({
           );
         })}
       </div>
+      <div className="stage-backdrop" aria-hidden="true" />
     </section>
   );
 }

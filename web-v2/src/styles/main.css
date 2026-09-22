@@ -203,8 +203,9 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .hud-tools .button { min-height: 38px; font-size: 12px; padding: 8px 13px; }
 .game-columns { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 22px; align-items: start; }
 .game-play-area { min-width: 0; }
-.theater-stage { position: relative; min-width: 0; overflow: hidden; border: 1px solid #c1ccda; border-radius: 12px; background: linear-gradient(#eef2f5d9,#e8edf5cc),url('/assets/theater.png') center/cover; }
-.theater-stage--night { background: linear-gradient(#dce5f1e8,#b8c7dcbd),url('/assets/theater.png') center/cover; }
+.theater-stage { position: relative; min-width: 0; overflow: hidden; isolation: isolate; border: 1px solid #c1ccda; border-radius: 12px; background: #26354d; }
+.stage-backdrop { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--stage-scenery, linear-gradient(#dce4f166,#c4d1e64d),url('/assets/theater.png') center/cover); filter: brightness(var(--stage-brightness, 1)); }
+.theater-stage--night { --stage-scenery: linear-gradient(#dce5f1e8,#b8c7dcbd),url('/assets/theater.png') center/cover; }
 .stage-center { position: absolute; left: 26%; right: 26%; top: 40%; bottom: 40%; border: 1px solid #8496af44; border-radius: 50%; background: #f0f4f630; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; pointer-events: none; }
 .stage-center > span { font-size: 8px; letter-spacing: .2em; color: #8191a8; }
 .stage-center > strong { font-family: 'Songti SC','SimSun',serif; font-weight: 400; letter-spacing: .22em; font-size: 23px; }
