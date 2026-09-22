@@ -76,6 +76,7 @@ export function AuthenticatedShell({ profile, bootstrap, catalog, onProfile, onL
   const goHome = () => { navigate('/'); void refreshRooms(); };
   const roomVisible = isRoomPage && reference?.roomCode === roomCode;
   const roomView = session.view;
+  const lobbyLayout = roomVisible && roomView?.room.phase === 'lobby' ? 'home-layout--lobby' : '';
   const roomKey = roomView ? [roomView.roomId, roomView.gameId, roomView.viewer.memberId, roomView.viewer.kind, roomView.viewer.subjectPlayerId, roomView.viewer.readOnly].join('/') : '';
   const roomContent = roomView ? roomView.room.phase === 'playing' && roomView.public
     ? <GameScene key={roomKey} active={roomVisible} view={roomView} catalog={catalog} online={session.canWrite} remaining={session.remaining} refresh={session.refresh} onExit={onExit} onExpired={onLogout}/>
@@ -83,7 +84,7 @@ export function AuthenticatedShell({ profile, bootstrap, catalog, onProfile, onL
       ? <ReviewPage key={roomKey} active={roomVisible} view={roomView} catalog={catalog} online={session.canWrite} remaining={session.remaining} refresh={session.refresh} onExit={onExit} onExpired={onLogout}/>
       : <Lobby key={roomKey} active={roomVisible} view={roomView} catalog={catalog} online={session.canWrite} remaining={session.remaining} refresh={session.refresh} onExit={onExit} onExpired={onLogout}/>
     : <p role="status">正在读取当前房间…</p>;
-  return <main className={`home-layout ${isRoomPage ? 'home-layout--room' : ''} ${roomVisible && roomView?.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation"><div className="brand"><Emblem/><span>剧院死神<small>THEATER DEATH</small></span></div>
+  return <main className={`home-layout ${lobbyLayout} ${isRoomPage ? 'home-layout--room' : ''} ${roomVisible && roomView?.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation"><div className="brand"><Emblem/><span>剧院死神<small>THEATER DEATH</small></span></div>
     <nav aria-label="主导航"><button className={`nav-item ${selected === 'home' ? 'active' : ''}`} onClick={goHome}>剧院首页</button><button className={`nav-item ${selected === 'room' ? 'active' : ''}`} onClick={() => navigate(reference ? `/room/${reference.roomCode}` : current ? `/room/${current.roomCode}` : '/join')}>我的房间</button><button className={`nav-item ${selected === 'account' ? 'active' : ''}`} onClick={() => navigate('/account')}>我的账户</button></nav>
     <div className="nav-profile"><Avatar url={profile.avatarUrl} name={profile.nickname}/><span title={`${profile.nickname} · UID ${profile.uid}`}>{profile.nickname}</span><button className="text-button" disabled={logoutBusy} onClick={() => { if (reference) setLogoutConfirm(true); else void logout(); }}>退出登录</button></div></aside>
     <section className="home-main">
