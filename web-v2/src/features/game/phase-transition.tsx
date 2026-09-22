@@ -5,6 +5,10 @@ import { publicDeathSeats } from '../../presentation/death-events.ts';
 import { claimPublicPhase, phaseTransitionTitle, publicPhaseStamp, type PublicPhaseStamp } from './phase-transition-model.ts';
 import '../../styles/phase-transition.css';
 
+// Covers the 3.2s public death treatment in the separate death-effects PR as well
+// as main's shorter notice, without depending on that unmerged implementation.
+const DEATH_PRIORITY_MS = 3200;
+
 export function PhaseTransition({ view, enabled, urgent, occupied }: {
   view: RoomSnapshot; enabled: boolean; urgent: boolean; occupied: boolean;
 }) {
@@ -14,6 +18,7 @@ export function PhaseTransition({ view, enabled, urgent, occupied }: {
   const previous = useRef<{ stamp: PublicPhaseStamp | null; ready: boolean; cursor: number } | null>(null);
   const deathUntil = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<{ title: string; key: string } | null>(null);
   const stamp = publicPhaseStamp(view);
   const key = JSON.stringify(stamp);
   const ready = enabled && visible;
@@ -29,24 +34,43 @@ export function PhaseTransition({ view, enabled, urgent, occupied }: {
   useEffect(() => {
     const last = previous.current;
     previous.current = { stamp, ready, cursor };
+    const newDeath = last?.stamp?.scope === stamp?.scope && last?.ready && ready && publicDeathSeats(events, last.cursor).length > 0;
     if (last?.stamp?.scope !== stamp?.scope) deathUntil.current = 0;
-    else if (last?.ready && ready && publicDeathSeats(events, last.cursor).length) deathUntil.current = Date.now() + 2200;
-    const deathActive = Date.now() < deathUntil.current;
+    else if (newDeath) deathUntil.current = Date.now() + DEATH_PRIORITY_MS;
     const clear = () => {
       if (timer.current !== null) clearTimeout(timer.current);
       timer.current = null;
+      pending.current = null;
       setAnnouncement(null);
     };
+    const schedule = (item: { title: string; key: string }) => {
+      const show = () => {
+        pending.current = null;
+        setAnnouncement(item);
+        timer.current = setTimeout(() => { setAnnouncement(null); timer.current = null; }, 2200);
+      };
+      const delay = Math.max(0, deathUntil.current - Date.now());
+      // Live sequencing only: refresh/reconnect never restores this in-memory pending cue.
+      if (delay > 0) { pending.current = item; timer.current = setTimeout(show, delay); }
+      else show();
+    };
     // Also cancel a running effect when a task approaches its deadline or a dialog opens.
-    if (!ready || urgent || occupied || reducedMotion || deathActive) clear();
-    if (!stamp || key === JSON.stringify(last?.stamp)) return;
+    const blocked = !ready || urgent || occupied || reducedMotion;
+    if (blocked || !stamp) clear();
+    if (!stamp || key === JSON.stringify(last?.stamp)) {
+      if (newDeath) {
+        const queued = pending.current;
+        clear();
+        if (queued && !blocked) schedule(queued);
+      }
+      return;
+    }
     clear();
     let fresh = false;
     try { fresh = claimPublicPhase(window.sessionStorage, stamp); } catch { /* disabled storage */ }
     const title = phaseTransitionTitle(last?.stamp ?? null, stamp);
-    if (!fresh || !title || !last?.ready || !ready || urgent || occupied || reducedMotion || deathActive) return;
-    setAnnouncement({ title, key });
-    timer.current = setTimeout(() => { setAnnouncement(null); timer.current = null; }, 2200);
+    if (!fresh || !title || !last?.ready || blocked) return;
+    schedule({ title, key });
   }, [key, cursor, ready, urgent, occupied, reducedMotion]);
 
   useEffect(() => () => { if (timer.current !== null) clearTimeout(timer.current); }, []);

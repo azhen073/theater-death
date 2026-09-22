@@ -148,7 +148,7 @@ test('紧急行动跳过转场，并立即取消已经进行中的转场', async
   await expect(transition(page)).toHaveCount(0);
 });
 
-test('公开死讯和放逐提示优先，进行中或同批转场被消费且不补播', async ({ page }) => {
+test('公开死讯优先，同批天亮与阶段二在优先窗口后正常展示', async ({ page }) => {
   const night = loadGameFixture('night-door-full.json');
   night.identityReveal = 'seen';
   const mounted = await mount(page, night);
@@ -158,19 +158,69 @@ test('公开死讯和放逐提示优先，进行中或同批转场被消费且�
   await expect(page.locator('.death-notice')).toContainText('1号已出局');
   await expect(transition(page)).toHaveCount(0);
   await expect(page.locator('.death-notice')).toHaveCount(0, { timeout: 2_200 });
-  await expect(transition(page)).toHaveCount(0);
-  // The visual death notice lasts 1.8s, while its priority window deliberately lasts 2.2s.
-  await page.waitForTimeout(500);
+  await expect(transition(page)).toContainText('天光初现', { timeout: 1_800 });
+  await expect(transition(page)).toHaveCount(0, { timeout: 2_600 });
 
-  const stageTwo = nextView(dawn, { phase: 'day', stage: 2 });
+  const stageTwo = withDeathEvent(nextView(dawn, { phase: 'day', stage: 2 }), 'deaths_announced', 31);
   await mounted.set(stageTwo);
-  await expect(transition(page)).toContainText('第二阶段开启');
-  const eliminated = withDeathEvent(stageTwo, 'elimination_announced', 31);
+  await expect(page.locator('.death-notice')).toContainText('1号已出局');
+  await expect(transition(page)).toHaveCount(0);
+  await expect(transition(page)).toContainText('第二阶段开启', { timeout: 3_600 });
+
+  const eliminated = withDeathEvent(stageTwo, 'elimination_announced', 32);
   eliminated.view.viewVersion += 1;
   await mounted.set(eliminated);
   await expect(page.locator('.death-notice')).toContainText('2号已出局');
   await expect(transition(page)).toHaveCount(0);
   await expect(page.locator('.death-notice')).toHaveCount(0, { timeout: 2_200 });
+  await page.waitForTimeout(1_500);
+  await expect(transition(page)).toHaveCount(0);
+});
+
+test('死讯后待展示转场遇到紧急行动立即取消且不补播', async ({ page }) => {
+  const night = loadGameFixture('night-door-full.json'); night.identityReveal = 'seen';
+  const mounted = await mount(page, night);
+  const dawn = withDeathEvent(nextView(night, { phase: 'morning' }), 'deaths_announced', 40);
+  dawn.view.tasks[0]!.closesAt = dawn.view.serverTime + 60_000;
+  await mounted.set(dawn);
+  await expect(page.locator('.death-notice')).toBeVisible();
+  const urgent = structuredClone(dawn);
+  urgent.view.viewVersion += 1;
+  urgent.view.tasks[0]!.closesAt = urgent.view.serverTime + 9_000;
+  await mounted.set(urgent);
+  await page.waitForTimeout(3_500);
+  await expect(transition(page)).toHaveCount(0);
+  const safe = structuredClone(urgent);
+  safe.view.viewVersion += 1;
+  safe.view.tasks[0]!.closesAt = safe.view.serverTime + 60_000;
+  await mounted.set(safe);
+  await expect(transition(page)).toHaveCount(0);
+});
+
+test('死讯后待展示转场在刷新或离线后取消，恢复连接不补播', async ({ page }) => {
+  const night = loadGameFixture('night-door-full.json'); night.identityReveal = 'seen';
+  const mounted = await mount(page, night);
+  const dawn = withDeathEvent(nextView(night, { phase: 'morning' }), 'deaths_announced', 50);
+  await mounted.set(dawn);
+  await expect(page.locator('.death-notice')).toBeVisible();
+  await page.reload();
+  await page.waitForTimeout(3_500);
+  await expect(transition(page)).toHaveCount(0);
+
+  const nextGame = structuredClone(night);
+  nextGame.view.gameId = `${night.view.gameId}-offline-pending`;
+  nextGame.view.viewVersion += 10;
+  await mounted.set(nextGame);
+  await page.reload();
+  const nextDawn = withDeathEvent(nextView(nextGame, { phase: 'morning' }), 'deaths_announced', 150);
+  await mounted.set(nextDawn);
+  await expect(page.getByRole('heading', { name: /晨间公告|白天议程/ })).toBeVisible();
+  await expect(transition(page)).toHaveCount(0);
+  const offline = structuredClone(nextDawn); offline.online = false; offline.view.viewVersion += 1;
+  await mounted.set(offline);
+  await page.waitForTimeout(3_500);
+  const online = structuredClone(offline); online.online = true; online.view.viewVersion += 1;
+  await mounted.set(online);
   await expect(transition(page)).toHaveCount(0);
 });
 
