@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { RoomSnapshot, SeatDTO, TaskDTO } from '../../../../contracts/v2.ts';
 import { Avatar } from '../../components/ui.tsx';
+import { NightAtmosphere } from './night-atmosphere.tsx';
 import { presenceLabels } from '../../presentation/labels.ts';
 import { taskKey } from '../actions/model.ts';
 import { isDegenerateRect, ringFits, type Rect, type StageLayout } from './stage-layout.ts';
@@ -13,6 +14,7 @@ export function Stage({
   selected,
   locked,
   actionSlot,
+  active = true,
   onSelect,
   onInfo,
 }: {
@@ -22,6 +24,7 @@ export function Stage({
   selected: string[];
   locked: boolean;
   actionSlot?: ReactNode;
+  active?: boolean;
   onSelect: (playerId: string, change: 1 | -1) => void;
   onInfo: (seat: SeatDTO) => void;
 }) {
@@ -163,6 +166,7 @@ export function Stage({
       style={{ '--ring-height': `${Math.max(880, seats.length * 68)}px` } as CSSProperties}
       aria-label="玩家舞台"
     >
+      <NightAtmosphere view={view} active={active} />
       {actionSlot && <div ref={actionSlotRef} className="stage-action-slot">{actionSlot}</div>}
       {!actionSlot && (
         <div className="stage-center" aria-hidden="true">
