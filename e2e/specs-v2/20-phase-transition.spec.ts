@@ -38,13 +38,15 @@ function withDeathEvent(
   cursor: number,
 ): GameHarnessFixture {
   const next = structuredClone(fixture);
+  const seats = type === 'deaths_announced' ? [1] : [2];
   next.view.public!.events = [...next.view.public!.events, {
     cursor,
     type,
     dayNumber: next.view.public!.dayNumber,
     stage: next.view.public!.stage,
-    payload: type === 'deaths_announced' ? { seats: [1] } : { seat: 2 },
+    payload: type === 'deaths_announced' ? { seats } : { seat: seats[0] },
   }];
+  next.view.public!.seats.forEach(seat => { if (seats.includes(seat.seat)) seat.alive = false; });
   return next;
 }
 
