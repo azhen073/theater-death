@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 const selection = new Set();
 const mappings = [
+  [/^web-v2\/src\/(presentation\/death-(events|effects)\.ts|features\/game\/(death-notice|death-effects-layer|stage)\.tsx|app\/shell\.tsx|styles\/(main|preferences)\.css)$/, ['frontend-v2-death-effects', 'frontend-v2-display-model', 'frontend-v2-stage-layout', 'frontend-v2-action-presentation', 'frontend-v2-actions', 'frontend-v2-snapshot']],
   [/^docs\/openapi-v\d+\.\d+\.json$|^tests\/(fixtures\/contract-2\.1\/|contract-schema-utils\.ts$)/, ['contract-openapi']],
   [/^docs\/examples\/contract-client\.ts$/, ['contract-client-example']],
   [/^docs\/rules-v2-full\.md$|^contracts\/catalog\.ts$/, ['client-catalog', 'contract-openapi']],
