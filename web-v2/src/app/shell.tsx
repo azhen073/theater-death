@@ -15,6 +15,7 @@ import { roomPhaseLabels } from '../presentation/labels.ts';
 import { ApiFailure, errorMessage, get, post } from '../transport/http.ts';
 import type { MyRooms, RoomEntry } from '../transport/types.ts';
 import { navigate, useRoute } from './navigation.ts';
+import { DeathNotice } from '../features/game/death-notice.tsx';
 
 export function AuthenticatedShell({ profile, bootstrap, catalog, onProfile, onLogout }: {
   profile: AuthMe; bootstrap: BootstrapDTO; catalog: CatalogDTO; onProfile: (profile: Profile) => void; onLogout: () => void;
@@ -27,6 +28,7 @@ export function AuthenticatedShell({ profile, bootstrap, catalog, onProfile, onL
   const route = useRoute();
   const roomCode = /^\/room\/([a-z2-9]{6})$/i.exec(route)?.[1]?.toUpperCase() ?? null;
   const generation = useRef(0), roomRequest = useRef(0);
+  const roomRoot = useRef<HTMLDivElement>(null);
   const onExit = (message: string) => {
     roomRequest.current++; setReference(null); setNotice(message); setFailure(''); navigate('/'); void refreshRooms();
   };
@@ -95,7 +97,8 @@ export function AuthenticatedShell({ profile, bootstrap, catalog, onProfile, onL
           <PageHeading eyebrow="THE FOYER" title="下一场，等你入席。">每一张面孔，都有尚未揭晓的故事。</PageHeading><div className="home-hero"><span className="eyebrow">THEATER DEATH</span><h2>幕布之后，<br/>真相尚未落定。</h2><p>与同伴一起，开启一场新的演出。</p><div className="button-row">{current ? <button className="button button--primary" disabled={fetchingRooms} onClick={() => navigate(`/room/${current.roomCode}`)}>{current.phase === 'lobby' ? '返回当前房间' : current.phase === 'review' ? '查看当前复盘' : '继续对局'}</button> : <><button className="button button--primary" disabled={checkingRooms} onClick={() => navigate('/join')}>加入房间</button><button className="button" disabled={checkingRooms} onClick={() => navigate('/create')}>创建房间</button></>}</div></div>
           <section className="panel"><div className="section-title"><h2>你的房间</h2><button className="text-button" disabled={fetchingRooms} onClick={() => void refreshRooms()}>刷新</button></div>{rooms === null ? <p role="status">{failure ? '当前房间状态尚未确认，请刷新。' : '正在读取房间…'}</p> : rooms.rooms.length ? <div className="room-list">{rooms.rooms.map(room => <div className="room-list__item" key={room.roomId}><div><strong>房间 {room.roomCode}</strong><p className="muted">{roomPhaseLabels[room.phase]} · {room.kind === 'formal' || room.canRecover ? '玩家身份' : '观战身份'}</p></div><button className="button" disabled={fetchingRooms || !!current && current.roomId !== room.roomId} onClick={() => navigate(`/room/${room.roomCode}`)}>{room.requiresTakeover ? '前往接管' : room.activeHere ? '返回房间' : '恢复身份'}</button></div>)}</div> : <p className="muted">目前没有进行中的房间。创建一场演出，或输入同伴的房间码。</p>}</section>
         </>}
-      {reference && <div className="room-session-content" hidden={!roomVisible}>
+      {reference && <div ref={roomRoot} className="room-session-content" hidden={!roomVisible}>
+        <DeathNotice view={roomView} online={session.canWrite} active={roomVisible} rootRef={roomRoot}/>
         {session.connection !== 'online' && <Notice>连接{session.connection === 'connecting' ? '中' : '已中断，信息可能不是最新'}。<button className="text-button" onClick={() => void session.refresh()}>重新同步</button></Notice>}
         {session.notice && <Notice>{session.notice}</Notice>}
         {roomContent}

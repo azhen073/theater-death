@@ -4,6 +4,7 @@ import type { RoomSnapshot } from '../contracts/v2.ts';
 import { useKeyboardViewport } from '../web-v2/src/state/keyboard-viewport.ts';
 import { useDisplayPreferences } from '../web-v2/src/state/preferences.ts';
 import { GameScene } from '../web-v2/src/features/game/scene.tsx';
+import { DeathNotice } from '../web-v2/src/features/game/death-notice.tsx';
 import { identityRevealKey } from '../web-v2/src/features/game/identity-reveal-model.ts';
 import { VoiceBar, type VoiceSessionLike } from '../web-v2/src/features/voice/bar.tsx';
 import type { VoiceState } from '../web-v2/src/features/voice/session.ts';
@@ -38,7 +39,7 @@ const voiceStub = (() => {
   return session;
 })();
 
-export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; voice?: Partial<VoiceState>; identityReveal?: 'enabled' | 'seen' }
+export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; active?: boolean; voice?: Partial<VoiceState>; identityReveal?: 'enabled' | 'seen' }
 const updateEvent = 'v2-game-fixture-update';
 
 function sceneKey(view: RoomSnapshot): string {
@@ -50,6 +51,7 @@ export function GameHarness() {
   useKeyboardViewport();
   const [fixture, setFixture] = useState<GameHarnessFixture | null>(null);
   const [terminal, setTerminal] = useState('');
+  const roomRoot = useRef<HTMLElement>(null);
   const sample = useRef<{ server: number; local: number } | null>(null);
   useEffect(() => {
     let active = true;
@@ -79,13 +81,14 @@ export function GameHarness() {
   const refresh = async () => {
     applyFixture(await (await fetch('/__game-fixture')).json() as GameHarnessFixture);
   };
-  const props = { view, catalog, online, remaining, refresh, onExit: (message: string) => { setFixture(null); setTerminal(message); }, onExpired: () => { setFixture(null); setTerminal('登录已失效'); } };
+  const props = { view, catalog, online, active: fixture.active ?? true, remaining, refresh, onExit: (message: string) => { setFixture(null); setTerminal(message); }, onExpired: () => { setFixture(null); setTerminal('登录已失效'); } };
   const content = view.room.phase === 'playing' && view.public
     ? <GameScene key={sceneKey(view)} {...props}/>
     : view.room.phase === 'review'
       ? <ReviewPage key={sceneKey(view)} {...props}/>
       : <Lobby key={sceneKey(view)} {...props}/>;
-  return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation" aria-hidden="true"/><section className="home-main">
+  return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation" aria-hidden="true"/><section className="home-main" ref={roomRoot}>
+    <DeathNotice view={view} online={online} active={fixture.active ?? true} rootRef={roomRoot}/>
     {fixture.voice && <VoiceBar enabled view={view} online={online} activePage={view.room.phase === 'playing'} session={voiceStub}/>}
     {content}
   </section></main>;

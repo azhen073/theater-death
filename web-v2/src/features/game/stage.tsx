@@ -5,6 +5,8 @@ import { Avatar } from '../../components/ui.tsx';
 import { presenceLabels } from '../../presentation/labels.ts';
 import { taskKey } from '../actions/model.ts';
 import { isDegenerateRect, ringFits, type Rect, type StageLayout } from './stage-layout.ts';
+import { usePreferences } from '../../state/preferences.ts';
+import { DeathMark } from './death-effects-layer.tsx';
 
 export function Stage({
   view,
@@ -26,6 +28,7 @@ export function Stage({
   onInfo: (seat: SeatDTO) => void;
 }) {
   const seats = view.public?.seats ?? [];
+  const { preferences } = usePreferences();
   const selectable = task?.targets;
   const knownSpirits = new Set(view.private?.knowledge?.spiritSeats ?? []);
   // Taller task/observation content needs its own row rather than covering ring seats.
@@ -229,7 +232,10 @@ export function Stage({
                   {String(seat.seat).padStart(2, '0')}
                   {subject && <small>{view.viewer.readOnly ? '视角' : '你'}</small>}
                 </span>
-                <Avatar url={seat.avatarUrl} name={seat.nickname} />
+                <span className="seat-avatar" data-death-seat={seat.seat} data-death-alive={String(seat.alive)}>
+                  <Avatar url={seat.avatarUrl} name={seat.nickname} />
+                  {!seat.alive && preferences.deathEffects && <DeathMark />}
+                </span>
                 <strong title={`${seat.nickname} · UID ${seat.uid}`}>{seat.nickname}</strong>
                 <span className="seat-status">
                   {!seat.alive ? '已死亡' : revealed ?? '存活'}

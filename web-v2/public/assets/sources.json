@@ -1,5 +1,11 @@
 [
   {
+    "file": "avatar-sheet.png",
+    "source": "Art Materials/死亡特效和默认头像.png",
+    "sha256": "fafd03685d7dd377dc86ec2f60d238edf8be7802d886542f51d1f6831e17d73b",
+    "regions": { "defaultAvatar": [928, 213, 472, 472], "deathMark": [48, 110, 490, 675] }
+  },
+  {
     "roleId": "researcher",
     "file": "cards/researcher.png",
     "source": "Art Materials/IdentityCards/cards/05_科研员_米提亚.png",

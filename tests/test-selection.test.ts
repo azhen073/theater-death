@@ -12,6 +12,16 @@ function selected(...paths: string[]): string[] {
 }
 
 describe('incremental test selector', () => {
+  it('selects death lifecycle, geometry and action regressions for the shared visual paths', () => {
+    for (const path of ['web-v2/src/presentation/death-effects.ts', 'web-v2/src/presentation/death-events.ts',
+      'web-v2/src/features/game/death-effects-layer.tsx', 'web-v2/src/features/game/death-notice.tsx',
+      'web-v2/src/features/game/stage.tsx', 'web-v2/src/app/shell.tsx', 'web-v2/src/styles/main.css', 'web-v2/src/styles/preferences.css']) {
+      const suites = selected(path);
+      expect(suites).toContain('tests/frontend-v2-death-effects.test.ts');
+      expect(suites).toContain('tests/frontend-v2-stage-layout.test.ts');
+      expect(suites).toContain('tests/frontend-v2-actions.test.ts');
+    }
+  });
   it('maps OpenAPI, client example, and full rules documents to their reviewed suites', () => {
     expect(selected('docs/openapi-v2.2.json')).toEqual(['tests/contract-openapi.test.ts']);
     expect(selected('docs/examples/contract-client.ts')).toEqual(['tests/contract-client-example.test.ts']);

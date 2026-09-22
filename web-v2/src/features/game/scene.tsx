@@ -20,7 +20,6 @@ import { GameSidebar } from './sidebar.tsx';
 import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
-import { DeathNotice } from './death-notice.tsx';
 import { IdentityEntryReveal } from './identity-entry-reveal.tsx';
 import { claimIdentityReveal, identityRevealHasUrgentAction, identityRevealKey } from './identity-reveal-model.ts';
 import { reconcileDraft } from '../actions/draft-reconciliation.ts';
@@ -416,7 +415,6 @@ export function GameScene({
         </div>
       )}
       <div className="game-scene" hidden={!active || manage}>
-        <DeathNotice view={view} online={online && active} />
         {active && identityEntryReveal && (
           <IdentityEntryReveal view={view} catalog={catalog} onEnter={() => setIdentityEntryReveal(false)} />
         )}
