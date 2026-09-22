@@ -14,15 +14,18 @@ export class V2Media {
   private readonly now: () => number;
   constructor(voice: VoiceService | null, now: () => number) { this.voice = voice; this.now = now; }
   private enqueue(gameId: string, work: () => Promise<void>, required = false): Promise<void> {
-    const run = (this.pending.get(gameId) ?? Promise.resolve()).then(work);
-    const next = run.catch((error) => {
+    const previous = this.pending.get(gameId) ?? Promise.resolve();
+    const run = previous.then(work);
+    const settled = run.catch((error) => {
       console.warn('voice_service_unavailable');
       if (required) throw error;
     });
-    this.pending.set(gameId, next);
-    const cleanup = () => { if (this.pending.get(gameId) === next) this.pending.delete(gameId); };
-    void next.then(cleanup, cleanup);
-    return next;
+    // 队列本身永不 reject：否则下一次入队的 work 会被 .then 跳过（静默丢失一次踢人/关房）。
+    const chain = settled.then(() => undefined, () => undefined);
+    this.pending.set(gameId, chain);
+    const cleanup = () => { if (this.pending.get(gameId) === chain) this.pending.delete(gameId); };
+    void chain.then(cleanup, cleanup);
+    return settled;
   }
   /** Agora uid is numeric; map every media identity to a stable channel uid for kick operations. */
   private uidFor(gameId: string, identity: string): number {
@@ -40,8 +43,9 @@ export class V2Media {
       const known = this.identities.get(gameId);
       const uid = known?.get(identity);
       if (uid === undefined) return;
-      known!.delete(identity);
+      // 先踢成功再删映射：REST 失败时保留，交给下一次 sync 重试（一次性踢出在断连时会失败）。
       await this.voice?.removeParticipant(gameId, uid);
+      known!.delete(identity);
     });
   }
   permissions(meta: RoomAccess): Map<string, boolean> {
@@ -71,9 +75,18 @@ export class V2Media {
       const allowed = this.permissions(meta);
       const known = this.identities.get(gameId);
       if (!known) return;
+      let failures = 0;
       for (const [identity, uid] of [...known]) {
-        if (!allowed.has(identity)) { known.delete(identity); await this.voice!.removeParticipant(gameId, uid); }
+        if (allowed.has(identity)) continue;
+        try {
+          await this.voice!.removeParticipant(gameId, uid);
+          known.delete(identity);
+        } catch {
+          // 保留映射，下一次 sync 重试；单个失败不影响其余身份的回收
+          failures += 1;
+        }
       }
+      if (failures > 0) throw new Error(`voice_remove_failed:${failures}`);
     }, required);
   }
   async issue(meta: RoomAccess, session: AccountSession): Promise<VoiceCredentials> {

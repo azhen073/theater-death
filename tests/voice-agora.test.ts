@@ -94,9 +94,68 @@ describe('声网 VoiceAdapter', () => {
       customerKey: CUSTOMER_KEY,
       customerSecret: CUSTOMER_SECRET,
       restBaseUrl: 'https://rest.test',
+      restRetryDelayMs: 1,
       fetchImpl: (async () => new Response('server error', { status: 500 })) as typeof fetch,
     });
     await expect(service.removeParticipant('g_test', 1000)).rejects.toThrow('HTTP 500');
     await expect(service.closeRoom('g_test')).rejects.toThrow('HTTP 500');
+  });
+
+  it('REST 5xx 按退避重试，恢复后成功', async () => {
+    let calls = 0;
+    const service = createAgoraVoiceService({
+      appId: APP_ID,
+      appCertificate: APP_CERTIFICATE,
+      customerKey: CUSTOMER_KEY,
+      customerSecret: CUSTOMER_SECRET,
+      restBaseUrl: 'https://rest.test',
+      restRetryDelayMs: 1,
+      fetchImpl: (async () => {
+        calls += 1;
+        return calls === 1 ? new Response('try later', { status: 503 }) : new Response('{"status":"success"}', { status: 200 });
+      }) as typeof fetch,
+    });
+    await expect(service.removeParticipant('g_test', 1000)).resolves.toBeUndefined();
+    expect(calls).toBe(2);
+  });
+
+  it('REST 4xx 视为永久失败，不重试', async () => {
+    let calls = 0;
+    const service = createAgoraVoiceService({
+      appId: APP_ID,
+      appCertificate: APP_CERTIFICATE,
+      customerKey: CUSTOMER_KEY,
+      customerSecret: CUSTOMER_SECRET,
+      restBaseUrl: 'https://rest.test',
+      restRetryDelayMs: 1,
+      fetchImpl: (async () => {
+        calls += 1;
+        return new Response('bad credentials', { status: 401 });
+      }) as typeof fetch,
+    });
+    await expect(service.removeParticipant('g_test', 1000)).rejects.toThrow('HTTP 401');
+    expect(calls).toBe(1);
+  });
+
+  it('REST 超时：每次尝试都带 AbortSignal，耗尽重试后抛出超时错误', async () => {
+    const signals: Array<unknown> = [];
+    const service = createAgoraVoiceService({
+      appId: APP_ID,
+      appCertificate: APP_CERTIFICATE,
+      customerKey: CUSTOMER_KEY,
+      customerSecret: CUSTOMER_SECRET,
+      restBaseUrl: 'https://rest.test',
+      restTimeoutMs: 25,
+      restRetries: 2,
+      restRetryDelayMs: 1,
+      fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+        signals.push(init?.signal);
+        // AbortSignal.timeout 触发时 fetch 以 TimeoutError 拒绝
+        throw Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' });
+      }) as typeof fetch,
+    });
+    await expect(service.removeParticipant('g_test', 1000)).rejects.toThrow('请求超时');
+    expect(signals).toHaveLength(3);
+    expect(signals.every((signal) => signal instanceof AbortSignal)).toBe(true);
   });
 });

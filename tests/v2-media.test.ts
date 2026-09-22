@@ -153,4 +153,54 @@ describe('V2Media 授权与媒体副作用（声网）', () => {
     expect(failingMedia.voice).toBe(failing.voice);
     expect(new ApiError(409, 'voice_disabled')).toBeInstanceOf(ApiError);
   });
+
+  it('踢出失败保留映射：后续 sync 重试，成功后不再重复踢', async () => {
+    const f = fixture();
+    const calls: string[] = [];
+    let failing = true;
+    const voice: VoiceService = {
+      issueCredentials: (input) => ({ appId: 'appid-test', channel: input.roomName, uid: input.uid, token: `sub-${input.uid}` }),
+      issuePublishGrant: (input) => ({ token: `pub-${input.uid}`, expiresAt: 1 }),
+      issueSubscriberGrant: (input) => ({ token: `sub-${input.uid}` }),
+      async closeRoom() { /* noop */ },
+      async removeParticipant(_room, uid) { calls.push(`remove:${uid}`); if (failing) throw new Error('rest down'); },
+    };
+    const media = new V2Media(voice, () => f.clock.now());
+    await media.issue(f.access, f.first);
+    f.store.logout(f.first.id);
+    f.access.expireSessions();
+
+    await media.sync(f.access);
+    await media.sync(f.access);
+    expect(calls).toHaveLength(2); // 两次都没踢成功，映射仍在 → 还会重试
+
+    failing = false;
+    await media.sync(f.access);
+    expect(calls).toHaveLength(3);
+    await media.sync(f.access);
+    expect(calls).toHaveLength(3); // 踢成功后不再重复
+  });
+
+  it('required 的 sync 失败后队列不被吞：后续媒体操作照常执行', async () => {
+    const f = fixture();
+    let closes = 0;
+    const voice: VoiceService = {
+      issueCredentials: (input) => ({ appId: 'appid-test', channel: input.roomName, uid: input.uid, token: `sub-${input.uid}` }),
+      issuePublishGrant: (input) => ({ token: `pub-${input.uid}`, expiresAt: 1 }),
+      issueSubscriberGrant: (input) => ({ token: `sub-${input.uid}` }),
+      // 第一次关房必失败（与微任务时序无关），第二次成功
+      async closeRoom() { closes += 1; if (closes === 1) throw new Error('close down'); },
+      async removeParticipant() { /* noop */ },
+    };
+    const media = new V2Media(voice, () => f.clock.now());
+    f.room.state = { ...f.room.state!, win: { winner: 'human', dayNumber: 2, reason: 'test' } };
+
+    // 关键：第二次入队发生在第一次失败落定之前（此时队列里挂着的正是 rejected promise）
+    const first = media.sync(f.access, true);
+    const second = media.sync(f.access, true);
+    await expect(first).rejects.toThrow('close down');
+    // 修复前：第二次的 work 被 .then 在 rejected promise 上跳过 → 这里会以同一错误 reject，closes 停在 1
+    await expect(second).resolves.toBeUndefined();
+    expect(closes).toBe(2);
+  });
 });
