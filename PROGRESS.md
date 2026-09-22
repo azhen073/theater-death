@@ -6,6 +6,8 @@
 
 2026-09-22 公开死亡粒子与头像常驻星芒：`feat/public-death-effects`（基线 `b3f5a1e`；**已合并进 main `9b94a65`**，保留贡献提交 `245609e`/`e1ab0f8`）新增公开死亡座位粒子与头像常驻星芒；纯前端、无新依赖或位图，保留私密边界/回归/重连基线，末次死亡公告可跨到复盘。贡献方相关增量单测 7 文件 59/59、两项前端类型检查及构建通过、相关 Chromium/WebKit E2E 56/56、真实 13 人整局 chromium 1/1；维护方复核：全量 **90 文件 585 例全过** + `20-death-effects`/`08-display` 双浏览器 24/24。未部署。命令和边界见 [死亡视觉验收记录](docs/frontend-v2-death-effects-verification.md)。
 
+2026-09-22 公开阶段短转场（UI 1/5）：`feat/ui-phase-transitions`（基线 `b3f5a1e`；**已合并进 main `b784995`**，保留贡献提交 `b07116e`/`b98b369`）按公开昼夜/轮/阶段播 2.2s 幕布+时钟转场，去重/压制/取消规则见 [阶段转场验收记录](docs/frontend-v2-phase-transition-verification.md)。维护方整合：解 `scene.tsx` 与 #9 的冲突（公告维持 shell 挂载）、同步 spec 到 #9 的公告文案/时长与「公开事件 + 公开座位状态」夹具、素材补 SHA256。复核：全量 **91 文件 590 例全过** + `20-phase-transition`/`20-death-effects`/`08-display`/`19-identity-reveal` 双浏览器 46/46。未部署。
+
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
 | 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.5-alpha**，Q-01–Q-08 全量定值（规则书第 09 章） |
@@ -239,13 +241,14 @@ theater_death/
 
 ## 测试状态
 
-585 passed / 90 files（2026-09-22 全量实测（含 v2.0.5-alpha 与公开死亡特效）：容器内 `vitest run` **90 文件 585 例全过**（15.6s）。较 v2.0.5-alpha 的 89 文件 577 例新增 1 文件 8 例：`frontend-v2-death-effects` 7 例 + 选择器映射 1 例。
+590 passed / 91 files（2026-09-22 全量实测（含 v2.0.5-alpha、公开死亡特效与阶段转场）：容器内 `vitest run` **91 文件 590 例全过**（16.4s）。较上一版 90 文件 585 例新增 `frontend-v2-phase-transition` 5 例（该 PR 未改选择器用例）。
 
 E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行受验收服务 **IP 限流**（登录/注册 30 次/分钟）影响会出现登录 429 级联失败，需按增量策略分批跑——本次已逐 spec 复核：03/04/05/07/08/09/10/11 全过，12 仅 AC09/AC19 失败（main 基线同样失败，既有），02 与 06 的失败在 main 基线同样复现（既有）。`13-release-smoke`（需 `FRONTEND_BASE_URL`）、`15-admin`（需 `ADMIN_TEST_PASSWORD`）、`16-voice`（需语音配置）为环境门控，不在本编排运行。
 E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **18 个 spec / 52 例**（`18-voice-levels.spec.ts` 为 v2.0.3-alpha 新增，`05-information` 的「死神/魂灵知识」为 v2.0.4-alpha 新增）。
 E2E（v2.0.4-alpha 实测，2026-09-21，acceptance 栈分批 + seed）：`03-actions`+`05-information`+`08-display` chromium 19/19（含新「死神/魂灵知识」用例与偏好键 8 项断言）、`05-information`+`03-actions` webkit 13/13、`04-night-actions` 双浏览器 2/2（夜间 HUD 时钟 + 无任务玩家也能看到）、`11-special-actions` chromium 1/1（平票驱动改为非候选投票后通过）、`18-voice-levels` 双浏览器 4/4（含自动加入语音 + 自动开麦）、`09-full-game` 双浏览器 2/2、`17-last-words` 双浏览器 4/4、`01-account` chromium 2/2、`08-display` webkit 6/6、`12-governance-reconnect` chromium AC07 通过（AC09/AC19 为既有失败）。v1 入口（规则变更共用引擎，只跑受影响路径）：`04-flow-full` 双浏览器 4/4（机器人流程含竞选报名/投票）、`03-security`+`07-spectator`+`10-end-exit` 6/6；其余 v1 spec 与竞选无关，未重跑。
 
 E2E（v2.0.5-alpha 增量，2026-09-22，GPT-5.6-Luna 独立执行）：新增 `19-identity-reveal.spec.ts`，chromium + webkit 6/6；既有 fixture E2E `03-actions`/`05-information`/`08-display` 双浏览器 38/38；真实开局 `04-night-actions`、`09-full-game` chromium 各 1/1，`02-rooms` 正式房间 1/1。`02-rooms` 实验房间仍有既有 presence 状态断言差异（期望 offline、实际 reconnecting），与身份揭示无关。当前静态口径：Vitest **577 例 / 89 文件**（维护方全量复核全过），v2 E2E **19 个 spec / 55 例**；E2E 未跑全量。
+E2E（公开死亡特效 + 阶段转场，2026-09-22，维护方实测）：`20-death-effects` 双浏览器 12/12、`20-phase-transition` 双浏览器 16/16；与 `08-display`、`19-identity-reveal` 的集成集 **46/46**（同树，含两 PR 交互路径：死讯优先窗口 / 公开事件 + 公开座位状态）。v2 静态口径更新为 **21 个 spec / 69 例**（55 + 6 + 8；两个新 spec 均为 2026-09-22 批次）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
