@@ -6,6 +6,10 @@ const mocks = vi.hoisted(() => ({
   post: vi.fn(async () => ({ appId: 'appid-test', channel: 'ch', uid: 42, token: 'token' })),
   clients: [] as Array<any>,
   tracks: [] as Array<any>,
+  /** 让 join() 返回一个与服务端签发值不同的 uid（默认 undefined = 不返回） */
+  joinUid: undefined as number | undefined,
+  /** 卡住 unpublish，用于验证"关麦后立刻重开"不会在旧轨道取消发布前新建轨道 */
+  unpublishGate: null as Promise<void> | null,
 }));
 
 vi.mock('../web-v2/src/transport/http.ts', () => ({
@@ -29,11 +33,11 @@ vi.mock('agora-rtc-sdk-ng', () => {
     }
     emit(event: string, ...args: any[]) { for (const [name, listener] of this.listeners) if (name === event) listener(...args); }
     removeAllListeners() { this.listeners = []; this.volumeIndicatorListener = null; }
-    async join() { return undefined; }
-    async leave() { return undefined; }
-    async renewToken() { return undefined; }
+    join = vi.fn(async () => mocks.joinUid);
+    leave = vi.fn(async () => undefined);
+    renewToken = vi.fn(async (_token: string) => undefined);
     async publish(tracks: Array<any>) { this.published.push(...tracks); }
-    async unpublish(tracks: Array<any>) { this.published = this.published.filter((item) => !tracks.includes(item)); }
+    async unpublish(tracks: Array<any>) { if (mocks.unpublishGate !== null) await mocks.unpublishGate; this.published = this.published.filter((item) => !tracks.includes(item)); }
     setClientRole() { return Promise.resolve(); }
   }
   return {
@@ -69,7 +73,7 @@ function remoteUser(uid: number) {
 }
 
 describe('v2 voice session intent lifecycle（声网）', () => {
-  beforeEach(() => { mocks.post.mockClear(); mocks.clients.length = 0; mocks.tracks.length = 0; });
+  beforeEach(() => { mocks.post.mockClear(); mocks.clients.length = 0; mocks.tracks.length = 0; mocks.joinUid = undefined; mocks.unpublishGate = null; });
 
   it('clears the one-shot microphone intent and stops publishing when publish permission is revoked', async () => {
     const { session, client } = await connectedSession();
@@ -100,7 +104,7 @@ describe('v2 voice session intent lifecycle（声网）', () => {
 });
 
 describe('v2 voice volume（音量指示 + 输出/输入音量，纯本地）', () => {
-  beforeEach(() => { mocks.post.mockClear(); mocks.clients.length = 0; mocks.tracks.length = 0; });
+  beforeEach(() => { mocks.post.mockClear(); mocks.clients.length = 0; mocks.tracks.length = 0; mocks.joinUid = undefined; mocks.unpublishGate = null; });
 
   it('enables the volume indicator after joining, attributes own/remote levels, and disables it on leave', async () => {
     const { session, client } = await connectedSession();
@@ -192,5 +196,83 @@ describe('v2 voice volume（音量指示 + 输出/输入音量，纯本地）', 
     const before = mocks.tracks.length;
     session.setInputVolume(140);
     expect(mocks.tracks.length).toBe(before);
+  });
+});
+
+describe('v2 voice connection resilience（凭证续期 / 重连 / 排障）', () => {
+  beforeEach(() => { mocks.post.mockClear(); mocks.clients.length = 0; mocks.tracks.length = 0; mocks.joinUid = undefined; mocks.unpublishGate = null; });
+
+  it('加入凭证即将过期：按 SDK 要求重新取 token 并 renewToken', async () => {
+    const { client } = await connectedSession();
+    const before = mocks.post.mock.calls.length;
+    client.emit('token-privilege-will-expire');
+    await vi.waitFor(() => expect(client.renewToken).toHaveBeenCalledTimes(1));
+    expect(mocks.post.mock.calls.length).toBe(before + 1);
+  });
+
+  it('加入凭证已过期：重新 join，并在原本正在发言时自动恢复开麦', async () => {
+    const { session, client } = await connectedSession();
+    await session.requestMicrophone();
+    expect(client.published).toHaveLength(1);
+
+    client.emit('token-privilege-did-expire');
+    expect(session.state().notice).toContain('已过期');
+    await vi.waitFor(() => expect(mocks.clients.length).toBe(2));
+    expect(client.leave).toHaveBeenCalled();
+    const rejoined = mocks.clients.at(-1)!;
+    await vi.waitFor(() => expect(session.state().connection).toBe('connected'));
+    await vi.waitFor(() => expect(rejoined.published).toHaveLength(1));
+    expect(session.state()).toMatchObject({ microphoneEnabled: true, notice: '' });
+  });
+
+  it('SDK 质量异常写入提示，恢复事件清除提示；无关码不提示', async () => {
+    const { session, client } = await connectedSession();
+    client.emit('exception', { code: 1001, msg: 'FRAMERATE_INPUT_TOO_LOW' });
+    expect(session.state().notice).toBe('');
+
+    client.emit('exception', { code: 2001, msg: 'AUDIO_INPUT_LEVEL_TOO_LOW' });
+    expect(session.state().notice).toContain('麦克风输入音量过低');
+
+    client.emit('exception', { code: 4001, msg: 'AUDIO_INPUT_LEVEL_TOO_LOW_RECOVER' });
+    expect(session.state().notice).toBe('');
+  });
+
+  it('关麦后立刻重开：旧轨道取消发布完成前不会新建第二条轨道', async () => {
+    const { session, client } = await connectedSession();
+    await session.requestMicrophone();
+    expect(mocks.tracks.length).toBe(1);
+
+    let release = () => undefined;
+    mocks.unpublishGate = new Promise<void>((resolve) => { release = () => resolve(); });
+    session.stopMicrophone();
+    const restart = session.requestMicrophone();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // 修复前：此时已经建好并发布第二条轨道（短暂双发）
+    expect(mocks.tracks.length).toBe(1);
+    release();
+    await restart;
+    expect(mocks.tracks.length).toBe(2);
+    expect(client.published).toHaveLength(1);
+  });
+
+  it('自己的电平按 SDK 返回的 uid 归属（与服务端签发值不一致时也不例外）', async () => {
+    mocks.joinUid = 9999;
+    const { session, client } = await connectedSession();
+    client.emit('volume-indicator', [{ uid: 9999, level: 33 }, { uid: 42, level: 77 }]);
+    expect(session.state()).toMatchObject({ level: 33, remoteLevel: 77 });
+  });
+
+  it('离开后保留所选麦克风设备（会话内），重新加入仍用它', async () => {
+    const { session } = await connectedSession();
+    await session.requestMicrophone();
+    await session.switchDevice('device-2');
+    expect(session.state().activeDeviceId).toBe('device-2');
+
+    await session.leave();
+    expect(session.state()).toMatchObject({ connection: 'idle', activeDeviceId: 'device-2' });
+
+    await session.join();
+    await session.requestMicrophone();
+    expect(mocks.tracks.at(-1)!.options).toMatchObject({ microphoneId: 'device-2' });
   });
 });

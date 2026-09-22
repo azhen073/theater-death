@@ -13,7 +13,7 @@ import '../web-v2/src/styles/preferences.css';
 
 /** 只驱动界面的语音会话桩：状态来自夹具，音量调用记录到 window.__voiceCalls 供用例断言。 */
 const voiceStub = (() => {
-  const base: VoiceState = { connection: 'idle', requested: false, microphoneEnabled: false, audioBlocked: false, error: '', microphoneError: '', devices: [], activeDeviceId: '', level: 0, remoteLevel: 0 };
+  const base: VoiceState = { connection: 'idle', requested: false, microphoneEnabled: false, audioBlocked: false, error: '', microphoneError: '', notice: '', devices: [], activeDeviceId: '', level: 0, remoteLevel: 0 };
   let state: VoiceState = base;
   const listeners = new Set<(next: VoiceState) => void>();
   const calls: string[] = [];

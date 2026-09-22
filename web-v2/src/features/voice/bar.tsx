@@ -59,17 +59,20 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
   useEffect(() => {
     if (!enabled || !playing || !activePage || !online || !view || view.viewer.readOnly) return;
     if (state.connection === 'idle') { autoMicKeyRef.current = null; return; }
-    if (!preferences.autoMic || !joined || !view.capabilities.canPublishVoice) return;
+    // 只有真正"已连接"才值得记窗口键：重连中的 requestMicrophone() 会被会话忽略（connection !== 'connected'），
+    // 若此时就记下，重连成功后本窗口便不会再自动开麦。
+    if (state.connection !== 'connected') return;
+    if (!preferences.autoMic || !view.capabilities.canPublishVoice) return;
     const speakingWindow = view.windows.find(window => ['election_speech', 'speech_round', 'last_words', 'tie_speech'].includes(window.id));
     const key = `${view.gameId}:${speakingWindow?.instanceId ?? view.public?.day?.currentSpeakerId ?? 'unknown'}`;
     if (state.microphoneEnabled || state.requested) { autoMicKeyRef.current = key; return; }
     if (autoMicKeyRef.current === key) return;
     autoMicKeyRef.current = key;
     void session.requestMicrophone();
-  }, [session, enabled, playing, activePage, online, view, joined, preferences.autoMic, state.microphoneEnabled, state.requested, state.connection]);
+  }, [session, enabled, playing, activePage, online, view, preferences.autoMic, state.microphoneEnabled, state.requested, state.connection]);
   useEffect(() => () => { void session.leave(); }, [session]);
   if (!enabled || !playing || (!activePage && state.connection === 'idle')) return null;
-  const canOpen = joined && activePage && online && view.capabilities.canPublishVoice && !view.viewer.readOnly;
+  const canOpen = state.connection === 'connected' && activePage && online && view.capabilities.canPublishVoice && !view.viewer.readOnly;
   const display = voiceLevelDisplay({ view, remoteLevel: state.remoteLevel, outputVolume: preferences.voiceOutput, muted: preferences.voiceMuted, showLevels: preferences.voiceLevels });
   const speakerSeat = display.speakingPlayerId === null ? null : view.public?.seats.find(seat => seat.playerId === display.speakingPlayerId)?.seat ?? null;
   const commitOutput = () => { if (draftOutput !== null) { update({ voiceOutput: draftOutput }); setDraftOutput(null); } };
@@ -79,7 +82,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
     {state.connection === 'idle' && <button className="button" onClick={() => void session.join()}>{view.viewer.readOnly ? '加入旁听' : '加入语音'}</button>}
     {state.connection === 'error' && <><span className="voice-bar__error">{state.error}</span><button className="button" onClick={() => void session.join()}>重试连接</button></>}
     {joined && <>
-      {!view.viewer.readOnly && (state.microphoneEnabled ? <button className="button button--danger" onClick={() => session.stopMicrophone()}>关闭麦克风</button> : <button className="button button--primary" disabled={!canOpen || state.requested} onClick={() => void session.requestMicrophone()}>{state.requested ? '正在开启…' : view.capabilities.canPublishVoice ? '开启麦克风' : '等待发言权限'}</button>)}
+      {!view.viewer.readOnly && (state.microphoneEnabled ? <button className="button button--danger" onClick={() => session.stopMicrophone()}>关闭麦克风</button> : <button className="button button--primary" disabled={!canOpen || state.requested} onClick={() => void session.requestMicrophone()}>{state.requested ? '正在开启…' : state.connection === 'reconnecting' ? '重连中…' : view.capabilities.canPublishVoice ? '开启麦克风' : '等待发言权限'}</button>)}
       {state.devices.length > 1 && <label className="voice-bar__device">麦克风<select value={state.activeDeviceId} onChange={event => void session.switchDevice(event.target.value)}>{state.devices.map((device, index) => <option key={device.deviceId || index} value={device.deviceId}>{device.label || `麦克风 ${index + 1}`}</option>)}</select></label>}
       {state.audioBlocked && <button className="button" onClick={() => void session.enableAudio()}>点击启用声音</button>}
       <button className="text-button" onClick={() => { optedOutRef.current = true; void session.leave(); }}>离开语音</button>
@@ -96,6 +99,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
         onPointerUp={commitInput} onKeyUp={commitInput} onBlur={commitInput}/><span aria-hidden="true">{draftInput ?? preferences.voiceInput}</span>{!agcEnabledFor(draftInput ?? preferences.voiceInput) && <em className="voice-bar__agc" title="增益超过 125 时关闭自动增益控制，避免手动放大被压回">AGC 已关闭</em>}</label>}
     </div>}
     {state.microphoneError && <span className="voice-bar__error">{state.microphoneError}</span>}
+    {state.notice && <span className="voice-bar__hint">{state.notice}</span>}
     {joined && !view.viewer.readOnly && !view.capabilities.canPublishVoice && <span className="voice-bar__hint">当前未获得发言权限</span>}
     {!activePage && joined && <span className="voice-bar__hint">已离开对局页，麦克风保持关闭</span>}
   </section>;

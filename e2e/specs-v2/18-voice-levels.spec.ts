@@ -122,3 +122,27 @@ test('语音条：关闭「音量指示」只隐藏电平，保留"谁在发言"
   await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).toContain('mic');
   await expect(idle.getByRole('button', { name: '关闭麦克风', exact: true })).toBeVisible();
 });
+
+test('语音条：重连中禁用开麦且不消耗自动开麦机会，恢复连接后才自动开麦', async ({ page }, testInfo) => {
+  const mounted = await mount(page, voiceFixture({
+    connection: 'reconnecting', microphoneEnabled: false, level: 0, remoteLevel: 0, requested: false, devices: [], activeDeviceId: '',
+    notice: '语音质量异常：麦克风输入音量过低',
+  }));
+  const bar = page.getByRole('region', { name: '公共语音' });
+
+  // 重连中：按钮可点但无意义的旧行为已改为禁用 + 明确文案
+  const reconnect = bar.getByRole('button', { name: '重连中…' });
+  await expect(reconnect).toBeVisible();
+  await expect(reconnect).toBeDisabled();
+  // 非致命提示（SDK 质量异常 / 凭证过期）能被看到
+  await expect(bar.locator('.voice-bar__hint')).toContainText('语音质量异常：麦克风输入音量过低');
+  await page.screenshot({ path: '/results/voice-levels-reconnecting-' + testInfo.project.name + '.png' });
+
+  // 重连中不得消耗本发言窗口的自动开麦机会（否则恢复连接后整个窗口都不会自动开麦）
+  await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).not.toContain('mic');
+
+  // 连接恢复：同一个发言窗口内仍会自动开麦
+  await mounted.setFixture(voiceFixture({ connection: 'connected', microphoneEnabled: false, level: 0, remoteLevel: 0, requested: false, devices: [], activeDeviceId: '' }));
+  await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).toContain('mic');
+  await expect(bar.getByRole('button', { name: '关闭麦克风', exact: true })).toBeVisible();
+});
