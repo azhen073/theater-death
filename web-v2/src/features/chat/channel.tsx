@@ -65,7 +65,10 @@ export function ChatChannelView({ view, channel, online, active, refresh, onUnre
         setStart(value => Math.max(0, value - 80));
         requestAnimationFrame(() => { if (element) { element.scrollTop = top + element.scrollHeight - height; scrollPosition.current = element.scrollTop; } });
       }}>显示更早的本局记录</button>}
-      {messages.slice(start).map(message => <div className="chat-message" key={message.messageId}><strong>{view.public?.seats.find(seat => seat.playerId === message.senderId)?.nickname ?? '玩家'}</strong><p>{message.text}</p></div>)}
+      {messages.slice(start).map(message => {
+        const sender = view.public?.seats.find(seat => seat.playerId === message.senderId);
+        return <div className="chat-message" key={message.messageId} data-message-id={message.messageId}><strong>{sender ? `${sender.seat}号 · ${sender.nickname}` : '玩家'}</strong><p>{message.text}</p></div>;
+      })}
       {!messages.length && <p className="muted">暂时没有{label}消息。</p>}
     </div>
     {unread > 0 && <button className="button button--wide" onClick={() => {

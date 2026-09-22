@@ -5,6 +5,7 @@ import { authorizedPrivate } from './identity.tsx';
 import { ChatChannelView } from '../chat/channel.tsx';
 import { EventHistory } from './event-history.tsx';
 import { navigateTabs } from '../../components/tab-navigation.ts';
+import { ElectionRoster } from './election-roster.tsx';
 
 export function GameSidebar({ view, catalog, online, readingPaused, refresh, onIdentity, onRules, onEvent }: { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; readingPaused: boolean; refresh: () => Promise<void>; onIdentity: () => void; onRules: () => void; onEvent: (event: EventDTO) => void }) {
   const [tab, setTab] = useState<'public' | 'intel' | 'records' | 'rules'>('public');
@@ -13,6 +14,7 @@ export function GameSidebar({ view, catalog, online, readingPaused, refresh, onI
   const counts = { public: unread.public, intel: unread.intel + unread.faction, records: unread.records };
   const markUnread = (key: keyof typeof unread, count: number) => setUnread(old => old[key] === count ? old : { ...old, [key]: count });
   return <aside className="game-sidebar" aria-label="信息侧栏"><div className="info-tabs" role="tablist" aria-label="对局信息">{([['public', '公屏'], ['intel', '情报'], ['records', '记录'], ['rules', '规则']] as const).map(([key, label]) => <button role="tab" type="button" key={key} aria-selected={tab === key} tabIndex={tab === key ? 0 : -1} onKeyDown={navigateTabs} aria-controls={`panel-${key}`} id={`tab-${key}`} onClick={() => setTab(key)}>{label}{key !== 'rules' && counts[key] > 0 && <span className="unread-dot" aria-label="有新内容"/>}</button>)}</div>
+    <ElectionRoster view={view} />
     <div className="info-panel" id="panel-public" role="tabpanel" aria-labelledby="tab-public" hidden={tab !== 'public'}><h2>公屏记录</h2><ChatChannelView view={view} channel="public" online={online} active={tab === 'public' && !readingPaused} refresh={refresh} onUnread={count => markUnread('public', count)}/></div>
     <div className="info-panel" id="panel-intel" role="tabpanel" aria-labelledby="tab-intel" hidden={tab !== 'intel'}><h2>当前视角情报</h2>{privateView ? <><button className="button button--wide" onClick={onIdentity}>{view.viewer.readOnly ? '查看观察身份' : '查看我的身份'}</button>
       <EventHistory events={privateView.events} view={view} catalog={catalog} onDetail={onEvent} label="私人事件" active={tab === 'intel' && !readingPaused} onUnread={count => markUnread('intel', count)}/>
