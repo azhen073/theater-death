@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-2026-09-22 未发布迭代：`feat/public-death-effects`（基线 `b3f5a1e`）新增公开死亡座位粒子与头像常驻星芒；纯前端、无新依赖或位图，保留私密边界/回归/重连基线，末次死亡公告可跨到复盘。相关增量单测 7 文件 59/59、两项前端类型检查及构建通过；相关 Chromium/WebKit E2E 56/56，加真实 13 人整局 chromium 1/1。未跑全量回归、未部署、待独立 PR。命令和边界见 [死亡视觉验收记录](docs/frontend-v2-death-effects-verification.md)。
+2026-09-22 公开死亡粒子与头像常驻星芒：`feat/public-death-effects`（基线 `b3f5a1e`；**已合并进 main `9b94a65`**，保留贡献提交 `245609e`/`e1ab0f8`）新增公开死亡座位粒子与头像常驻星芒；纯前端、无新依赖或位图，保留私密边界/回归/重连基线，末次死亡公告可跨到复盘。贡献方相关增量单测 7 文件 59/59、两项前端类型检查及构建通过、相关 Chromium/WebKit E2E 56/56、真实 13 人整局 chromium 1/1；维护方复核：全量 **90 文件 585 例全过** + `20-death-effects`/`08-display` 双浏览器 24/24。未部署。命令和边界见 [死亡视觉验收记录](docs/frontend-v2-death-effects-verification.md)。
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
@@ -239,7 +239,7 @@ theater_death/
 
 ## 测试状态
 
-577 passed / 89 files（2026-09-22 全量实测（含 v2.0.5-alpha）：容器内 `vitest run` **89 文件 577 例全过**（15.8s）。上一版为 v2.0.4-alpha 的 88 文件 572 例全量记录；本批新增 1 文件 5 例：`frontend-v2-identity-reveal` 4 例 + 选择器映射 1 例（贡献方计数 576 漏算选择器用例，已按维护方实测更正）。
+585 passed / 90 files（2026-09-22 全量实测（含 v2.0.5-alpha 与公开死亡特效）：容器内 `vitest run` **90 文件 585 例全过**（15.6s）。较 v2.0.5-alpha 的 89 文件 577 例新增 1 文件 8 例：`frontend-v2-death-effects` 7 例 + 选择器映射 1 例。
 
 E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行受验收服务 **IP 限流**（登录/注册 30 次/分钟）影响会出现登录 429 级联失败，需按增量策略分批跑——本次已逐 spec 复核：03/04/05/07/08/09/10/11 全过，12 仅 AC09/AC19 失败（main 基线同样失败，既有），02 与 06 的失败在 main 基线同样复现（既有）。`13-release-smoke`（需 `FRONTEND_BASE_URL`）、`15-admin`（需 `ADMIN_TEST_PASSWORD`）、`16-voice`（需语音配置）为环境门控，不在本编排运行。
 E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **18 个 spec / 52 例**（`18-voice-levels.spec.ts` 为 v2.0.3-alpha 新增，`05-information` 的「死神/魂灵知识」为 v2.0.4-alpha 新增）。
