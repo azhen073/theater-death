@@ -17,6 +17,7 @@ import { RulesBook } from '../rules/book.tsx';
 import { Stage } from './stage.tsx';
 import { Identity, authorizedPrivate } from './identity.tsx';
 import { GameSidebar } from './sidebar.tsx';
+import { SpeechAttention } from './speech-attention.tsx';
 import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
@@ -342,7 +343,6 @@ export function GameScene({
     window => !['guard', 'laike', 'faction', 'check', 'rescue', 'revive'].includes(window.type)
   );
   const publicWindow = publicWindows.length === 1 ? publicWindows[0] : null;
-  const activePlayer = view.public?.seats.find(seat => seat.playerId === view.public?.day?.currentSpeakerId);
   const subject = view.public?.seats.find(seat => seat.playerId === view.viewer.subjectPlayerId);
 
   const context = (
@@ -475,11 +475,7 @@ export function GameScene({
         {!view.viewer.readOnly && subject && !subject.alive && (
           <Notice>你已死亡，仍可查看获准的信息；当前可用能力以舞台行动为准。</Notice>
         )}
-        {activePlayer && (
-          <p className="speaker-banner">
-            {view.public?.day?.speechPreparing ? '即将发言' : '当前发言'}：{activePlayer.seat}号 {activePlayer.nickname}
-          </p>
-        )}
+        <SpeechAttention view={view} active={active && online} window={publicWindow} remaining={remaining} />
         {view.public?.day?.election && ['vote', 'revote'].includes(view.public.day.election.phase) && (
           <p className="speaker-banner">
             天理投票进度：{view.public.day.election.votedCount} / {view.public.day.election.eligibleCount}。结算后公开票型。
