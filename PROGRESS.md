@@ -8,6 +8,8 @@
 
 2026-09-22 公开阶段短转场（UI 1/5）：`feat/ui-phase-transitions`（基线 `b3f5a1e`；**已合并进 main `b784995`**，保留贡献提交 `b07116e`/`b98b369`）按公开昼夜/轮/阶段播 2.2s 幕布+时钟转场，去重/压制/取消规则见 [阶段转场验收记录](docs/frontend-v2-phase-transition-verification.md)。维护方整合：解 `scene.tsx` 与 #9 的冲突（公告维持 shell 挂载）、同步 spec 到 #9 的公告文案/时长与「公开事件 + 公开座位状态」夹具、素材补 SHA256。复核：全量 **91 文件 590 例全过** + `20-phase-transition`/`20-death-effects`/`08-display`/`19-identity-reveal` 双浏览器 46/46。未部署。
 
+2026-09-22 发言聚焦与可选提示音（UI 3/5）：`feat/ui-speech-attention`（基线 `b3f5a1e`；**已合并进 main `4bf179a`**，保留贡献提交 `5b0cd61`）新增发言者光环/标签与「发言与提醒」条（替换旧 `speaker-banner` 发言行）、本人准备倒计时与提前开始、可选提示音（默认关闭/本页/去重不补响/失败降级），不碰语音权限链路。维护方整合：解 `stage.tsx` 与 #9 的冲突（光环包在 `seat-avatar` 外层）、素材补 SHA256。复核：增量 10 文件 74 例 + 全量 **91 文件 590 例全过** + `22-speech-attention`/`18-voice-levels`/`20-death-effects`/`08-display`/`03-actions` 双浏览器 48/48。未部署。详情见 [发言聚焦验收记录](docs/frontend-v2-speech-attention-verification.md)。
+
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
 | 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.5-alpha**，Q-01–Q-08 全量定值（规则书第 09 章） |
@@ -249,6 +251,7 @@ E2E（v2.0.4-alpha 实测，2026-09-21，acceptance 栈分批 + seed）：`03-ac
 
 E2E（v2.0.5-alpha 增量，2026-09-22，GPT-5.6-Luna 独立执行）：新增 `19-identity-reveal.spec.ts`，chromium + webkit 6/6；既有 fixture E2E `03-actions`/`05-information`/`08-display` 双浏览器 38/38；真实开局 `04-night-actions`、`09-full-game` chromium 各 1/1，`02-rooms` 正式房间 1/1。`02-rooms` 实验房间仍有既有 presence 状态断言差异（期望 offline、实际 reconnecting），与身份揭示无关。当前静态口径：Vitest **577 例 / 89 文件**（维护方全量复核全过），v2 E2E **19 个 spec / 55 例**；E2E 未跑全量。
 E2E（公开死亡特效 + 阶段转场，2026-09-22，维护方实测）：`20-death-effects` 双浏览器 12/12、`20-phase-transition` 双浏览器 16/16；与 `08-display`、`19-identity-reveal` 的集成集 **46/46**（同树，含两 PR 交互路径：死讯优先窗口 / 公开事件 + 公开座位状态）。v2 静态口径更新为 **21 个 spec / 69 例**（55 + 6 + 8；两个新 spec 均为 2026-09-22 批次）。
+E2E（发言聚焦与提示音，2026-09-22，维护方实测）：`22-speech-attention` 3 例 + `18-voice-levels`/`20-death-effects`/`08-display`/`03-actions` 双浏览器集成集 **48/48**（含光环与死亡星芒共存、头像圆形裁切保持）。v2 静态口径更新为 **22 个 spec / 72 例**（69 + 3）。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 
