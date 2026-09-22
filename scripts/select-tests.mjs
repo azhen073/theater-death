@@ -45,6 +45,7 @@ const mappings = [
   [/^server\/v2\/frontend-app\.ts$/, ['frontend-v2-static']],
   [/^voice\//, ['voice-policy', 'voice-api', 'voice-agora', 'v2-media']],
   [/^web-v2\/src\/features\/(actions\/(presentation|stage-action-card)\.tsx?|game\/stage-layout\.ts)$/, ['frontend-v2-actions', 'frontend-v2-avatar', 'frontend-v2-chat-tracker', 'frontend-v2-command-tracker', 'frontend-v2-display-model', 'frontend-v2-draft-reconciliation', 'frontend-v2-http-deadline', 'frontend-v2-http', 'frontend-v2-ids', 'frontend-v2-room-model', 'frontend-v2-snapshot', 'frontend-v2-voice-session', 'frontend-v2-action-presentation', 'frontend-v2-stage-layout']],
+  [/^web-v2\/src\/features\/game\/phase-transition(?:-model)?\.tsx?$|^web-v2\/src\/styles\/phase-transition\.css$/, ['frontend-v2-phase-transition', 'frontend-v2-identity-reveal']],
   [/^web-v2\/src\/features\/game\/identity-(?:entry-reveal\.tsx|reveal-model\.ts)$/, ['frontend-v2-identity-reveal']],
   [/^web-v2\//, ['frontend-v2-actions', 'frontend-v2-avatar', 'frontend-v2-chat-tracker', 'frontend-v2-command-tracker', 'frontend-v2-display-model', 'frontend-v2-draft-reconciliation', 'frontend-v2-http-deadline', 'frontend-v2-http', 'frontend-v2-ids', 'frontend-v2-room-model', 'frontend-v2-snapshot', 'frontend-v2-voice-session', 'frontend-v2-voice-levels']],
   [/^(deploy\/|scripts\/|\.github\/|package.*json$|tsconfig.json$|vitest.config.ts$|vite(\.v2)?\.config\.ts$)/, ['smoke']],
