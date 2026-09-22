@@ -76,6 +76,6 @@ gh pr create
 | `web-v2/` | 新版前端（React + Vite，同镜像交付，默认入口） |
 | `contracts/` | 新版客户端契约类型 |
 | `docs/` | 契约文档、规则 2.0 增补与前端说明 |
-| `tests/` | Vitest 测试（576 用例 / 89 文件；本版新增 4 例已增量通过）+ `fixtures/contract-2.1` 契约快照 |
+| `tests/` | Vitest 测试（577 用例 / 89 文件，全量通过）+ `fixtures/contract-2.1` 契约快照 |
 | `e2e/` | Playwright 端到端验收（`specs/` 旧版、`specs-v2/` 新版） |
 | `deploy/` | Dockerfile、compose、安装/更新脚本、运行手册 |

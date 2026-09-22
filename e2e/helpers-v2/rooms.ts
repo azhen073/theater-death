@@ -41,7 +41,7 @@ export async function waitRoom(page: Page, title = '房间大厅'): Promise<void
 /** Dismiss the one-time formal-player entry reveal when a real-flow test is not testing it. */
 export async function dismissIdentityEntryReveal(page: Page): Promise<void> {
   const reveal = page.getByRole('dialog').filter({ has: page.getByRole('button', { name: '进入舞台', exact: true }) });
-  await reveal.waitFor({ state: 'visible', timeout: 3_000 }).catch(() => undefined);
+  await reveal.waitFor({ state: 'visible', timeout: 1_000 }).catch(() => undefined);
   if (await reveal.isVisible().catch(() => false)) {
     await reveal.getByRole('button', { name: '进入舞台', exact: true }).click();
     await expect(reveal).toHaveCount(0);
