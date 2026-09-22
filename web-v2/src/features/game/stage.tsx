@@ -232,10 +232,13 @@ export function Stage({
                   {String(seat.seat).padStart(2, '0')}
                   {subject && <small>{view.viewer.readOnly ? '视角' : '你'}</small>}
                 </span>
-                <span className="seat-avatar" data-death-seat={seat.seat} data-death-alive={String(seat.alive)}>
-                  <Avatar url={seat.avatarUrl} name={seat.nickname} />
-                  {!seat.alive && preferences.deathEffects && <DeathMark />}
+                <span className="seat-avatar-halo">
+                  <span className="seat-avatar" data-death-seat={seat.seat} data-death-alive={String(seat.alive)}>
+                    <Avatar url={seat.avatarUrl} name={seat.nickname} />
+                    {!seat.alive && preferences.deathEffects && <DeathMark />}
+                  </span>
                 </span>
+                {view.public?.day?.currentSpeakerId === seat.playerId && <span className="seat-speaking">{view.public.day.speechPreparing ? '准备发言' : '正在发言'}</span>}
                 <strong title={`${seat.nickname} · UID ${seat.uid}`}>{seat.nickname}</strong>
                 <span className="seat-status">
                   {!seat.alive ? '已死亡' : revealed ?? '存活'}
