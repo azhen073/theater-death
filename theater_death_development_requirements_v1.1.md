@@ -840,10 +840,10 @@ https://docs.docker.com/get-started/
 - **验证（2026-09-21，容器内 + 真机）**
   - 单测：后端增量 **5 文件 40 例**（voice-agora 10 / v2-media 9 / voice-policy 10 / voice-api 7 / v2-voice-api 4）+ 客户端 **2 文件 19 例**（voice-session 13 / voice-levels 6）**全过**；服务端 `typecheck` 与 `typecheck:web:v2`、`typecheck:web:v2-tests`、`typecheck:web`（v1）均通过；界面 E2E `18-voice-levels` **chromium 3/3 + webkit 3/3**。
   - **回归有效性**：把改前的 `media.ts` / `session.ts` / `bar.tsx` 分别临时 stash 回去跑同一批用例 → **2 failed / 6 failed / 1 failed**，恢复后全绿（确认新断言真能拦住缺陷）。
-  - **真机验收**：真实声网凭据下 `16-voice` **1 passed（12.3s）**——13 客户端真机入频道、候选开麦发布、**接收方远端电平 35–42%（真实收流）**、无自动播放拦截、结束发言即时撤权；为此修掉该 spec 两处**自声网迁移起就坏掉**的断言（文案定位器被 v2.0.3-alpha 的 `.voice-bar__speaker` 撞成 strict 双命中；`<audio>` 元素断言在 WebAudio 播放模式下不成立）。**v1 `02-voice` 仍需客户 ID/密钥，未跑。**
+  - **真机验收**：真实声网凭据下 `16-voice` **1 passed（12.3s）**——13 客户端真机入频道、候选开麦发布、**接收方远端电平 35–42%（真实收流）**、无自动播放拦截、结束发言即时撤权；为此修掉该 spec 两处**自声网迁移起就坏掉**的断言（文案定位器被 v2.0.3-alpha 的 `.voice-bar__speaker` 撞成 strict 双命中；`<audio>` 元素断言在 WebAudio 播放模式下不成立）。**v1 `02-voice` 不再跑（用户决定 2026-09-21：不引入客户 ID/密钥做验证）。**
   - **鉴权强制力实测（真实项目）**：加入频道**强制校验 token**（无 token → `dynamic use static key`；错证书 → `invalid token, authorized failed`）✅；但**发布权限位无约束力**——订阅角色 token 在 rtc 与 live（`audience`→`host`）两种模式下都能 `publish`，`pubAudio` 仅 20 秒的凭证 35 秒后仍能发麦 → 判定该项目**「连麦鉴权」尚未开启**。**部署前必须在控制台启用**（项目 → 编辑 → 功能 → 连麦鉴权，约 5 分钟生效），启用后重跑探针应变为 rejected；此前的「真实云联调 3 例全过」只断言频道在线 + 界面文案，**结构上查不出这一项**。探针为临时用例，已删除。
   - 静态清点：`tests/` **88 文件 / 584 例**；`e2e/specs-v2` **18 spec / 53 例**。
 
-- **未覆盖 / 未实现**：v2 入口真实媒体已验（见上）；**仍未验**——麦克风增益 150 与 AGC 的实际听感/响度、踢人与终局关房的真实 REST 调用（需客户 ID/密钥）、v1 `02-voice`；本版**未跑全量**。
+- **未覆盖 / 未实现**：v2 入口真实媒体已验（见上）；**仍未验**——麦克风增益 150 与 AGC 的实际听感/响度；**已决定不验（用户决定 2026-09-21）**——踢人与终局关房的真实 REST 调用、v1 `02-voice`（两者需控制台「客户 ID/密钥」，不再引入；生产若要用踢人/终局关房，`.env` 仍必须配该凭据）；本版**未跑全量**。
 - **审计发现但本版未处理**：① `openapi-v2.2.json` 的 voice/token 响应仍是 LiveKit 形态（`{url,token,roomName}`，与实现 `{appId,channel,uid,token}` 不符）；② `VOICE_ENABLED=true` 但凭据不全时 v2 **崩溃重启**（v1 降级），且「文字测试模式」文案只在 v1；③ `compose.v2.release.yml` 可开语音却不注入 `AGORA_*`；④ install 脚本生成的 `.env` 漏客户 ID/密钥（踢人/关房静默失败）；⑤ `AGORA_REST_BASE_URL` 服务端未接通（恒用中国区）；⑥ v1 不回收玩家媒体且 uid = 座位号（多标签页 `UID_CONFLICT`）；⑦ `docs/frontend-v2-voice.md` 的偏好钳制范围与键清单过期；⑧ 单测未校验 token 角色与权限位；⑨ 首次安装 `NODE_ENV=production` + http 地址与 HTTPS 校验相冲。
 - **部署**：**未部署**（服务器更新仍需 `git pull` → `.env` 换 `AGORA_*` → `./deploy/update.sh`）。
