@@ -490,6 +490,7 @@ export function GameScene({
         <div className="game-columns">
           <div className="game-play-area">
             <Stage
+              active={active && online}
               view={view}
               catalog={catalog}
               task={task}
