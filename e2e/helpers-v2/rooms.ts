@@ -38,12 +38,23 @@ export async function waitRoom(page: Page, title = '房间大厅'): Promise<void
   await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 20_000 });
 }
 
+/** Dismiss the one-time formal-player entry reveal when a real-flow test is not testing it. */
+export async function dismissIdentityEntryReveal(page: Page): Promise<void> {
+  const reveal = page.getByRole('dialog').filter({ has: page.getByRole('button', { name: '进入舞台', exact: true }) });
+  await reveal.waitFor({ state: 'visible', timeout: 3_000 }).catch(() => undefined);
+  if (await reveal.isVisible().catch(() => false)) {
+    await reveal.getByRole('button', { name: '进入舞台', exact: true }).click();
+    await expect(reveal).toHaveCount(0);
+  }
+}
+
 export async function confirmModal(page: Page, title: string): Promise<void> {
   await expect(page.getByRole('dialog')).toContainText(title);
   await page.getByRole('dialog').getByRole('button', { name: '确认操作' }).click();
 }
 
 export async function leaveRoom(page: Page): Promise<void> {
+  await dismissIdentityEntryReveal(page);
   const dialog = page.getByRole('dialog');
   if (await dialog.isVisible().catch(() => false)) {
     const close = dialog.getByRole('button', { name: '关闭' });

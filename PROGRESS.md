@@ -1,12 +1,12 @@
 # theater_death 进度与交接
 
-更新时间：2026-09-21 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-09-22 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
-| 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.4-alpha**，Q-01–Q-08 全量定值（规则书第 09 章） |
+| 文档 | ✅ | 规则书 v1.1（含 2026-09-19 追加：Q-09 移交时机 + 规则 2.0 命名预设；合并版见 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.5-alpha**，Q-01–Q-08 全量定值（规则书第 09 章） |
 | M1 规则与数据 | ✅ | 纯规则引擎 + 默认板配置 + 验证器；74 个单测容器内全过 |
 | M2 文字闭环 | ✅ | M2a 引擎补全 + visibility · M2b 夜间窗口驱动 + HTTP 会话/命令 · M2c Socket.IO 实时推送；124 测试全过 + 容器内实时握手验证 |
 | M3 白天与复盘前端 | ✅ | M3a 引擎 + M3b 驱动编排 + M3c 复盘 + M3d 网页前端；158 测试 + 浏览器全流程实机验收 |
@@ -23,12 +23,13 @@
 | 2.0.2-beta（遗言 + 账户显示设置 + 文档审计，贡献 kiahir） | ✅ | **遗言**：R-41/R-45/R-46、V2-01/V2-02 复核一致；G5 把「同日多名出局者按座位号升序、每人 60 秒」写入规则书 R-45 与 `docs/rules-v2-full.md`（无行为变更）；G4 新增 `e2e/specs-v2/17-last-words.spec.ts`——**2/2（chromium + webkit）实测通过**。**显示与动画**：三设置核对通过；F2「死亡特效」补 `aria-label` 并收紧 E2E 定位；F5 + 字号统一（三标签 14px、帮助 12px、行距 18px，定点不改全局）；`01-account` 补账号页断言与截图——**8/8 实测通过**。**md 审计**：25 个受控 md、链接 0 失效、计数实测无误，修 md-1/md-2。分支 `2.0.2-beta`（`c5df078`）随后**改名为 `2.0.3-alpha`**（内容保留）；未决：F1/F3/F4、`lastWords.firstNight`/`otherNights` 死配置、麦克风仅单测覆盖 |
 | 2.0.3-alpha（局内语音音量显示与调节，贡献 kiahir） | ✅ | 全部提交已整合进 main（`d669426`）。**已实现 A+B + 输出/输入增益**：自己的 5 段电平、当前发言者「N号 正在发言 · X%」（静音时「已静音」但保留"谁在发言"）、输出音量 0–100 + 一键静音、**麦克风增益 0–150（>125 关闭 AGC，跨阈值时重建采集轨道）**（重开麦/换设备自动重应用）；纯本地偏好（`localStorage` 四字段），受 R-43 时段门控。维护方复核修复 `08-display.spec.ts` 两处漏更新断言（偏好键集合漏 4 个语音字段、裸 `getByRole('checkbox')` strict 冲突）。**实测：全量 88 文件 568 例全过 + 4 个 typecheck 与双前端构建（镜像构建）+ `18-voice-levels`/`17-last-words` 双浏览器各 2/2 + `01-account`+`08-display` chromium 8/8 + `08-display` webkit 6/6**。未覆盖：真实媒体（需声网凭据）未验；未实现：座位卡电平环、每玩家音量、无电平提示；待核：声网音量 API 名称与本地 `setVolume` 的实际上限（150 是否真放大）。遗留仍在：F1/F3/F4、P1/P2 |
 | 2.0.4-alpha（竞选投票资格修正 + 夜间公开时钟 + 死神知识呈现 + 语音自动化） | ✅ | **规则变更（R-42）**：候选与平票者不得投票、无投票人时无天理、退选恢复投票权；同步规则书/合并版/目录夹具/引擎/服务端/测试/E2E 驱动（`11-special-actions` 平票驱动改为非候选投票）。**夜间公开时钟**：`public.night.closesAt`（只给当前段截止，不显示段名）。**死神知识**：`private.knowledge.spiritSeats` + 座位卡「魂灵」徽标 + 身份弹窗「已知身份」。**语音自动化**：进对局自动加入语音 + 轮到自己自动开麦（本地偏好 `autoMic`，默认开）+ `START_SPEECH` 文案改「提前开始发言」。本地验证：全量 **88 文件 572 例全过** + 4 typecheck + `build:web:v2` + 契约夹具重导出（含 `night-death-full.json`）+ E2E 分批双浏览器全过（12 仅 AC09/AC19 既有失败）。已整合进 main（`f2005ec`）。 |
+| 2.0.5-alpha（开局身份揭示） | ✅ 待 PR | 正式玩家每局首次进入对局时显示一次角色图、名称、阵营、座位和说明；唯一按钮“进入舞台”。`sessionStorage` 按房间/局/玩家去重；公共观众、私人第二屏和复盘排除；本人行动 ≤10 秒或倒计时未知时让位且本局不补弹。GPT-5.6-Luna 独立验证：focused Vitest 15/15、两个前端 typecheck、`build:web:v2`、新增 E2E 双浏览器 6/6、既有 fixture E2E 38/38、真实流程 04/09/02 正式房间通过。02 实验房间仍有既有 presence 断言失败。未部署。 |
 
 ## 接续指引（compact 后先读这里）
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.4-alpha：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合 · v2.0.2-beta 遗言顺序明文 + 账户显示设置修复 + 文档审计 · v2.0.3-alpha 局内语音音量显示与调节 · v2.0.4-alpha 竞选投票资格修正 + 夜间公开时钟 + 死神知识呈现 + 语音自动化，见文末版本记录）。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.5-alpha：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合 · v2.0.2-beta 遗言顺序明文 + 账户显示设置修复 + 文档审计 · v2.0.3-alpha 局内语音音量显示与调节 · v2.0.4-alpha 竞选投票资格修正 + 夜间公开时钟 + 死神知识呈现 + 语音自动化 · v2.0.5-alpha 开局身份揭示，见文末版本记录）。
 3. 进度断点（2026-09-19 深夜）：**PR#3 选定移植进行中**（外部贡献 syhneversigh，阿真确认照抄 A/B/D 三部分）。
    - **A 组已推送 `4688b49`**：公开知识泄露修复（`visibility/knowledge.ts` 先红后绿 9 例——修夜间名单在晨间公告前可从公开接口读到的泄露）、`engine/targets.ts`、`server/capabilities.ts`、`server/windows.ts` + `queued-clock.ts`、`server/log-store.ts`（迁移守卫 + 预备表列）、`GameCommand.windowInstanceId` / `START_SPEECH`、`LiveWindow.instanceId` / `type`。
    - **B 组（本批）**：天理夜死移交时机对齐 R-46/T-40 字面（晨间公告后立即办，不再等白天末尾）+ 规则 2.0 命名预设 `THEATER_DEATH_13_V2`（V2-01 立即终局 / V2-02 公告前竞选 / V2-03 发言 120 秒 + 15 秒准备窗口 / V2-04 提案兜底）；`engine/*`、`rulesets/*`、`day-driver` / `night-driver`、`clock` 照抄；版本记录已更新（规则书 Q-09 + 需求 v1.7 + `docs/rules-v2.md`）；增量 18 文件 193 例全过。
@@ -241,6 +242,8 @@ theater_death/
 E2E（2026-09-21）：v1 入口全量 **21/21 通过**；v2 入口全量运行受验收服务 **IP 限流**（登录/注册 30 次/分钟）影响会出现登录 429 级联失败，需按增量策略分批跑——本次已逐 spec 复核：03/04/05/07/08/09/10/11 全过，12 仅 AC09/AC19 失败（main 基线同样失败，既有），02 与 06 的失败在 main 基线同样复现（既有）。`13-release-smoke`（需 `FRONTEND_BASE_URL`）、`15-admin`（需 `ADMIN_TEST_PASSWORD`）、`16-voice`（需语音配置）为环境门控，不在本编排运行。
 E2E（v2.0.2-beta 追加，2026-09-21 实测）：新增 `e2e/specs-v2/17-last-words.spec.ts`（遗言界面链路，2 例）——**chromium 2/2、webkit 2/2 通过**；命令 `docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts 17-last-words.spec.ts --project=chromium|webkit`（acceptance 栈 + seed，约 2–4 秒）。v2 入口静态清点更新为 **18 个 spec / 52 例**（`18-voice-levels.spec.ts` 为 v2.0.3-alpha 新增，`05-information` 的「死神/魂灵知识」为 v2.0.4-alpha 新增）。
 E2E（v2.0.4-alpha 实测，2026-09-21，acceptance 栈分批 + seed）：`03-actions`+`05-information`+`08-display` chromium 19/19（含新「死神/魂灵知识」用例与偏好键 8 项断言）、`05-information`+`03-actions` webkit 13/13、`04-night-actions` 双浏览器 2/2（夜间 HUD 时钟 + 无任务玩家也能看到）、`11-special-actions` chromium 1/1（平票驱动改为非候选投票后通过）、`18-voice-levels` 双浏览器 4/4（含自动加入语音 + 自动开麦）、`09-full-game` 双浏览器 2/2、`17-last-words` 双浏览器 4/4、`01-account` chromium 2/2、`08-display` webkit 6/6、`12-governance-reconnect` chromium AC07 通过（AC09/AC19 为既有失败）。v1 入口（规则变更共用引擎，只跑受影响路径）：`04-flow-full` 双浏览器 4/4（机器人流程含竞选报名/投票）、`03-security`+`07-spectator`+`10-end-exit` 6/6；其余 v1 spec 与竞选无关，未重跑。
+
+E2E（v2.0.5-alpha 增量，2026-09-22，GPT-5.6-Luna 独立执行）：新增 `19-identity-reveal.spec.ts`，chromium + webkit 6/6；既有 fixture E2E `03-actions`/`05-information`/`08-display` 双浏览器 38/38；真实开局 `04-night-actions`、`09-full-game` chromium 各 1/1，`02-rooms` 正式房间 1/1。`02-rooms` 实验房间仍有既有 presence 状态断言差异（期望 offline、实际 reconnecting），与身份揭示无关。当前静态口径：Vitest **576 例 / 89 文件**，v2 E2E **19 个 spec / 55 例**；未跑全量回归。
 已覆盖：T-01、T-03–T-17、T-19–T-30、T-34–T-50（引擎与驱动，含实验模式 T-49、天理莱莱可决胜票 T-50）、白天下令/窗口/编排冒烟（夜→日→夜）、T-48 终局复盘、实验模式房间（正式拒绝/实验开局/实验值落盘）、退出与解散、**语音许可策略（各窗口穷举 + 平票者开麦）与声网适配（token 签发/踢人/关房 REST）、语音 API（开关/大厅/开局/同步/推送/竞选发言候选获得发布权）**。
 未覆盖（如实记录，详见 M4e 报告）：真实设备 WebKit/Safari 深度路径与麦克风（由阿真双设备人工验收补足）、"旧凭证重连"独立场景（单测 + 刷新/断网恢复间接覆盖）、媒体失败"文字继续"降级（单测/集成覆盖）。§15 的 Playwright/真实设备/容量验收已由 M4d 完成（见"下一步计划"M4d 记录）。
 

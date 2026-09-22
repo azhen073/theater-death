@@ -303,6 +303,12 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .modal-game-context { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border: 1px solid var(--line); background: #e9eff6; padding: 9px 12px; margin: 0 0 20px; font-size: 11px; position: sticky; top: -25px; z-index: 2; }
 .identity-view { font-size: 13px; }
 .identity-card { display: block; width: min(260px,100%); height: auto; margin: 0 auto 23px; }
+.identity-entry-reveal { width: min(620px, calc(100% - 28px)); text-align: center; overflow: auto; }
+.identity-entry-reveal__heading h2 { margin: 6px 0 2px; font-size: clamp(28px, 5vw, 42px); }
+.identity-entry-reveal__heading p { margin: 0 0 16px; color: var(--muted); font-weight: 700; }
+.identity-entry-reveal__card { display: block; width: min(310px, 78vw); max-height: 48svh; object-fit: contain; margin: 0 auto 16px; }
+.identity-entry-reveal__description { max-width: 48ch; margin: 0 auto 20px; line-height: 1.7; }
+.identity-entry-reveal__enter { min-width: min(260px, 100%); }
 .private-label { color: #79624f; font-size: 12px; text-align: center; }
 .identity-state > div { display: flex; justify-content: space-between; gap: 15px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .identity-state dd { margin: 0; color: var(--muted); }

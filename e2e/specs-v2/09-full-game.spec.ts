@@ -1,5 +1,5 @@
 import { expect, request as apiRequest, test, type APIRequestContext, type BrowserContext } from '@playwright/test';
-import { loginRoomAccount } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, loginRoomAccount } from '../helpers-v2/rooms.ts';
 import { advanceAcceptanceClock, createFormalRoomViaPage, loadFullGameAccounts, loginApi, roomCommand, roomView } from '../helpers-v2/full-game.ts';
 
 async function driveAuthorizedWindows(requests: APIRequestContext[], hostPage: any, code: string, clockSocket: string, accepted: Array<Record<string, unknown>>, roleByUser: Map<string, string>): Promise<{ view: Record<string, any>; chatDone: boolean; hostVoteDone: boolean }> {
@@ -99,6 +99,7 @@ test('正式13人第一局真实复盘与第二局启动（acceptance profile on
     await hostPage.getByRole('button', { name: '准备', exact: true }).click();
     await hostPage.getByRole('button', { name: '开始游戏', exact: true }).click();
     await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 30_000 });
+    await dismissIdentityEntryReveal(hostPage);
     const requests = [hostPage.request, ...apiContexts];
     const initialViews = await Promise.all(requests.map(requestContext => roomView(requestContext, code)));
     const roleByUser = new Map(initialViews.map(view => [view.viewer.userId, view.private?.self.roleId] as [string, string]));
@@ -140,6 +141,7 @@ test('正式13人第一局真实复盘与第二局启动（acceptance profile on
     await hostPage.getByRole('button', { name: '准备', exact: true }).click();
     await hostPage.getByRole('button', { name: '开始游戏', exact: true }).click();
     await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 30_000 });
+    await dismissIdentityEntryReveal(hostPage);
     await hostPage.screenshot({ path: '/results/full-game-second-game.png' });
     const second = await roomView(hostPage.request, code);
     expect(second.gameId).toBeTruthy(); expect(second.gameId).not.toBe(firstGameId);

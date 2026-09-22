@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { loadRoomAccounts, confirmModal, enterRoom, leaveRoom, loginRoomAccount, memberCard, myRooms, noHorizontalOverflow, roomView, waitRoom } from '../helpers-v2/rooms.ts';
+import { loadRoomAccounts, confirmModal, dismissIdentityEntryReveal, enterRoom, leaveRoom, loginRoomAccount, memberCard, myRooms, noHorizontalOverflow, roomView, waitRoom } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
 async function createPage(browser: Browser, account: RoomAccount): Promise<{ context: BrowserContext; page: Page }> {
@@ -133,6 +133,7 @@ test('实验房间：五人冻结配置、观众晋升、离线开局与公开�
     await hostPage.screenshot({ path: `/results/rooms-experimental-${testInfo.project.name}.png` });
     await hostPage.getByRole('button', { name: '开始游戏', exact: true }).click();
     await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 20_000 });
+    await dismissIdentityEntryReveal(hostPage);
     const started = await roomView(hostPage, code);
     expect(started.public.phase).toBe('night');
     expect(started.gameId).toEqual(expect.any(String));

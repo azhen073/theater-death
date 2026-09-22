@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page, type WebSocketRoute } from '@playwright/test';
 import { advanceAcceptanceClock } from '../helpers-v2/full-game.ts';
 import { browserContextForApi, enterAndReady, loginApi, roomView as apiRoomView, type ApiSession } from '../helpers-v2/recovery.ts';
-import { enterRoom, leaveRoom, loadRoomAccounts, loginRoomAccount, roomView } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, enterRoom, leaveRoom, loadRoomAccounts, loginRoomAccount, roomView } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
 const CLOCK_SOCKET = process.env.ACCEPTANCE_CLOCK_SOCKET ?? '/clock-control/clock.sock';
@@ -113,6 +113,7 @@ async function startFivePlayerGame(hostPage: Page, code: string, apiSessions: Ap
   await expect(hostPage.getByRole('button', { name: '取消准备', exact: true })).toBeVisible();
   await hostPage.getByRole('button', { name: '开始游戏', exact: true }).click();
   await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 25_000 });
+  await dismissIdentityEntryReveal(hostPage);
 }
 
 async function advanceUntilPublicWriter(requests: Array<{ view: (code: string) => Promise<any> }>, code: string): Promise<{ index: number; view: any }> {

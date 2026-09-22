@@ -56,6 +56,11 @@ describe('incremental test selector', () => {
     }
   });
 
+  it('selects the entry identity reveal suite for its focused modules', () => {
+    expect(selected('web-v2/src/features/game/identity-entry-reveal.tsx')).toEqual(['tests/frontend-v2-identity-reveal.test.ts']);
+    expect(selected('web-v2/src/features/game/identity-reveal-model.ts')).toEqual(['tests/frontend-v2-identity-reveal.test.ts']);
+  });
+
   it('maps remaining entry, admin, and infra files to their reviewed suites', () => {
     expect(selected('server/v2/frontend-app.ts')).toEqual(['tests/frontend-v2-static.test.ts']);
     expect(selected('server/v2/admin-router.ts')).toEqual(['tests/admin-api.test.ts']);

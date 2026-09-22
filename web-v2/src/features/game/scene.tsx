@@ -21,6 +21,8 @@ import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
 import { DeathNotice } from './death-notice.tsx';
+import { IdentityEntryReveal } from './identity-entry-reveal.tsx';
+import { claimIdentityReveal, identityRevealHasUrgentAction, identityRevealKey } from './identity-reveal-model.ts';
 import { reconcileDraft } from '../actions/draft-reconciliation.ts';
 import { newRequestId } from '../../transport/ids.ts';
 
@@ -58,6 +60,7 @@ export function GameScene({
   });
   const drafts = draftState.scope === currentScope ? draftState.values : {};
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const [identityEntryReveal, setIdentityEntryReveal] = useState(false);
   const [manage, setManage] = useState(false);
   const [managementVisited, setManagementVisited] = useState(false);
 
@@ -113,6 +116,27 @@ export function GameScene({
   const availableTasks = combinedProposal
     ? authorizedTasks.filter(item => item !== proposalConfirmTask)
     : authorizedTasks;
+  const revealKey = identityRevealKey(view);
+  const revealUrgent = identityRevealHasUrgentAction(authorizedTasks, remaining);
+
+  useEffect(() => {
+    if (!active || !revealKey || !catalog.roles.some(role => role.roleId === view.private?.self.roleId)) {
+      setIdentityEntryReveal(false);
+      return;
+    }
+    const decision = claimIdentityReveal(window.sessionStorage, revealKey, revealUrgent);
+    if (decision === 'show') {
+      setOverlay(null);
+      setManage(false);
+      setIdentityEntryReveal(true);
+    } else if (decision === 'skip') {
+      setIdentityEntryReveal(false);
+    }
+  }, [active, catalog.roles, revealKey, revealUrgent, view.private?.self.roleId]);
+
+  useEffect(() => {
+    if (identityEntryReveal && revealUrgent) setIdentityEntryReveal(false);
+  }, [identityEntryReveal, revealUrgent]);
   const taskSignature = JSON.stringify(availableTasks.map(item => [taskKey(item), item.targets]));
 
   useEffect(() => {
@@ -393,6 +417,9 @@ export function GameScene({
       )}
       <div className="game-scene" hidden={!active || manage}>
         <DeathNotice view={view} online={online && active} />
+        {active && identityEntryReveal && (
+          <IdentityEntryReveal view={view} catalog={catalog} onEnter={() => setIdentityEntryReveal(false)} />
+        )}
         <header className="game-hud">
           <div>
             <span className="eyebrow">
