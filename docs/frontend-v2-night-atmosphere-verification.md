@@ -71,4 +71,6 @@ docker.exe compose -p ui-night-sol-0922 -f deploy/compose.frontend-acceptance.ym
 
 隔离项目 `night-independent`：display-model/stage-layout单测10/10、两个前端typecheck与build通过；`21-night-atmosphere` + `03-actions` Chromium/WebKit 20/20。原预览资源、短时动画及操作可读性保持不变。
 
+与独立亮度提交 `6bc4fd9` 本地无冲突组合后：11项相关单测、两个typecheck/build及03/21/25最终双浏览器22/22通过。首轮组合有一次既有03 WebKit旧窗口选择状态断言失败；未改代码或断言，定点重复5/5及完整复跑22/22通过，根因未确定。详情见亮度PR的 `docs/frontend-v2-stage-brightness.md`（该文件不属于本夜景分支）。
+
 未发现夜间氛围产品缺陷。未运行全量 Vitest、全量 v2 E2E 或 v1 E2E；未使用真实多人房间或真实语音；未提交、未推送、未部署。
