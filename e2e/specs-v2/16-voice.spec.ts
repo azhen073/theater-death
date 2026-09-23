@@ -90,7 +90,9 @@ test('v2 voice：双浏览器手动开麦、接收远端音频，发言结束后
 
     const voicePages = [host, speaker, ...extraPages];
     await Promise.all(voicePages.map(async page => {
-      const connected = page.getByText(/已连接 · 只听|旁听中|正在发言/);
+      // 只认状态行里的文案：`.voice-bar__speaker`（v2.0.3-alpha 起显示「N号 正在发言 · X%」）也含「正在发言」，
+      // 用裸 getByText 会 strict mode 命中两个元素（本条自该功能合并后一直坏，2026-09-21 首次真机跑到时暴露）。
+      const connected = page.locator('.voice-bar__status span').filter({ hasText: /已连接 · 只听|旁听中|正在发言|重连中，麦克风已关闭/ });
       const joinButton = page.getByRole('button', { name: '加入语音', exact: true });
       await expect.poll(async () => await connected.isVisible() || await joinButton.isVisible(), { timeout: 20_000 }).toBe(true);
       if (await joinButton.isVisible()) await joinButton.click();
@@ -104,7 +106,17 @@ test('v2 voice：双浏览器手动开麦、接收远端音频，发言结束后
     if (await openMic.isVisible()) await openMic.click();
     await expect(closeMic).toBeVisible({ timeout: 30_000 });
     const receiver = writer === host ? speaker : host;
-    await expect.poll(async () => receiver.locator('audio').evaluateAll(elements => elements.some(element => (element as HTMLMediaElement).readyState >= 2 && (element as HTMLMediaElement).currentTime > 0)), { timeout: 30_000 }).toBe(true);
+    // 远端音频"是否真收到"不能用 <audio> 元素判定：Agora Web SDK v4 用 WebAudio 播放，页面里不产生 audio 元素
+    // （2026-09-21 实测两页 audioCount 均为 0）。这里改用 SDK 自己的 volume-indicator 信号：
+    // 接收方语音条显示当前发言者的**远端电平 > 0**，即证明真的收到了对方的音频流。
+    const remoteLevel = async () => {
+      const text = (await receiver.locator('.voice-bar__speaker').textContent()) ?? '';
+      const match = /(\d+)%/.exec(text);
+      return match ? Number(match[1]) : 0;
+    };
+    await expect.poll(remoteLevel, { timeout: 30_000 }).toBeGreaterThan(0);
+    // 浏览器没有拦住播放（被拦时会显示「点击启用声音」按钮：有电平但用户其实听不到）
+    await expect(receiver.getByRole('button', { name: '点击启用声音' })).toHaveCount(0);
     await writer.screenshot({ path: '/results/voice-speaking.png', fullPage: true });
     const latestSpeechView = await roomView(writer, code);
     const endSpeech = latestSpeechView.tasks.find((task: any) => task.action === 'END_ELECTION_SPEECH');

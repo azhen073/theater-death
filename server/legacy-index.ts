@@ -41,7 +41,7 @@ function createVoice(): VoiceService | null {
       '[theater-death] 未配置 AGORA_CUSTOMER_KEY / AGORA_CUSTOMER_SECRET：踢人与终局关房将不可用（语音本体不受影响）',
     );
   }
-  return createAgoraVoiceService({ appId, appCertificate, customerKey, customerSecret });
+  return createAgoraVoiceService({ appId, appCertificate, customerKey, customerSecret, restBaseUrl: process.env.AGORA_REST_BASE_URL?.trim() || undefined });
 }
 
 const voice = createVoice();

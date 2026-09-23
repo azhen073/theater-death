@@ -24,8 +24,9 @@ const logStore = createLogStore(join(dataDir, 'audit.sqlite'));
 const avatars = new AvatarStore(accounts, join(dataDir, 'avatars'));
 const voice = process.env.VOICE_ENABLED === 'true' ? createAgoraVoiceService({
   appId: process.env.AGORA_APP_ID!, appCertificate: process.env.AGORA_APP_CERTIFICATE!, customerKey: process.env.AGORA_CUSTOMER_KEY ?? '', customerSecret: process.env.AGORA_CUSTOMER_SECRET ?? '',
+  restBaseUrl: process.env.AGORA_REST_BASE_URL?.trim() || undefined,
 }) : null;
-const backend = createV2App({ accounts, clock, logStore, avatars, origin: 'http://localhost:5173', cookieName: process.env.ACCOUNT_COOKIE_NAME ?? 'td_account_frontend_acceptance', secureCookies: false, voice });
+const backend = createV2App({ accounts, clock, logStore, avatars, origin: 'http://localhost:5173', cookieName: process.env.ACCOUNT_COOKIE_NAME ?? 'td_account_frontend_acceptance', secureCookies: false, adminPassword: process.env.ADMIN_PASSWORD || null, voice });
 const server: Server = createServer(backend.app);
 backend.hub.attachV2(server);
 const control = createNetServer(socket => handleControl(socket));

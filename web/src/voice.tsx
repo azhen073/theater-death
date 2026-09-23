@@ -145,6 +145,12 @@ class VoiceController {
           user.audioTrack?.stop();
         }
       });
+      // 加入凭证 30 分钟后过期：SDK 在过期前 30 秒给一次续期机会，过期后必须重新 join（官方 typings）
+      client.on('token-privilege-will-expire', () => { void this.#resync(); });
+      client.on('token-privilege-did-expire', () => { void this.#rejoinAfterExpire(); });
+      client.on('exception', (event: { code?: number; msg?: string }) => {
+        if (typeof event?.code === 'number') console.warn('[voice] exception', event.code, event.msg ?? '');
+      });
       client.on('connection-state-change', (current) => {
         if (current === 'RECONNECTING') {
           this.#set({ connection: 'reconnecting' });
@@ -251,6 +257,22 @@ class VoiceController {
     }
   }
 
+  /** 加入凭证已过期：SDK 要求重新 join；保留观战身份与"正在发言"意图。 */
+  async #rejoinAfterExpire(): Promise<void> {
+    const spectating = this.#spectating;
+    const resumePublish = !spectating && this.#state.permission.canPublish && !this.#state.muted;
+    const client = this.#client;
+    this.#teardown();
+    if (client !== null) {
+      await client.leave().catch(() => undefined);
+    }
+    this.#set({ connection: 'idle', publishing: false, publishError: null });
+    await this.join(spectating);
+    if (resumePublish && this.#state.connection === 'connected') {
+      await this.#applyPublish();
+    }
+  }
+
   async #applyPublish(): Promise<void> {
     const client = this.#client;
     if (client === null || this.#spectating) {
@@ -354,6 +376,8 @@ class VoiceController {
     if (client !== null) {
       client.removeAllListeners();
     }
+    // 离开后不再把自动播放失败记到已销毁的控制器上（新会话 join 时会重新注册）
+    AgoraRTC.onAutoplayFailed = () => undefined;
   }
 }
 

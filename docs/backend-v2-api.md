@@ -68,7 +68,11 @@ Socket.IO路径 `/api/v2/socket.io`，握手auth传 `{gameId}`，使用相同Coo
 
 ## 媒体和诊断
 
-POST rooms/:code/voice/token获得加入凭证（订阅角色：可听不可发；默认有效期30分钟）。发布权由服务端在状态推进时下发的**短期发布凭证（默认10分钟，覆盖最长90秒发言窗口）**授予，前端 `renewToken` 即时生效；收回时下发订阅凭证即时降权。POST rooms/:code/voice/sync重新同步。未配置语音时返回voice_disabled，游戏计时不暂停。
+POST rooms/:code/voice/token获得加入凭证（订阅角色：可听不可发；默认有效期30分钟）。发布权由服务端在状态推进时下发的**短期发布凭证（默认150秒，覆盖最长120秒发言窗口；2026-09-21 由10分钟收紧）**授予，前端 `renewToken` 即时生效；收回时下发订阅凭证即时降权。POST rooms/:code/voice/sync重新同步。未配置语音时返回voice_disabled，游戏计时不暂停。
+
+**送达回执（C 组）**：`POST rooms/:code/voice/receipt`，body `{requestId, gameId, windowInstanceId, state}`（`state` ∈ `playing|blocked|silent-output|failed`；可选 `client: {connectionState, sendBitrate?, remoteUsers}` 仅作诊断）。**身份一律由服务端从会话解析**，body 里的身份字段被忽略；只接受"当前发言窗口 + 当前有效媒体身份"的回执，发言者自己的回执不算。回执按 `gameId + 发言窗口实例` 聚合成 `delivered/blocked/silentOutput/failed/listeners`，**只下发给此刻持有发布权的人**（`RoomSnapshot.private.voice.delivery`；公共视图永不含该字段），窗口更换或对局结束即作废；聚合变化最多每秒推送一次（避免快照风暴）。分母 `listeners` 是"报告过的接收端数"，不是频道人数。没有发言窗口时返回 `{recorded:false, delivery:null}`，不报错。限流 60 条/分钟/会话。
+
+**频道对账（D 组）**：维护循环每 5 秒对有对局的房间调用声网频道查询（`GET /dev/v1/channel/user/{appid}/{channelName}`，官方 API 参考），**只做两件事**：踢掉频道里我们不认识的 uid、统计"该在却不在"的身份数。官方 REST **查不到是否在发流**，且听众同样合法在线，因此不得据此踢有身份的人。对账失败只计数不影响游戏；适配器未实现 `queryChannelUsers` 时跳过。计数见管理端 `GET /api/v2/admin/summary` 的 `voice.reconcile`。区域基地址由 `AGORA_REST_BASE_URL` 注入（中国区默认 `https://api.sd-rtn.com`）。
 
 > 2026-09-19 媒体层已由 LiveKit 替换为**声网 Agora**（`voice/agora.ts`）：声网把发布权编码在 token 内，且**不提供**服务端实时改权限 API，因此按上面"短期发布凭证 + 到期兜底"实现 R-43；踢人（观战者）与终局关房改走声网频道管理 REST（一次性踢出、可立即重进）。
 >

@@ -26,6 +26,8 @@ html[data-reduced-motion='true'] *::after {
 /* 语音条里的电平与音量控制：离散段（无过渡），减少动画下天然不抖 */
 .voice-bar__levels { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; flex-basis: 100%; }
 .voice-bar__own, .voice-bar__speaker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+/* 送达回执刻意低调：与状态行同级的 10px 灰字、无徽标/无告警色，细节只在 title 里 */
+.voice-bar__delivery { font-size: 10px; color: var(--muted); opacity: 0.7; }
 .voice-bar__volume { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
 .voice-bar__volume input[type='range'] { width: 88px; min-width: 0; }
 .voice-bar__volume > span { min-width: 22px; font-variant-numeric: tabular-nums; }

@@ -72,6 +72,12 @@ export interface PrivateGameDTO {
   targets: Partial<Record<CommandAction, TargetSelection>>;
   knowledge: { spiritSeats: number[] };
   proposal: { pool: 'death' | 'spirit' | 'joint'; activeMemberIds: readonly string[]; revision: number; targetPlayerIds: readonly string[]; confirmedBy: readonly string[]; locked: boolean; effective: { revision: number | null; targetPlayerIds: readonly string[]; basis: 'unanimous' | 'latest_legal' | 'empty' } } | null;
+  /** 当前发言窗口的送达回执聚合；仅对「此刻持有发布权」的人下发，其他人不含该字段（可选，向后兼容）。 */
+  voice?: { delivery: VoiceDeliveryDTO } | null;
+}
+/** 送达回执聚合：分母是「上报过的接收端数」，不是频道人数（措辞与隐私边界见 docs/frontend-v2-voice.md）。 */
+export interface VoiceDeliveryDTO {
+  windowInstanceId: string; delivered: number; blocked: number; silentOutput: number; failed: number; listeners: number; updatedAt: number;
 }
 export type RoomAction = 'ready' | 'start' | 'promote' | 'leave' | 'transferHost' | 'dissolve' | 'endReview' | 'kickFormal' | 'kickSpectator' | 'inviteSecondScreen' | 'revokeSecondScreen';
 export interface SnapshotCapabilities {

@@ -122,3 +122,47 @@ test('语音条：关闭「音量指示」只隐藏电平，保留"谁在发言"
   await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).toContain('mic');
   await expect(idle.getByRole('button', { name: '关闭麦克风', exact: true })).toBeVisible();
 });
+
+test('语音条：重连中禁用开麦且不消耗自动开麦机会，恢复连接后才自动开麦', async ({ page }, testInfo) => {
+  const mounted = await mount(page, voiceFixture({
+    connection: 'reconnecting', microphoneEnabled: false, level: 0, remoteLevel: 0, requested: false, devices: [], activeDeviceId: '',
+    notice: '语音质量异常：麦克风输入音量过低',
+  }));
+  const bar = page.getByRole('region', { name: '公共语音' });
+
+  // 重连中：按钮可点但无意义的旧行为已改为禁用 + 明确文案
+  const reconnect = bar.getByRole('button', { name: '重连中…' });
+  await expect(reconnect).toBeVisible();
+  await expect(reconnect).toBeDisabled();
+  // 非致命提示（SDK 质量异常 / 凭证过期）能被看到
+  await expect(bar.locator('.voice-bar__hint')).toContainText('语音质量异常：麦克风输入音量过低');
+  await page.screenshot({ path: '/results/voice-levels-reconnecting-' + testInfo.project.name + '.png' });
+
+  // 重连中不得消耗本发言窗口的自动开麦机会（否则恢复连接后整个窗口都不会自动开麦）
+  await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).not.toContain('mic');
+
+  // 连接恢复：同一个发言窗口内仍会自动开麦
+  await mounted.setFixture(voiceFixture({ connection: 'connected', microphoneEnabled: false, level: 0, remoteLevel: 0, requested: false, devices: [], activeDeviceId: '' }));
+  await expect.poll(() => page.evaluate(() => (window as any).__voiceCalls as string[])).toContain('mic');
+  await expect(bar.getByRole('button', { name: '关闭麦克风', exact: true })).toBeVisible();
+});
+
+test('语音条：轮到自己发言时不显示远端电平百分比，也不显示"已静音"', async ({ page }, testInfo) => {
+  // 远端电平是「我听到别人的响度」；轮到自己时它恒为 0，显示成「我正在发言 · 0%」是误导
+  const fixture = loadGameFixture('day-election-full.json');
+  const view = structuredClone(fixture.view) as any;
+  const selfId = view.private.self.playerId as string;
+  const selfSeat = view.public.seats.find((seat: any) => seat.playerId === selfId).seat as number;
+  view.public.day = { ...view.public.day, step: 'speech_round', currentSpeakerId: selfId };
+  view.capabilities = { ...view.capabilities, canPublishVoice: true };
+  await mount(page, { ...fixture, view, voice: { ...connectedVoice, remoteLevel: 70 } });
+  const bar = page.getByRole('region', { name: '公共语音' });
+
+  const speaker = bar.locator('.voice-bar__speaker');
+  await expect(speaker).toContainText(`${selfSeat}号 正在发言`);
+  await expect(speaker).not.toContainText('%');
+  await expect(speaker).not.toContainText('已静音');
+  // 自己的电平条照旧显示（那是本地采集，与远端无关）
+  await expect(bar.getByRole('meter', { name: '麦克风音量' })).toBeVisible();
+  await page.screenshot({ path: '/results/voice-levels-self-speaking-' + testInfo.project.name + '.png' });
+});

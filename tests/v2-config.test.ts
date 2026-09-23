@@ -35,8 +35,15 @@ describe('v2 configuration validation', () => {
     }
   });
 
-  it('VOICE_ENABLED=true 时拒绝缺字段与非法格式的生产凭据', () => {
-    expect(() => configuration(env({ VOICE_ENABLED: 'true' }))).toThrow(/incomplete/);
+  it('VOICE_ENABLED=true 但缺凭据时降级为文字测试模式（不再拒绝启动）', () => {
+    const missingBoth = configuration(env({ VOICE_ENABLED: 'true' }));
+    expect(missingBoth).toMatchObject({ voiceRequested: true, voiceEnabled: false, voiceDegraded: true, voiceAdmin: false });
+    const missingCertificate = configuration(env({ VOICE_ENABLED: 'true', AGORA_APP_ID: 'a'.repeat(32) }));
+    expect(missingCertificate).toMatchObject({ voiceEnabled: false, voiceDegraded: true });
+    expect(configuration(env()).voiceDegraded).toBe(false);
+  });
+
+  it('VOICE_ENABLED=true 且凭据存在但格式非法时仍拒绝启动', () => {
     expect(() => configuration(env({
       VOICE_ENABLED: 'true',
       AGORA_APP_ID: 'not-hex-value',
@@ -47,6 +54,14 @@ describe('v2 configuration validation', () => {
       AGORA_APP_ID: 'a'.repeat(32),
       AGORA_APP_CERTIFICATE: 'short',
     }))).toThrow(/development/);
+  });
+
+  it('客户 ID/密钥齐备才算频道管理可用（踢人 / 关房 / 对账）', () => {
+    const base = { VOICE_ENABLED: 'true', AGORA_APP_ID: 'a'.repeat(32), AGORA_APP_CERTIFICATE: 'b'.repeat(32) };
+    expect(configuration(env(base)).voiceAdmin).toBe(false);
+    expect(configuration(env({ ...base, AGORA_CUSTOMER_KEY: 'customer' })).voiceAdmin).toBe(false);
+    expect(configuration(env({ ...base, AGORA_CUSTOMER_KEY: 'customer', AGORA_CUSTOMER_SECRET: 'secret' })).voiceAdmin).toBe(true);
+    expect(configuration(env({ ...base, AGORA_CUSTOMER_KEY: '', AGORA_CUSTOMER_SECRET: 'secret' })).voiceAdmin).toBe(false);
   });
 
   it('合法生产配置通过且返回值不包含测试 secret', () => {
@@ -64,6 +79,7 @@ describe('v2 configuration validation', () => {
       port: 3000,
       secureCookies: true,
       voiceEnabled: true,
+      voiceDegraded: false,
     });
     expect(JSON.stringify(result)).not.toContain(secret);
     expect(JSON.stringify(result)).not.toContain('b'.repeat(32));

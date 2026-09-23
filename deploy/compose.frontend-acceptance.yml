@@ -12,6 +12,7 @@ services:
       DATA_DIR: /app/data-frontend-v2
       CLOCK_SOCKET: /clock-control/clock.sock
       ACCOUNT_COOKIE_NAME: td_account_frontend_acceptance
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - frontend-acceptance-data:/app/data-frontend-v2
       - frontend-acceptance-clock:/clock-control
