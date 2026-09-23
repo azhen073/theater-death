@@ -1,4 +1,4 @@
-# 首次安装：检查 Docker -> 生成 .env -> 构建镜像 -> 启动服务
+﻿# 首次安装：检查 Docker -> 生成 .env -> 构建镜像 -> 启动服务
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 

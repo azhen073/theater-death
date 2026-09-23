@@ -271,8 +271,11 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
       return kickFromChannel({ cname: roomName, uid });
     },
 
-    queryChannelUsers(roomName) {
-      return queryChannelUsers(roomName);
-    },
+    // 未配置客户 ID/密钥时频道管理 REST 一律不可用（查询/踢人/关房都会 401）：
+    // 不暴露查询能力，让对账按「跳过」处理（与 RUNBOOK §7 一致），
+    // 而不是每 5 秒空跑一次注定失败、还会刷 `voice_reconcile_query_failed` 的请求
+    ...(customerKey.trim() !== '' && customerSecret.trim() !== ''
+      ? { queryChannelUsers: (roomName: string) => queryChannelUsers(roomName) }
+      : {}),
   };
 }

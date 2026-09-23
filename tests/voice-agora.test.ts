@@ -262,6 +262,13 @@ describe('声网 VoiceAdapter', () => {
     }
   });
 
+  it('未配置客户 ID/密钥时不暴露频道查询：对账按「跳过」处理，而不是每 5 秒空跑一次注定 401 的请求', () => {
+    const withoutCredentials = createAgoraVoiceService({ appId: APP_ID, appCertificate: APP_CERTIFICATE });
+    expect(withoutCredentials.queryChannelUsers).toBeUndefined();
+    const withCredentials = createAgoraVoiceService({ appId: APP_ID, appCertificate: APP_CERTIFICATE, customerKey: CUSTOMER_KEY, customerSecret: CUSTOMER_SECRET });
+    expect(typeof withCredentials.queryChannelUsers).toBe('function');
+  });
+
   it('对账查询：字段缺失时容错（channel_exist 缺失按"有用户即在"，users 缺失回落直播场景字段）', async () => {
     const make = (payload: unknown) => createAgoraVoiceService({
       appId: APP_ID,
