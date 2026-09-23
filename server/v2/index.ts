@@ -15,7 +15,7 @@ mkdirSync(config.dataDir, { recursive: true });
 const clock = createSystemClock();
 const accounts = new AccountStore(join(config.dataDir, 'accounts.sqlite'), () => clock.now());
 const logStore = createLogStore(join(config.dataDir, 'audit.sqlite'));
-const voice = config.voiceEnabled ? createAgoraVoiceService({ appId: process.env.AGORA_APP_ID ?? '', appCertificate: process.env.AGORA_APP_CERTIFICATE ?? '', customerKey: process.env.AGORA_CUSTOMER_KEY ?? '', customerSecret: process.env.AGORA_CUSTOMER_SECRET ?? '' }) : null;
+const voice = config.voiceEnabled ? createAgoraVoiceService({ appId: process.env.AGORA_APP_ID ?? '', appCertificate: process.env.AGORA_APP_CERTIFICATE ?? '', customerKey: process.env.AGORA_CUSTOMER_KEY ?? '', customerSecret: process.env.AGORA_CUSTOMER_SECRET ?? '', restBaseUrl: process.env.AGORA_REST_BASE_URL ?? undefined }) : null;
 const avatars = new AvatarStore(accounts, join(config.dataDir, 'avatars'));
 const backend = createV2App({ accounts, clock, logStore, avatars, origin: config.origin, cookieName: config.cookieName, adminCookieName: config.adminCookieName, secureCookies: config.secureCookies, adminPassword: config.adminPassword, voice });
 const app = process.env.WEB_ROOT ? createFrontendApp(backend.app, process.env.WEB_ROOT) : backend.app;

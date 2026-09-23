@@ -44,6 +44,8 @@ interface AdminDeps {
   accounts: AccountStore; directory: RoomDirectory; governance: RoomGovernance; avatars?: AvatarStore;
   origin: string; secureCookies: boolean; password: string | null; adminCookieName?: string;
   refresh: (room: StableRoom) => void; revokeUser: (userId: string, event?: { reason: 'logout' | 'credentials_changed'; sessionId?: string }) => Promise<void>;
+  /** D 组：声网频道对账计数（未启用时为 undefined） */
+  voiceStatus?: () => { rounds: number; lastAt: number; notInChannel: number; unknownKicks: number; failures: number; skipped: number };
 }
 
 const pageInput = (req: Request) => {
@@ -99,7 +101,7 @@ export function createAdminRouter(deps: AdminDeps) {
   router.get('/summary', (_req, res) => {
     const totals = deps.accounts.db.prepare('SELECT COUNT(*) total,SUM(CASE WHEN disabled_at IS NOT NULL THEN 1 ELSE 0 END) disabled FROM accounts').get()!;
     const total = Number(totals.total), disabled = Number(totals.disabled ?? 0);
-    const body: AdminSummary = { accounts: { total, active: total - disabled, disabled, activeSessions: Number(deps.accounts.db.prepare('SELECT COUNT(*) count FROM sessions WHERE expires_at>?').get(deps.accounts.now())!.count) }, registrationEnabled: deps.accounts.registrationEnabled(), avatars: { total: Number(deps.accounts.db.prepare('SELECT COUNT(*) count FROM avatar_assets').get()!.count), referenced: Number(deps.accounts.db.prepare('SELECT COUNT(*) count FROM accounts WHERE avatar_id IS NOT NULL').get()!.count) }, recentActions: recentActions() };
+    const body: AdminSummary = { accounts: { total, active: total - disabled, disabled, activeSessions: Number(deps.accounts.db.prepare('SELECT COUNT(*) count FROM sessions WHERE expires_at>?').get(deps.accounts.now())!.count) }, registrationEnabled: deps.accounts.registrationEnabled(), avatars: { total: Number(deps.accounts.db.prepare('SELECT COUNT(*) count FROM avatar_assets').get()!.count), referenced: Number(deps.accounts.db.prepare('SELECT COUNT(*) count FROM accounts WHERE avatar_id IS NOT NULL').get()!.count) }, recentActions: recentActions(), ...(deps.voiceStatus ? { voice: { reconcile: deps.voiceStatus() } } : {}) };
     res.json(body);
   });
   router.get('/accounts', (req, res) => {

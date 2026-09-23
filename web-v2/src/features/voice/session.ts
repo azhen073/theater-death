@@ -12,6 +12,8 @@ export interface VoiceContext {
   readOnly: boolean;
   online: boolean;
   activePage: boolean;
+  /** C 组：当前发言窗口实例（没有正在发言的人时为 null）；送达回执按它归属 */
+  deliveryWindow: string | null;
 }
 export interface VoiceState {
   connection: VoiceConnection;
@@ -77,6 +79,18 @@ const volumeIndicatorApi = (client: IAgoraRTCClient): VolumeIndicatorApi => {
   };
 };
 const VOLUME_INDICATOR_INTERVAL_MS = 200;
+/** C 组：同一（发言窗口 + 状态）的回执节流；状态变化立即上报 */
+const DELIVERY_REPORT_INTERVAL_MS = 1000;
+type DeliveryState = 'playing' | 'blocked' | 'silent-output' | 'failed';
+/**
+ * 本地音轨统计（`getLocalAudioStats`）为可选能力：用结构化垫片调用，版本/环境不支持时
+ * 只是少一个诊断字段，不影响通话（官方文档确认该方法存在，且必须在成功加入频道之后调用）。
+ */
+interface MediaStatsApi { getLocalAudioStats?: () => { sendBitrate?: number } }
+const mediaStatsApi = (client: IAgoraRTCClient): MediaStatsApi => {
+  const target = client as unknown as MediaStatsApi;
+  return { getLocalAudioStats: target.getLocalAudioStats?.bind(target) };
+};
 
 /**
  * One authenticated room media session (Agora). Credentials and tracks never leave memory.
@@ -98,6 +112,9 @@ export class VoiceSession {
   #rebuilding = false;
   /** 正在进行的取消发布/关轨任务：新建轨道前必须等它结束，否则会出现两条轨道同时发布（回声）。 */
   #stopTask: Promise<void> | null = null;
+  /** C 组回执节流：上次上报的（窗口:状态）与时间 */
+  #deliveryKey = '';
+  #deliveryAt = 0;
   #listeners = new Set<(state: VoiceState) => void>();
 
   state() { return this.#state; }
@@ -107,6 +124,8 @@ export class VoiceSession {
   setContext(context: VoiceContext | null) {
     const changedGame = this.#context !== null && (context === null || context.gameId !== this.#context.gameId || context.roomCode !== this.#context.roomCode);
     const lostPermission = this.#context?.canPublish === true && context?.canPublish !== true;
+    // 换了发言窗口 → 上一轮的回执节流作废（新窗口的第一条要立即上报）
+    if (context?.deliveryWindow !== this.#context?.deliveryWindow) { this.#deliveryKey = ''; this.#deliveryAt = 0; }
     this.#context = context;
     if (changedGame) { void this.leave(); return; }
     if (!context?.online || !context.activePage || !context.canPublish || context.readOnly || lostPermission) this.#clearIntent();
@@ -122,7 +141,7 @@ export class VoiceSession {
     try {
       const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), gameId: context.gameId });
       if (generation !== this.#generation) return;
-      AgoraRTC.onAutoplayFailed = () => this.#set({ audioBlocked: true });
+      AgoraRTC.onAutoplayFailed = () => { this.#set({ audioBlocked: true }); this.#reportDelivery('blocked'); };
       client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
       this.#client = client;
       this.#uid = Number(credentials.uid);
@@ -140,10 +159,16 @@ export class VoiceSession {
       client.on('user-published', (user, mediaType) => {
         void (async () => {
           if (mediaType !== 'audio') return;
-          await client!.subscribe(user, mediaType);
-          user.audioTrack?.setVolume(this.#outputVolume);
-          user.audioTrack?.play();
-        })().catch(() => undefined);
+          try {
+            await client!.subscribe(user, mediaType);
+            user.audioTrack?.setVolume(this.#outputVolume);
+            user.audioTrack?.play();
+            this.#reportDelivery(this.#outputVolume === 0 ? 'silent-output' : 'playing');
+          } catch {
+            // 以前这里的失败被静默吞掉："发送方全绿、接收方听不到"正是藏在这种地方
+            this.#reportDelivery('failed');
+          }
+        })();
       });
       client.on('user-unpublished', (user, mediaType) => {
         if (mediaType === 'audio') user.audioTrack?.stop();
@@ -195,10 +220,11 @@ export class VoiceSession {
     catch (error) { this.#set({ microphoneError: mediaError(error) }); }
   }
 
-  /** 远端播放音量 0–100（本机偏好，不上报服务端）。 */
+  /** 远端播放音量 0–100（本机偏好，不上报服务端音量值，只上报"是否静音"这一状态）。 */
   setOutputVolume(volume: number) {
     this.#outputVolume = Math.min(100, Math.max(0, Math.round(volume)));
     this.#applyOutputVolume();
+    this.#reportDelivery(this.#outputVolume === 0 ? 'silent-output' : 'playing');
   }
 
   /** 自己麦克风采集增益 0–100；每次重新开麦都会新建轨道，故值由会话记住并在开麦后重新应用。 */
@@ -224,6 +250,7 @@ export class VoiceSession {
     const client = this.#client;
     if (client) for (const user of client.remoteUsers) user.audioTrack?.play();
     this.#set({ audioBlocked: false });
+    this.#reportDelivery(this.#outputVolume === 0 ? 'silent-output' : 'playing');
   }
 
   async leave() {
@@ -313,8 +340,47 @@ export class VoiceSession {
     if (!client) return;
     for (const user of client.remoteUsers) user.audioTrack?.setVolume(this.#outputVolume);
   }
+  /**
+   * C 组：把「我这边有没有在播」上报给服务端。服务端按发言窗口聚合，只有发言者能看到汇总。
+   * 纪律：只做用户可见性，**不作为授权依据**；没有发言窗口 / 未加入频道时不上报；
+   * 同一（窗口 + 状态）1 秒内只发一次，状态变化立即发。
+   */
+  #reportDelivery(state: DeliveryState) {
+    const context = this.#context, client = this.#client;
+    if (!context || !client || !context.deliveryWindow) return;
+    // 官方要求：质量统计类调用必须在成功加入频道之后；没连上就上报会变成错误的自证
+    if (client.connectionState !== 'CONNECTED') return;
+    const key = `${context.deliveryWindow}:${state}`;
+    const now = Date.now();
+    if (this.#deliveryKey === key && now - this.#deliveryAt < DELIVERY_REPORT_INTERVAL_MS) return;
+    this.#deliveryKey = key; this.#deliveryAt = now;
+    void this.#postReceipt(context.deliveryWindow, state);
+  }
+  async #postReceipt(windowInstanceId: string, state: DeliveryState): Promise<void> {
+    const context = this.#context;
+    if (!context) return;
+    const snapshot = this.#clientSnapshot();
+    try {
+      await post(`/rooms/${encodeURIComponent(context.roomCode)}/voice/receipt`, {
+        requestId: newRequestId(), gameId: context.gameId, windowInstanceId, state,
+        ...(snapshot === null ? {} : { client: snapshot }),
+      });
+    } catch { /* 回执是尽力而为：失败不影响通话，也不改变胜负 */ }
+  }
+  /** 客户端自检快照（§13）：仅诊断用，服务端不据此授权。 */
+  #clientSnapshot(): { connectionState: string; sendBitrate?: number; remoteUsers: number } | null {
+    const client = this.#client;
+    if (!client) return null;
+    const stats = mediaStatsApi(client).getLocalAudioStats;
+    let sendBitrate: number | undefined;
+    if (stats) {
+      try { const value = stats().sendBitrate; if (typeof value === 'number' && Number.isFinite(value)) sendBitrate = value; } catch { /* 可选能力，缺失即省略 */ }
+    }
+    return { connectionState: client.connectionState, ...(sendBitrate === undefined ? {} : { sendBitrate }), remoteUsers: Array.isArray(client.remoteUsers) ? client.remoteUsers.length : 0 };
+  }
   #teardownClient() {
     this.#clearRetry();
+    this.#deliveryKey = ''; this.#deliveryAt = 0;
     const client = this.#client; this.#client = null;
     if (client) volumeIndicatorApi(client).disableAudioVolumeIndicator?.();
     // 离开后不再把自动播放失败记到已销毁的会话上（新会话 join 时会重新注册）

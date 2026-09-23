@@ -3734,6 +3734,55 @@
               "spiritSeats"
             ],
             "additionalProperties": false
+          },
+          "voice": {
+            "description": "当前发言窗口的送达回执聚合；仅对此刻持有发布权的人下发",
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "delivery": {
+                "type": "object",
+                "properties": {
+                  "windowInstanceId": {
+                    "type": "string"
+                  },
+                  "delivered": {
+                    "type": "integer"
+                  },
+                  "blocked": {
+                    "type": "integer"
+                  },
+                  "silentOutput": {
+                    "type": "integer"
+                  },
+                  "failed": {
+                    "type": "integer"
+                  },
+                  "listeners": {
+                    "type": "integer"
+                  },
+                  "updatedAt": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "windowInstanceId",
+                  "delivered",
+                  "blocked",
+                  "silentOutput",
+                  "failed",
+                  "listeners",
+                  "updatedAt"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "delivery"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

@@ -21,6 +21,8 @@ vi.mock('agora-rtc-sdk-ng', () => {
   class FakeClient {
     remoteUsers: Array<any> = [];
     published: Array<any> = [];
+    connectionState = 'CONNECTED';
+    getLocalAudioStats = () => ({ sendBitrate: 1234 });
     volumeIndicatorListener: ((users: readonly { uid: number | string; level: number }[]) => void) | null = null;
     enableAudioVolumeIndicator = vi.fn();
     disableAudioVolumeIndicator = vi.fn();
@@ -57,7 +59,7 @@ vi.mock('agora-rtc-sdk-ng', () => {
 import { VoiceSession } from '../web-v2/src/features/voice/session.ts';
 
 const context = (overrides: Partial<VoiceContext> = {}): VoiceContext => ({
-  roomCode: 'ROOM01', gameId: 'game-1', canPublish: true, readOnly: false, online: true, activePage: true, ...overrides,
+  roomCode: 'ROOM01', gameId: 'game-1', canPublish: true, readOnly: false, online: true, activePage: true, deliveryWindow: null, ...overrides,
 });
 
 async function connectedSession() {
@@ -274,5 +276,69 @@ describe('v2 voice connection resilience（凭证续期 / 重连 / 排障）', (
     await session.join();
     await session.requestMicrophone();
     expect(mocks.tracks.at(-1)!.options).toMatchObject({ microphoneId: 'device-2' });
+  });
+});
+
+describe('v2 voice delivery receipts（C 组送达回执）', () => {
+  beforeEach(() => { mocks.post.mockClear(); mocks.clients.length = 0; mocks.tracks.length = 0; mocks.joinUid = undefined; mocks.unpublishGate = null; });
+
+  const receiptCalls = () => mocks.post.mock.calls.filter(([path]) => String(path).includes('/voice/receipt'));
+  const settle = async () => { await new Promise((resolve) => setTimeout(resolve, 20)); };
+
+  it('订阅并播放成功后上报 playing，并带上客户端自检快照', async () => {
+    const { session, client } = await connectedSession();
+    session.setContext(context({ deliveryWindow: 'win-1' }));
+    client.emit('user-published', remoteUser(78), 'audio');
+    await vi.waitFor(() => expect(receiptCalls()).toHaveLength(1));
+    const [path, body] = receiptCalls()[0]!;
+    expect(String(path)).toBe('/rooms/ROOM01/voice/receipt');
+    expect(body).toMatchObject({ gameId: 'game-1', windowInstanceId: 'win-1', state: 'playing' });
+    expect(body.client).toMatchObject({ connectionState: 'CONNECTED', sendBitrate: 1234, remoteUsers: 0 });
+  });
+
+  it('订阅/播放失败上报 failed（不再被静默吞掉）', async () => {
+    const { session, client } = await connectedSession();
+    session.setContext(context({ deliveryWindow: 'win-1' }));
+    client.subscribe.mockRejectedValueOnce(new Error('subscribe failed'));
+    client.emit('user-published', remoteUser(79), 'audio');
+    await vi.waitFor(() => expect(receiptCalls()).toHaveLength(1));
+    expect(receiptCalls()[0]![1]).toMatchObject({ state: 'failed' });
+  });
+
+  it('自动播放被拦截时上报 blocked', async () => {
+    const { session } = await connectedSession();
+    session.setContext(context({ deliveryWindow: 'win-1' }));
+    const agora = (await import('agora-rtc-sdk-ng')).default as unknown as { onAutoplayFailed: () => void };
+    agora.onAutoplayFailed();
+    await vi.waitFor(() => expect(receiptCalls()).toHaveLength(1));
+    expect(receiptCalls()[0]![1]).toMatchObject({ state: 'blocked' });
+  });
+
+  it('同一窗口同一状态 1 秒内只发一条，状态变化立即发', async () => {
+    const { session, client } = await connectedSession();
+    session.setContext(context({ deliveryWindow: 'win-1' }));
+    client.emit('user-published', remoteUser(80), 'audio');
+    await vi.waitFor(() => expect(receiptCalls()).toHaveLength(1));
+
+    client.emit('user-published', remoteUser(81), 'audio');
+    await settle();
+    expect(receiptCalls()).toHaveLength(1);
+
+    session.setOutputVolume(0);
+    await vi.waitFor(() => expect(receiptCalls()).toHaveLength(2));
+    expect(receiptCalls()[1]![1]).toMatchObject({ state: 'silent-output' });
+  });
+
+  it('没有发言窗口或未真正连上时不上报（避免错误自证）', async () => {
+    const { session, client } = await connectedSession();
+    // 没有发言窗口
+    session.setOutputVolume(0);
+    await settle();
+    // 有窗口但连接不在 CONNECTED（重连中）
+    session.setContext(context({ deliveryWindow: 'win-1' }));
+    client.connectionState = 'RECONNECTING';
+    client.emit('user-published', remoteUser(82), 'audio');
+    await settle();
+    expect(receiptCalls()).toHaveLength(0);
   });
 });

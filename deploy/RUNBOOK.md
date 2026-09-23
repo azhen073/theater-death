@@ -142,7 +142,8 @@ git pull
 | SESSION_COOKIE_SECURE | HTTPS 部署时设为 true |
 | VOICE_ENABLED | 语音总开关（见 §7） |
 | AGORA_APP_ID / AGORA_APP_CERTIFICATE | 声网项目的 App ID 与 App Certificate（签发语音 token；不入版本库） |
-| AGORA_CUSTOMER_KEY / AGORA_CUSTOMER_SECRET | 声网频道管理 REST 凭据（踢人/终局关房；控制台「设置 → RESTful API」生成；不入版本库） |
+| AGORA_CUSTOMER_KEY / AGORA_CUSTOMER_SECRET | 声网频道管理 REST 凭据（踢人/终局关房/频道对账；控制台「设置 → RESTful API」生成；不入版本库） |
+| AGORA_REST_BASE_URL | 可选：频道管理 REST 基地址。中国区账号保持默认 `https://api.sd-rtn.com`；全球区项目填 `https://api.agora.io` |
 
 ## 7 语音（声网托管，公共白天语音）
 
@@ -154,7 +155,7 @@ git pull
 
 1. 注册声网账号（shengwang.cn，需实名认证），控制台创建项目（安全模式），取得 **App ID** 与 **App Certificate**（控制台列表里可能掩码显示，点复制图标获取真值）。
 2. **开启「连麦鉴权」**：控制台「全部产品 → 实时互动 RTC → 功能配置 → 连麦鉴权」启用（**开启后不可关闭**，约 5 分钟生效）。
-3. 生成 **频道管理 REST 凭据**：控制台「设置 → RESTful API → 添加密钥」，下载 `key_and_secret.txt`（**下载后控制台不再展示**，妥善保管）。
+3. 生成 **频道管理 REST 凭据**：控制台「**设置 → RESTful API → 添加密钥**」，生成一组客户 ID 与客户密钥；在客户密钥栏点「下载」（官方原文：`key_and_secret.txt` 里 **key = 客户 ID，secret = 客户密钥**）。**客户密钥只能下载一次、下载后控制台不再保存**，务必妥善保管。
 4. `.env` 设置：
    ```
    VOICE_ENABLED=true
@@ -162,9 +163,12 @@ git pull
    AGORA_APP_CERTIFICATE=<控制台 App Certificate>
    AGORA_CUSTOMER_KEY=<客户 ID>
    AGORA_CUSTOMER_SECRET=<客户密钥>
+   # 可选：全球区项目才需要，中国区留空即用默认 api.sd-rtn.com
+   AGORA_REST_BASE_URL=
    ```
 5. 重启应用（`deploy/update.sh` 或 `deploy/start.sh`），页面语音面板不再显示"文字测试模式"即为生效。
-6. 计费：免费层按「人×分钟」每月 1 万分钟（13 人 1 小时局约 780 分钟），超出按 7 元/千分钟；用量在声网控制台查看。
+6. **频道对账（5 秒一次，仅用于在线/权限对齐）**：服务端每 5 秒对有对局的房间查询一次频道内用户（官方 `GET /dev/v1/channel/user/{appid}/{channelName}`，限流 20 次/秒/账号，本用法约 0.2 QPS/房间），**只做两件事**：踢掉频道里我们不认识的 uid、统计"该在却不在"的身份数。官方接口**查不到是否在发流**，听众也合法在线，因此不会据此踢有身份的人；查询失败只计数（管理端 `GET /api/v2/admin/summary` 的 `voice.reconcile`），不暂停计时、不改变胜负。缺少客户密钥时对账全部记 `failures`（这是"生产要用踢人/对账就得配凭据"的原因）。
+7. 计费：免费层按「人×分钟」每月 1 万分钟（13 人 1 小时局约 780 分钟），超出按 7 元/千分钟；用量在声网控制台查看。
 
 ### 7.2 关于媒体链路
 

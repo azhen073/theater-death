@@ -28,6 +28,29 @@ export interface VoiceSessionLike {
   setInputVolume(volume: number): void;
 }
 
+/** 拥有发布权的发言类窗口（与服务端 `media.ts` 的 SPEAKING_WINDOWS 保持一致） */
+const SPEAKING_WINDOW_IDS = ['election_speech', 'speech_round', 'last_words', 'tie_speech'];
+
+/** 听者侧：在当前发言窗口里找出发言窗口实例（无发言窗口时为 null） */
+function speakingWindowId(view: RoomSnapshot | null): string | null {
+  if (!view) return null;
+  return view.windows.find(window => SPEAKING_WINDOW_IDS.includes(window.id))?.instanceId ?? null;
+}
+
+/**
+ * C 组送达情况的一句话摘要（刻意做得不显眼：小字、灰色、无徽标/告警色）。
+ * 分母是"报告过的接收端数"（listeners），不是频道人数；没有任何人上报时不显示。
+ */
+function deliverySummary(delivery: { delivered: number; blocked: number; silentOutput: number; failed: number; listeners: number } | null): { text: string; title: string } | null {
+  if (delivery === null || delivery.listeners === 0) return null;
+  const parts: string[] = [];
+  if (delivery.blocked > 0) parts.push(`${delivery.blocked} 人未播放`);
+  if (delivery.silentOutput > 0) parts.push(`${delivery.silentOutput} 人已静音`);
+  if (delivery.failed > 0) parts.push(`${delivery.failed} 人接收失败`);
+  const text = delivery.delivered > 0 ? `已送达 ${delivery.delivered}/${delivery.listeners}` : '等待接收确认';
+  return { text, title: [`已确认收到：${delivery.delivered}`, `共收到回执：${delivery.listeners}`, ...parts].join(' · ') };
+}
+
 export function VoiceBar({ enabled, view, online, activePage, session: injected }: { enabled: boolean; view: RoomSnapshot | null; online: boolean; activePage: boolean; session?: VoiceSessionLike }) {
   const sessionRef = useRef<VoiceSessionLike | null>(null);
   if (sessionRef.current === null) sessionRef.current = injected ?? new VoiceSession();
@@ -42,10 +65,11 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
   const outputVolume = preferences.voiceMuted ? 0 : preferences.voiceOutput;
   const optedOutRef = useRef(false);
   const autoMicKeyRef = useRef<string | null>(null);
+  const deliveryWindow = enabled && playing ? speakingWindowId(view) : null;
   useEffect(() => session.subscribe(setState), [session]);
   useEffect(() => {
-    session.setContext(enabled && playing ? { roomCode: view.room.code, gameId: view.gameId!, canPublish: view.capabilities.canPublishVoice, readOnly: view.viewer.readOnly, online, activePage } : null);
-  }, [session, enabled, playing, view?.room.code, view?.gameId, view?.capabilities.canPublishVoice, view?.viewer.readOnly, online, activePage]);
+    session.setContext(enabled && playing ? { roomCode: view.room.code, gameId: view.gameId!, canPublish: view.capabilities.canPublishVoice, readOnly: view.viewer.readOnly, online, activePage, deliveryWindow } : null);
+  }, [session, enabled, playing, view?.room.code, view?.gameId, view?.capabilities.canPublishVoice, view?.viewer.readOnly, online, activePage, deliveryWindow]);
   useEffect(() => { if (joined) session.setOutputVolume(outputVolume); }, [session, joined, outputVolume]);
   useEffect(() => { if (state.microphoneEnabled) session.setInputVolume(preferences.voiceInput); }, [session, state.microphoneEnabled, preferences.voiceInput]);
   useEffect(() => { optedOutRef.current = false; autoMicKeyRef.current = null; }, [view?.gameId]);
@@ -63,7 +87,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
     // 若此时就记下，重连成功后本窗口便不会再自动开麦。
     if (state.connection !== 'connected') return;
     if (!preferences.autoMic || !view.capabilities.canPublishVoice) return;
-    const speakingWindow = view.windows.find(window => ['election_speech', 'speech_round', 'last_words', 'tie_speech'].includes(window.id));
+    const speakingWindow = view.windows.find(window => SPEAKING_WINDOW_IDS.includes(window.id));
     const key = `${view.gameId}:${speakingWindow?.instanceId ?? view.public?.day?.currentSpeakerId ?? 'unknown'}`;
     if (state.microphoneEnabled || state.requested) { autoMicKeyRef.current = key; return; }
     if (autoMicKeyRef.current === key) return;
@@ -75,6 +99,8 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
   const canOpen = state.connection === 'connected' && activePage && online && view.capabilities.canPublishVoice && !view.viewer.readOnly;
   const display = voiceLevelDisplay({ view, remoteLevel: state.remoteLevel, outputVolume: preferences.voiceOutput, muted: preferences.voiceMuted, showLevels: preferences.voiceLevels });
   const speakerSeat = display.speakingPlayerId === null ? null : view.public?.seats.find(seat => seat.playerId === display.speakingPlayerId)?.seat ?? null;
+  // C 组：只有正在开麦的人会拿到服务端下发的送达聚合；显示刻意低调（小字灰色，细节放 title）
+  const delivery = state.microphoneEnabled ? deliverySummary(view.private?.voice?.delivery ?? null) : null;
   const commitOutput = () => { if (draftOutput !== null) { update({ voiceOutput: draftOutput }); setDraftOutput(null); } };
   const commitInput = () => { if (draftInput !== null) { update({ voiceInput: draftInput }); setDraftInput(null); } };
   return <section className={`voice-bar${activePage ? '' : ' voice-bar--background'}`} aria-label="公共语音">
@@ -90,6 +116,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
     {joined && <div className="voice-bar__levels">
       {ownLevelVisible(state.microphoneEnabled, preferences.voiceLevels) && <span className="voice-bar__own"><LevelMeter label="麦克风音量" level={state.level}/></span>}
       {display.speakingPlayerId !== null && <span className="voice-bar__speaker">{speakerSeat === null ? '' : `${speakerSeat}号 `}{display.muted ? '已静音' : display.showLevel ? `正在发言 · ${display.speakerLevel}%` : '正在发言'}</span>}
+      {delivery && <span className="voice-bar__delivery" title={delivery.title}>{delivery.text}</span>}
       <label className="voice-bar__volume">输出音量<input type="range" min={0} max={100} step={5} aria-label="输出音量" value={draftOutput ?? preferences.voiceOutput}
         onChange={event => { const next = Number(event.target.value); setDraftOutput(next); session.setOutputVolume(preferences.voiceMuted ? 0 : next); }}
         onPointerUp={commitOutput} onKeyUp={commitOutput} onBlur={commitOutput}/><span aria-hidden="true">{draftOutput ?? preferences.voiceOutput}</span></label>

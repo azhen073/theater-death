@@ -9,6 +9,7 @@ import type { Room } from '../rooms.ts';
 import type { AccountSession } from './account-store.ts';
 import type { RoomDirectory } from './room-directory.ts';
 import type { ActiveMember, StableRoom } from './stable-room.ts';
+import type { DeliveryView } from './media.ts';
 import { gameView } from './view.ts';
 import { ApiError } from './errors.ts';
 
@@ -43,6 +44,8 @@ export interface SnapshotDeps {
   directory: RoomDirectory;
   profile: (userId: string) => Profile;
   submissions?: (room: StableRoom, subjectPlayerId: string) => SubmissionDTO[];
+  /** C 组：当前发言窗口的送达聚合（只为「此刻持有发布权」的人读取） */
+  voice?: { deliveryFor: (gameId: string) => DeliveryView | null };
 }
 
 /** Viewer-specific fingerprints never use global engine/audit sequence counters. */
@@ -110,6 +113,9 @@ export class RoomSnapshots {
         channel.push({ messageId, clientMessageId: message.clientMessageId ?? '', cursor: channel.length + 1, senderId: message.senderId, text: message.text, at: message.at });
       }
     }
+    const gameId = room.gameId;
+    // C 组：送达回执只下发给此刻持有发布权的人（其他人不含该字段，避免听众信息变成公共知识）
+    const delivery = !readOnly && caps.canPublishVoice && gameId ? this.deps.voice?.deliveryFor(gameId) ?? null : null;
     const result: Omit<RoomSnapshot, 'serverTime' | 'viewVersion'> = {
       contractVersion: CONTRACT_VERSION, rulesVersion: room.ruleset.version, roomId: room.roomId, gameId: room.gameId,
       viewer: { userId: member.userId, memberId: member.memberId, kind: member.kind, subjectPlayerId: subject, readOnly, isHost: room.hostMemberId === member.memberId },
@@ -130,6 +136,7 @@ export class RoomSnapshots {
         self: { playerId: privateView.self.playerId, seat: privateView.self.seat, nickname: privateView.self.nickname, roleId: privateView.self.roleId, life: privateView.self.life, revealed: privateView.self.revealed, voteFrozen: privateView.self.voteFrozen, abilities: privateView.self.abilities, guardHistory: privateView.self.guardHistory },
         events: events(privateView.events), targets: privateView.targets, proposal: privateView.proposal, knowledge: privateView.knowledge,
         factionRoom: privateView.factionRoom ? { ...privateView.factionRoom, readOnly: readOnly || privateView.factionRoom.readOnly, canWrite: !readOnly && privateView.factionRoom.canWrite } : null,
+        ...(delivery ? { voice: { delivery } } : {}),
       } : null,
       capabilities: caps, windows,
       tasks: gameCaps.allowedCommands.flatMap((action) => windows.filter((w) => actionWindows[action].includes(w.id)).map((w) => ({ action, windowInstanceId: w.instanceId, closesAt: w.closesAt, targets: privateView?.targets?.[action as keyof typeof privateView.targets] ?? null }))),

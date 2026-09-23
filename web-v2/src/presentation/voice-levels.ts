@@ -60,20 +60,30 @@ export interface VoiceLevelInput {
 export interface VoiceLevelDisplay {
   /** 输出静音时仍要保留"谁在发言"，只把电平换成「已静音」。 */
   readonly speakingPlayerId: string | null;
+  /** 当前发言者就是本人：远端电平是"我听到别人的响度"，对自己没有意义，因此不显示数值与"已静音"。 */
+  readonly isSelfSpeaking: boolean;
   /** 关闭「音量指示」时为 0：文案只保留"谁在发言"，不显示百分比。 */
   readonly speakerLevel: number;
-  /** 是否允许显示电平数值（关闭音量指示后为 false，但身份照旧显示）。 */
+  /** 是否允许显示电平数值（自己发言或关闭音量指示后为 false，但身份照旧显示）。 */
   readonly showLevel: boolean;
   readonly muted: boolean;
 }
 
+/** 本人在本局的座位（观众/第二屏没有 `private.self`，返回 null）。 */
+export function selfPlayerId(view: RoomSnapshot | null): string | null {
+  return view?.private?.self.playerId ?? null;
+}
+
 export function voiceLevelDisplay(input: VoiceLevelInput): VoiceLevelDisplay {
   const speaker = speakingPlayerId(input.view);
+  // 自己发言时不显示远端电平：那一行只留「N号 正在发言」，避免把 0%/别人响度当自己的音量
+  const isSelfSpeaking = speaker !== null && speaker === selfPlayerId(input.view);
   return {
     speakingPlayerId: speaker,
-    speakerLevel: speaker === null || !input.showLevels ? 0 : clampVoiceLevel(input.remoteLevel, 0),
-    showLevel: input.showLevels,
-    muted: input.muted || clampVoiceLevel(input.outputVolume, VOICE_LEVEL_MAX) === VOICE_LEVEL_MIN,
+    isSelfSpeaking,
+    speakerLevel: speaker === null || isSelfSpeaking || !input.showLevels ? 0 : clampVoiceLevel(input.remoteLevel, 0),
+    showLevel: input.showLevels && !isSelfSpeaking,
+    muted: isSelfSpeaking ? false : input.muted || clampVoiceLevel(input.outputVolume, VOICE_LEVEL_MAX) === VOICE_LEVEL_MIN,
   };
 }
 

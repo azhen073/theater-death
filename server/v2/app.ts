@@ -17,7 +17,7 @@ import { ApiError } from './errors.ts';
 import { gameView } from './view.ts';
 import { parseCommand } from './parse-command.ts';
 import { RateLimits } from './rate-limit.ts';
-import { V2Media } from './media.ts';
+import { V2Media, DELIVERY_STATES, type DeliveryState } from './media.ts';
 import { createMaintenance } from './maintenance.ts';
 import { createDiagnostics } from './diagnostics.ts';
 import { RoomDirectory } from './room-directory.ts';
@@ -76,9 +76,13 @@ export function createV2App(deps: V2Deps) {
   const presence = new MemberPresence(directory);
   const rounds = new RoomRounds(directory, governance);
   const grants = new ScreenGrants(directory);
-  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id) });
+  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id), voice: { deliveryFor: (gameId) => media.deliveryFor(gameId) } });
   hub = createRoomRealtime({ directory, snapshots, presence, origin: deps.origin, cookieName: deps.cookieName });
-  const maintenance = createMaintenance(directory, empty, deps.avatars ? () => deps.avatars!.collect() : undefined);
+  // D 组对账：只对有对局且已进入对局的房间跑；REST 在媒体自己的串行队列里执行，不阻塞游戏队列
+  const maintenance = createMaintenance(directory, empty, deps.avatars ? () => deps.avatars!.collect() : undefined, {
+    intervalMs: 5_000,
+    run: (room) => { const access = room.access; if (!access || room.phase !== 'playing' || !deps.voice) return Promise.resolve(); return media.reconcile(access); },
+  });
   const revokeUser = async (userId: string, event: AccountRevocation = { reason: 'credentials_changed' }) => {
     for (const room of [...directory.byId.values()]) await directory.transaction(() => room.enqueue(() => {
       if (room.dissolved) return;
@@ -91,7 +95,7 @@ export function createV2App(deps: V2Deps) {
       refresh(room);
     }));
   };
-  const admin = createAdminRouter({ accounts, directory, governance, ...(deps.avatars ? { avatars: deps.avatars } : {}), ...(deps.adminCookieName ? { adminCookieName: deps.adminCookieName } : {}), origin: deps.origin, secureCookies: deps.secureCookies ?? false, password: deps.adminPassword ?? null, refresh, revokeUser });
+  const admin = createAdminRouter({ accounts, directory, governance, ...(deps.avatars ? { avatars: deps.avatars } : {}), ...(deps.adminCookieName ? { adminCookieName: deps.adminCookieName } : {}), origin: deps.origin, secureCookies: deps.secureCookies ?? false, password: deps.adminPassword ?? null, refresh, revokeUser, voiceStatus: () => media.reconcileSnapshot() });
 
   const app = express();
   app.disable('x-powered-by');
@@ -345,6 +349,20 @@ export function createV2App(deps: V2Deps) {
   router.post('/rooms/:code/second-screen/revoke', async (req, res) => { const s = intent(req); await grants.revoke(roomFor(req), s, matchId(req)); res.json({ revoked: true }); });
   router.post('/rooms/:code/voice/token', async (req, res) => { const s = intent(req); limited(req, 'voice', 6, 3000); const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req)); res.json(await media.issue(room.access!, s)); });
   router.post('/rooms/:code/voice/sync', async (req, res) => { const s = intent(req); limited(req, 'voice', 6, 3000); const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req)); if (!deps.voice) throw new ApiError(409, 'voice_disabled'); try { await media.sync(room.access!, true); } catch { throw new ApiError(503, 'voice_unavailable'); } res.json({ synced: true }); });
+  router.post('/rooms/:code/voice/receipt', async (req, res) => {
+    const s = intent(req); limited(req, 'voice-receipt', 60, 60_000);
+    const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req));
+    if (!deps.voice) throw new ApiError(409, 'voice_disabled');
+    // 身份一律由服务端解析：body 里只有窗口与状态，没有身份
+    const viewer = room.access?.resolve(s);
+    if (!viewer) throw new ApiError(403, 'room_access_required');
+    const windowInstanceId = textField(req.body?.windowInstanceId, 'window_instance_id', 1, 80);
+    const state = textField(req.body?.state, 'state', 1, 20) as DeliveryState;
+    if (!DELIVERY_STATES.includes(state)) throw new ApiError(400, 'invalid_request_payload');
+    const result = media.recordReceipt(room.access!, viewer.mediaIdentity, windowInstanceId, state);
+    if (result.push) refresh(room);
+    res.json({ recorded: result.recorded, delivery: result.delivery });
+  });
   router.get('/diagnostics', (_req, res) => res.json({ ...diagnostics.snapshot(), rooms: directory.byId.size, playingRooms: [...directory.byId.values()].filter((r) => r.phase === 'playing').length, connections: hub.connectionCount() }));
   app.use('/api/v2', router);
   app.use((_req, res) => res.status(404).json({ error: { code: 'not_found' } }));

@@ -18,6 +18,16 @@ export interface PublishGrant {
   readonly expiresAt: number;
 }
 
+/** 频道内用户查询结果（D 组对账用） */
+export interface ChannelUserQuery {
+  /** 频道是否存在（官方字段名 `channel_exist` 仍待官方站确认，缺失时退化为「有用户即在」） */
+  readonly channelExist: boolean;
+  /** 频道场景：1 = COMMUNICATION，2 = LIVE_BROADCASTING；未知为 null */
+  readonly mode: number | null;
+  /** 频道内用户 uid 列表 */
+  readonly users: readonly number[];
+}
+
 export interface VoiceService {
   /** 签发加入凭证（不含发布权限） */
   issueCredentials(input: { roomName: string; uid: number }): VoiceCredentials;
@@ -29,6 +39,8 @@ export interface VoiceService {
   closeRoom(roomName: string): Promise<void>;
   /** 移除在线参与者（踢人 = 清位，不拉黑：一次性踢出，可立即重进） */
   removeParticipant(roomName: string, uid: number): Promise<void>;
+  /** 服务端事实：查询频道内用户（D 组轮询对账）。可选能力：未实现的适配器省略后对账会跳过。 */
+  queryChannelUsers?(roomName: string): Promise<ChannelUserQuery>;
 }
 
 export interface AgoraVoiceOptions {
@@ -121,6 +133,39 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
   }
 
   /**
+   * 频道管理 REST 的统一调用：Basic 认证（客户 ID + 客户密钥）、单次超时、5xx/超时/网络错误退避重试。
+   * 4xx 视为配置/鉴权类永久失败，不重试（官方最佳实践：客户端超时建议 ≥20 秒，最低不低于 5 秒）。
+   */
+  async function restWithRetry(pathname: string, init: { method: 'GET' | 'POST'; body?: string }): Promise<Response> {
+    const attempts = restRetries + 1;
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      if (attempt > 1) await sleep(restRetryDelayMs * 4 ** (attempt - 2));
+      try {
+        const response = await doFetch(`${restBaseUrl}${pathname}`, {
+          method: init.method,
+          headers: {
+            'Content-Type': 'application/json',
+            // 频道管理 REST 使用「客户 ID + 客户密钥」基本认证（不是 App ID/证书）
+            Authorization: `Basic ${Buffer.from(`${customerKey}:${customerSecret}`).toString('base64')}`,
+          },
+          ...(init.body === undefined ? {} : { body: init.body }),
+          signal: AbortSignal.timeout(restTimeoutMs),
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '');
+          throw new AgoraRestError(`声网频道管理失败：HTTP ${response.status} ${detail}`, response.status);
+        }
+        return response;
+      } catch (error) {
+        lastError = error;
+        if (attempt >= attempts || !isRetryable(error)) break;
+      }
+    }
+    throw describeRestFailure(lastError, restTimeoutMs, attempts);
+  }
+
+  /**
    * 频道管理 REST：创建封禁规则。
    * `time: 0` + `join_channel` 表示一次性踢出、可立即重进：
    * - 带 uid：踢出指定用户（踢人 = 清位，不拉黑）
@@ -137,32 +182,34 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
       time: 0,
       privileges: ['join_channel'],
     });
-    const attempts = restRetries + 1;
-    let lastError: unknown = null;
-    for (let attempt = 1; attempt <= attempts; attempt += 1) {
-      if (attempt > 1) await sleep(restRetryDelayMs * 4 ** (attempt - 2));
-      try {
-        const response = await doFetch(`${restBaseUrl}/dev/v1/kicking-rule`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // 频道管理 REST 使用「客户 ID + 客户密钥」基本认证（不是 App ID/证书）
-            Authorization: `Basic ${Buffer.from(`${customerKey}:${customerSecret}`).toString('base64')}`,
-          },
-          body,
-          signal: AbortSignal.timeout(restTimeoutMs),
-        });
-        if (!response.ok) {
-          const detail = await response.text().catch(() => '');
-          throw new AgoraRestError(`声网频道管理失败：HTTP ${response.status} ${detail}`, response.status);
-        }
-        return;
-      } catch (error) {
-        lastError = error;
-        if (attempt >= attempts || !isRetryable(error)) break;
-      }
-    }
-    throw describeRestFailure(lastError, restTimeoutMs, attempts);
+    await restWithRetry('/dev/v1/kicking-rule', { method: 'POST', body });
+  }
+
+  /**
+   * D 组轮询对账的事实来源：`GET /dev/v1/channel/user/{appid}/{channelName}`（官方 API 参考）。
+   * 官方只回答「在线/角色/入频时间」，**不能**回答「是否在发流」，因此对账只用于在线与权限对齐。
+   * 响应字段名（`channel_exist` / `mode` / `users`）目前来自非官方英文站，故解析保持容错：
+   * 缺字段时退化（`channel_exist` 缺失 → 以「有用户」判定；`users` 缺失 → 尝试直播场景的 broadcasters/audience）。
+   */
+  async function queryChannelUsers(roomName: string): Promise<ChannelUserQuery> {
+    const response = await restWithRetry(
+      `/dev/v1/channel/user/${encodeURIComponent(appId)}/${encodeURIComponent(roomName)}`,
+      { method: 'GET' },
+    );
+    const payload = (await response.json().catch(() => null)) as
+      | { success?: boolean; data?: { channel_exist?: unknown; mode?: unknown; users?: unknown; broadcasters?: unknown; audience?: unknown } }
+      | null;
+    const data = payload?.data;
+    if (payload?.success !== true || data === undefined || data === null) throw new Error('声网频道查询失败：响应不可解析');
+    const numbers = (value: unknown): number[] => (Array.isArray(value) ? value.filter((item): item is number => typeof item === 'number' && Number.isFinite(item)) : []);
+    const users = numbers(data.users);
+    const fallback = [...numbers(data.broadcasters), ...numbers(data.audience)];
+    const resolved = users.length > 0 ? users : fallback;
+    return {
+      channelExist: data.channel_exist === true || resolved.length > 0,
+      mode: typeof data.mode === 'number' ? data.mode : null,
+      users: resolved,
+    };
   }
 
   return {
@@ -196,6 +243,10 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
 
     removeParticipant(roomName, uid) {
       return kickFromChannel({ cname: roomName, uid });
+    },
+
+    queryChannelUsers(roomName) {
+      return queryChannelUsers(roomName);
     },
   };
 }
