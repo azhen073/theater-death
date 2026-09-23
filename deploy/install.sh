@@ -19,10 +19,17 @@ else
     echo "SESSION_SECRET=$secret"
     echo 'SESSION_COOKIE_SECURE=false'
     echo 'PUBLIC_BASE_URL=http://localhost:3000'
+    echo '# 可选：管理后台口令（16–256 位），留空即关闭管理后台'
+    echo 'ADMIN_PASSWORD='
     echo '# 语音（声网）：填入声网控制台项目的 App ID / App Certificate 并把 VOICE_ENABLED 改为 true'
     echo 'VOICE_ENABLED=false'
     echo 'AGORA_APP_ID='
     echo 'AGORA_APP_CERTIFICATE='
+    echo '# 频道管理 REST（踢人 / 终局关房 / 频道对账）：控制台「设置 → RESTful API → 添加密钥」，客户密钥只能下载一次'
+    echo 'AGORA_CUSTOMER_KEY='
+    echo 'AGORA_CUSTOMER_SECRET='
+    echo '# 可选：频道管理 REST 基地址，中国区留空即用默认 https://api.sd-rtn.com，全球区项目填 https://api.agora.io'
+    echo 'AGORA_REST_BASE_URL='
   } > "$ENV_FILE"
   echo "已生成 .env（含随机 SESSION_SECRET）。"
 fi

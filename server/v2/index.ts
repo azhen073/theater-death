@@ -11,11 +11,13 @@ import { AvatarStore } from './avatars.ts';
 import { createFrontendApp } from './frontend-app.ts';
 
 const config = configuration();
+if (config.voiceDegraded) console.warn('[theater-death] VOICE_ENABLED=true 但语音配置不完整（需要 AGORA_APP_ID / AGORA_APP_CERTIFICATE），按「文字测试模式」运行');
+if (config.voiceEnabled && !config.voiceAdmin) console.warn('[theater-death] 未配置 AGORA_CUSTOMER_KEY / AGORA_CUSTOMER_SECRET：踢人、终局关房与频道对账将不可用（语音本体不受影响）');
 mkdirSync(config.dataDir, { recursive: true });
 const clock = createSystemClock();
 const accounts = new AccountStore(join(config.dataDir, 'accounts.sqlite'), () => clock.now());
 const logStore = createLogStore(join(config.dataDir, 'audit.sqlite'));
-const voice = config.voiceEnabled ? createAgoraVoiceService({ appId: process.env.AGORA_APP_ID ?? '', appCertificate: process.env.AGORA_APP_CERTIFICATE ?? '', customerKey: process.env.AGORA_CUSTOMER_KEY ?? '', customerSecret: process.env.AGORA_CUSTOMER_SECRET ?? '', restBaseUrl: process.env.AGORA_REST_BASE_URL ?? undefined }) : null;
+const voice = config.voiceEnabled ? createAgoraVoiceService({ appId: process.env.AGORA_APP_ID ?? '', appCertificate: process.env.AGORA_APP_CERTIFICATE ?? '', customerKey: process.env.AGORA_CUSTOMER_KEY ?? '', customerSecret: process.env.AGORA_CUSTOMER_SECRET ?? '', restBaseUrl: process.env.AGORA_REST_BASE_URL?.trim() || undefined }) : null;
 const avatars = new AvatarStore(accounts, join(config.dataDir, 'avatars'));
 const backend = createV2App({ accounts, clock, logStore, avatars, origin: config.origin, cookieName: config.cookieName, adminCookieName: config.adminCookieName, secureCookies: config.secureCookies, adminPassword: config.adminPassword, voice });
 const app = process.env.WEB_ROOT ? createFrontendApp(backend.app, process.env.WEB_ROOT) : backend.app;

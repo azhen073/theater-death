@@ -93,7 +93,8 @@ describe('声网 VoiceAdapter', () => {
       customerKey: CUSTOMER_KEY,
       customerSecret: CUSTOMER_SECRET,
       restBaseUrl: 'https://rest.test',
-      fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+      fetchImpl: (async (url: string | URL | Request, init?: RequestInit) => {
+        if (init?.method === 'GET') return new Response(JSON.stringify({ success: true, data: { channel_exist: false, users: [] } }), { status: 200 });
         bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
         return new Response('{}', { status: 200 });
       }) as typeof fetch,
@@ -102,6 +103,51 @@ describe('声网 VoiceAdapter', () => {
     expect(bodies).toHaveLength(1);
     expect(bodies[0]).toMatchObject({ cname: 'g_test', time: 0, privileges: ['join_channel'] });
     expect('uid' in (bodies[0] ?? {})).toBe(false);
+  });
+
+  it('关闭语音房：官方"踢出所有人"实测是空操作，因此按频道实况逐个补踢', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    let usersSeen = 0;
+    const service = createAgoraVoiceService({
+      appId: APP_ID,
+      appCertificate: APP_CERTIFICATE,
+      customerKey: CUSTOMER_KEY,
+      customerSecret: CUSTOMER_SECRET,
+      restBaseUrl: 'https://rest.test',
+      restRetryDelayMs: 1,
+      fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+        if (init?.method === 'GET') {
+          usersSeen += 1;
+          // 第一次查询：频道里还有两个人（官方"踢所有人"没生效）；补踢后再查：已空
+          const users = usersSeen === 1 ? [11, 12] : [];
+          return new Response(JSON.stringify({ success: true, data: { channel_exist: true, mode: 1, users } }), { status: 200 });
+        }
+        bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Response('{"status":"success","id":0}', { status: 200 });
+      }) as typeof fetch,
+    });
+    await service.closeRoom('g_test');
+    expect(bodies.map((body) => body.uid)).toEqual([undefined, 11, 12]);
+    expect(bodies.every((body) => body.cname === 'g_test' && body.time === 0)).toBe(true);
+  });
+
+  it('关闭语音房：频道查询失败时只留官方那一次调用，不阻塞关房', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const service = createAgoraVoiceService({
+      appId: APP_ID,
+      appCertificate: APP_CERTIFICATE,
+      customerKey: CUSTOMER_KEY,
+      customerSecret: CUSTOMER_SECRET,
+      restBaseUrl: 'https://rest.test',
+      restRetryDelayMs: 1,
+      fetchImpl: (async (_url: string | URL | Request, init?: RequestInit) => {
+        if (init?.method === 'GET') return new Response('nope', { status: 401 });
+        bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return new Response('{"status":"success","id":0}', { status: 200 });
+      }) as typeof fetch,
+    });
+    await expect(service.closeRoom('g_test')).resolves.toBeUndefined();
+    expect(bodies).toHaveLength(1);
   });
 
   it('REST 失败：非 2xx 响应抛出错误', async () => {
@@ -194,6 +240,26 @@ describe('声网 VoiceAdapter', () => {
     expect(calls[0]?.url).toBe(`https://rest.test/dev/v1/channel/user/${APP_ID}/g_test`);
     expect(calls[0]?.init.method).toBe('GET');
     expect(String((calls[0]?.init.headers as Record<string, string>)?.Authorization)).toMatch(/^Basic /);
+  });
+
+  it('空/空白的 REST 基地址退回默认中国区域名（.env 里的 `AGORA_REST_BASE_URL=` 会传成空串）', async () => {
+    for (const configured of ['', '   ', undefined, 'https://rest.test/']) {
+      const calls: string[] = [];
+      const service = createAgoraVoiceService({
+        appId: APP_ID,
+        appCertificate: APP_CERTIFICATE,
+        customerKey: CUSTOMER_KEY,
+        customerSecret: CUSTOMER_SECRET,
+        ...(configured === undefined ? {} : { restBaseUrl: configured }),
+        fetchImpl: (async (url: string | URL | Request) => {
+          calls.push(String(url));
+          return new Response(JSON.stringify({ success: true, data: { channel_exist: false, users: [] } }), { status: 200 });
+        }) as typeof fetch,
+      });
+      await service.queryChannelUsers?.('g_test');
+      // 尾随斜杠也不能拼出双斜杠（`https://rest.test//dev/...`）
+      expect(calls[0]).toBe(configured === 'https://rest.test/' ? `https://rest.test/dev/v1/channel/user/${APP_ID}/g_test` : `https://api.sd-rtn.com/dev/v1/channel/user/${APP_ID}/g_test`);
+    }
   });
 
   it('对账查询：字段缺失时容错（channel_exist 缺失按"有用户即在"，users 缺失回落直播场景字段）', async () => {

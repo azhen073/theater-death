@@ -163,12 +163,13 @@ git pull
    AGORA_APP_CERTIFICATE=<控制台 App Certificate>
    AGORA_CUSTOMER_KEY=<客户 ID>
    AGORA_CUSTOMER_SECRET=<客户密钥>
-   # 可选：全球区项目才需要，中国区留空即用默认 api.sd-rtn.com
+   # 可选：全球区项目才需要，中国区留空即用默认 api.sd-rtn.com（留空与不写等价，服务端按「未配置」处理）
    AGORA_REST_BASE_URL=
    ```
-5. 重启应用（`deploy/update.sh` 或 `deploy/start.sh`），页面语音面板不再显示"文字测试模式"即为生效。
-6. **频道对账（5 秒一次，仅用于在线/权限对齐）**：服务端每 5 秒对有对局的房间查询一次频道内用户（官方 `GET /dev/v1/channel/user/{appid}/{channelName}`，限流 20 次/秒/账号，本用法约 0.2 QPS/房间），**只做两件事**：踢掉频道里我们不认识的 uid、统计"该在却不在"的身份数。官方接口**查不到是否在发流**，听众也合法在线，因此不会据此踢有身份的人；查询失败只计数（管理端 `GET /api/v2/admin/summary` 的 `voice.reconcile`），不暂停计时、不改变胜负。缺少客户密钥时对账全部记 `failures`（这是"生产要用踢人/对账就得配凭据"的原因）。
-7. 计费：免费层按「人×分钟」每月 1 万分钟（13 人 1 小时局约 780 分钟），超出按 7 元/千分钟；用量在声网控制台查看。
+5. 重启应用（`deploy/update.sh` 或 `deploy/start.sh`），页面语音面板不再显示"文字测试模式"即为生效。`VOICE_ENABLED=true` 但缺 App ID/证书时**不会拒绝启动**：服务端打印「按『文字测试模式』运行」后继续提供文字对局（与 v1 入口一致）；缺客户 ID/密钥时语音本体照常，只额外打印一条「踢人、终局关房与频道对账将不可用」。
+6. **频道对账（5 秒一次，仅用于在线/权限对齐）**：服务端每 5 秒对有对局的房间查询一次频道内用户（官方 `GET /dev/v1/channel/user/{appid}/{channelName}`，限流 20 次/秒/账号，本用法约 0.2 QPS/房间），**只做两件事**：踢掉频道里我们不认识的 uid、统计"该在却不在"的身份数。官方接口**查不到是否在发流**，听众也合法在线，因此不会据此踢有身份的人；查询失败只计数（管理端 `GET /api/v2/admin/summary` 的 `voice.reconcile`），不暂停计时、不改变胜负，并在 `logs app` 打印一条 `voice_reconcile_query_failed <原因>`。缺少客户密钥时对账全部记 `skipped`（这是"生产要用踢人/对账就得配凭据"的原因）。
+7. **终局关房**：先按官方语义调用「不带 uid 的踢人规则」，再按频道实况**逐个补踢**。2026-09-23 真实账号实测：不带 uid 的调用对空频道与有人频道都返回 `{"status":"success","id":0}`，但频道内一个用户都不少、踢人规则列表为空（静默空操作），只信它会让终局/解散后玩家继续留在语音里；补踢后仍有人则打 `voice_close_room_incomplete <人数>`，并留待下一次 `sync` 重试。
+8. 计费：免费层按「人×分钟」每月 1 万分钟（13 人 1 小时局约 780 分钟），超出按 7 元/千分钟；用量在声网控制台查看。
 
 ### 7.2 关于媒体链路
 
@@ -184,6 +185,9 @@ git pull
 | 隧道 530 / error 1033 | cloudflared 连接器没连上：检查本机 cloudflared 进程与 Zero Trust 面板 Tunnel 状态 |
 | 加入房间提示房间不存在 | 房间在后端内存中：服务重启后旧房间码失效，重新创建房间即可 |
 | 语音按钮提示连接失败 | ① `.env` 的 `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE` 是否与项目一致；② 控制台是否已开启「连麦鉴权」；③ `logs app` 查看服务端报错 |
+| 终局/解散后玩家仍留在语音里 | 看 `logs app` 是否有 `voice_close_room_incomplete`；频道管理调用需要 `.env` 的 `AGORA_CUSTOMER_KEY` / `AGORA_CUSTOMER_SECRET`（缺凭据时踢人/关房/对账全是无效的），并确认 `AGORA_REST_BASE_URL` 没写成带路径或错区域的地址 |
+| 管理后台打不开 | `.env` 需要 `ADMIN_PASSWORD`（16–256 位）；compose 已注入该变量，改完 `.env` 需重启容器 |
+| 对账计数全是 `failures` | `logs app` 搜 `voice_reconcile_query_failed`：多为客户密钥错、区域地址错；计数与最近数值见 `GET /api/v2/admin/summary` 的 `voice.reconcile`（`rounds` 应随时间增长） |
 | 加入语音后说不了话 | 正常受限：界面会显示原因（夜间静音 / 投票禁麦 / 非你的发言时间 / 已出局旁听）；发布权由服务端通过短期 token 控制，不受浏览器本地状态影响 |
 | 构建失败 | 多为网络问题：确认 Docker 可用、registry 加速已配置，重跑安装脚本 |
 

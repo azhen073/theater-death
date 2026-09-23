@@ -1,4 +1,4 @@
-﻿# 首次安装：检查 Docker -> 生成 .env -> 构建镜像 -> 启动服务
+# 首次安装：检查 Docker -> 生成 .env -> 构建镜像 -> 启动服务
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
@@ -19,10 +19,17 @@ if (Test-Path -LiteralPath $envPath) {
     'SESSION_SECRET=' + $secret,
     'SESSION_COOKIE_SECURE=false',
     'PUBLIC_BASE_URL=http://localhost:3000',
+    '# 可选：管理后台口令（16–256 位），留空即关闭管理后台',
+    'ADMIN_PASSWORD=',
     '# 语音（声网）：填入声网控制台项目的 App ID / App Certificate 并把 VOICE_ENABLED 改为 true',
     'VOICE_ENABLED=false',
     'AGORA_APP_ID=',
-    'AGORA_APP_CERTIFICATE='
+    'AGORA_APP_CERTIFICATE=',
+    '# 频道管理 REST（踢人 / 终局关房 / 频道对账）：控制台「设置 → RESTful API → 添加密钥」，客户密钥只能下载一次',
+    'AGORA_CUSTOMER_KEY=',
+    'AGORA_CUSTOMER_SECRET=',
+    '# 可选：频道管理 REST 基地址，中国区留空即用默认 https://api.sd-rtn.com，全球区项目填 https://api.agora.io',
+    'AGORA_REST_BASE_URL='
   )
   [System.IO.File]::WriteAllLines($envPath, $lines, (New-Object System.Text.UTF8Encoding $false))
   Write-Host '已生成 .env（含随机 SESSION_SECRET）。'

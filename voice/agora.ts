@@ -76,6 +76,12 @@ const DEFAULT_REST_RETRY_DELAY_MS = 250;
  * 作为"被改客户端在窗口外继续发麦"的最坏时长上限（原默认 600 秒）。
  */
 const DEFAULT_PUBLISH_TTL_SECONDS = 150;
+/**
+ * 关房补踢：官方「不带 uid = 踢出频道内所有用户」在真实项目上会返回 `{"status":"success","id":0}` 却一个人都不踢
+ * （2026-09-23 实测复现），因此关房后按频道实况逐个补踢，避免终局/解散后玩家留在语音里。
+ */
+const CLOSE_ROOM_KICK_LIMIT = 50;
+const CLOSE_ROOM_SWEEP_DELAY_MS = 500;
 
 /** 频道管理 REST 的失败：带状态码，供重试判定（4xx 视为永久失败，5xx 可重试）。 */
 class AgoraRestError extends Error {
@@ -113,7 +119,10 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
   const customerSecret = options.customerSecret ?? '';
   const tokenTtl = options.tokenTtlSeconds ?? 1800;
   const publishTtl = options.publishTtlSeconds ?? DEFAULT_PUBLISH_TTL_SECONDS;
-  const restBaseUrl = options.restBaseUrl ?? DEFAULT_REST_BASE_URL;
+  // 空串/空白视为「未配置」：.env 与 compose 里的 `AGORA_REST_BASE_URL=` 会传成空串，
+  // 若直接用它拼 URL 会得到相对路径（Node 的 fetch 会抛 Failed to parse URL），
+  // 于是踢人/关房/频道对账全部失败且看起来像"凭据有问题"。
+  const restBaseUrl = (options.restBaseUrl ?? '').trim().replace(/\/+$/, '') || DEFAULT_REST_BASE_URL;
   const restTimeoutMs = options.restTimeoutMs ?? DEFAULT_REST_TIMEOUT_MS;
   const restRetries = Math.max(0, Math.trunc(options.restRetries ?? DEFAULT_REST_RETRIES));
   const restRetryDelayMs = Math.max(0, options.restRetryDelayMs ?? DEFAULT_REST_RETRY_DELAY_MS);
@@ -212,6 +221,25 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
     };
   }
 
+  /**
+   * 关房：先按官方语义"踢出频道内所有用户"，再按频道实况逐个补踢。
+   * 实测（真实账号，2026-09-23）：不带 uid 的调用对空频道与有人频道都返回 `{"status":"success","id":0}`，
+   * 但频道内用户一个都没少、踢人规则列表为空——即它是**静默空操作**。只信它会让终局/解散后玩家继续留在语音里。
+   */
+  async function closeRoom(roomName: string): Promise<void> {
+    await kickFromChannel({ cname: roomName });
+    const sweep = async (): Promise<number> => {
+      const query = await queryChannelUsers(roomName).catch(() => null);
+      const users = (query?.users ?? []).slice(0, CLOSE_ROOM_KICK_LIMIT);
+      for (const uid of users) await kickFromChannel({ cname: roomName, uid }).catch(() => undefined);
+      return users.length;
+    };
+    if (await sweep() === 0) return;
+    await sleep(CLOSE_ROOM_SWEEP_DELAY_MS);
+    const remaining = await queryChannelUsers(roomName).catch(() => null);
+    if ((remaining?.users.length ?? 0) > 0) console.warn('voice_close_room_incomplete', remaining!.users.length);
+  }
+
   return {
     issueCredentials({ roomName, uid }) {
       return { appId, channel: roomName, uid, token: subscriberToken(roomName, uid) };
@@ -237,9 +265,7 @@ export function createAgoraVoiceService(options: AgoraVoiceOptions): VoiceServic
       return { token: subscriberToken(roomName, uid) };
     },
 
-    closeRoom(roomName) {
-      return kickFromChannel({ cname: roomName });
-    },
+    closeRoom,
 
     removeParticipant(roomName, uid) {
       return kickFromChannel({ cname: roomName, uid });

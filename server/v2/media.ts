@@ -141,8 +141,10 @@ export class V2Media {
       let query;
       try {
         query = await queryChannelUsers(gameId);
-      } catch {
+      } catch (error) {
         this.reconcileStats = { ...this.reconcileStats, failures: this.reconcileStats.failures + 1, lastAt: this.now() };
+        // 以前这里只计数不留原因：真实环境对账失败时无法判断是凭据、区域地址还是响应形状问题
+        console.warn('voice_reconcile_query_failed', error instanceof Error ? error.message : String(error));
         return; // 媒体失败不改变胜负、不暂停计时
       }
       const present = new Set(query.users);
