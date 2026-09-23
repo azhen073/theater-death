@@ -71,7 +71,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .avatar img, .avatar svg { width: 100%; height: 100%; object-fit: cover; display: block; }
 .avatar--small { width: 32px; height: 32px; }
 .avatar--large { width: 100px; height: 100px; }
-.home-layout { display: grid; grid-template-columns: 228px minmax(0,1fr); min-height: 100svh; }
+/* CSS viewport units are pre-zoom: compensate the root's user-selected scale. */
+.home-layout { display: grid; grid-template-columns: 228px minmax(0,1fr); min-height: calc(100svh / var(--display-scale, 1)); }
 .navigation { display: flex; flex-direction: column; background: #f8f9fb; border-right: 1px solid #d6dde7; padding: 40px 25px 24px; }
 .brand { display: flex; gap: 12px; align-items: center; padding-bottom: 46px; }
 .brand svg { width: 39px; color: #8c9ab0; }
@@ -106,6 +107,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .admin-table-wrap .button-row { flex-wrap: nowrap; }
 .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 24px 0; font-size: 12px; color: var(--muted); }
 .home-main { max-width: 1280px; width: 100%; margin: 0 auto; padding: 58px 6%; }
+/* Only the visible room lobby is fluid; reading pages retain their width cap. */
+.home-layout--lobby > .home-main { max-width: none; min-width: 0; padding-inline: clamp(20px, 3vw, 64px); }
 .page-heading h1 { margin: 13px 0 11px; font-size: 31px; letter-spacing: .05em; }
 .page-heading p { font-size: 13px; color: var(--muted); }
 .home-hero { background: linear-gradient(90deg,#eff3f8e8,#d7e0ed80), url('/assets/theater.png') center / cover; padding: 45px; min-height: 310px; border: 1px solid #c8d1df; border-radius: var(--radius); margin: 32px 0; }
@@ -203,8 +206,9 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .hud-tools .button { min-height: 38px; font-size: 12px; padding: 8px 13px; }
 .game-columns { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 22px; align-items: start; }
 .game-play-area { min-width: 0; }
-.theater-stage { position: relative; min-width: 0; overflow: hidden; border: 1px solid #c1ccda; border-radius: 12px; background: linear-gradient(#eef2f5d9,#e8edf5cc),url('/assets/theater.png') center/cover; }
-.theater-stage--night { background: linear-gradient(#dce5f1e8,#b8c7dcbd),url('/assets/theater.png') center/cover; }
+.theater-stage { position: relative; min-width: 0; overflow: hidden; isolation: isolate; border: 1px solid #c1ccda; border-radius: 12px; background: #26354d; }
+.stage-backdrop { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--stage-scenery, linear-gradient(#dce4f166,#c4d1e64d),url('/assets/theater.png') center/cover); filter: brightness(var(--stage-brightness, 1)); }
+.theater-stage--night { --stage-scenery: linear-gradient(#dce5f1e8,#b8c7dcbd),url('/assets/theater.png') center/cover; }
 .stage-center { position: absolute; left: 26%; right: 26%; top: 40%; bottom: 40%; border: 1px solid #8496af44; border-radius: 50%; background: #f0f4f630; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; pointer-events: none; }
 .stage-center > span { font-size: 8px; letter-spacing: .2em; color: #8191a8; }
 .stage-center > strong { font-family: 'Songti SC','SimSun',serif; font-weight: 400; letter-spacing: .22em; font-size: 23px; }
@@ -230,6 +234,13 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .stage-seat--unavailable .seat-main { background: #e7ebf0b0; color: #788393; }
 .stage-seat--dead .avatar { filter: grayscale(1); opacity: .65; }
 .stage-seat--dead .seat-status { color: #874c57; }
+.seat-avatar { display: inline-grid; place-items: center; position: relative; isolation: isolate; line-height: 0; }
+.seat-death-mark { position: absolute; inset: -18%; width: 136%; height: 136%; pointer-events: none; mix-blend-mode: multiply; opacity: .92; mask-image: radial-gradient(ellipse at center, #000 30%, #000c 48%, transparent 72%); -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, #000c 48%, transparent 72%); }
+.seat-death-mark svg { display: block; width: 100%; height: 100%; }
+.stage-seat--dead .seat-main { background: #eee9edee; border-color: #ae8993; }
+.stage-seat--dead .seat-status { font-weight: 600; }
+.seat-number, .seat-main > strong, .seat-status { position: relative; z-index: 1; }
+.death-particles { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; user-select: none; }
 .stage-seat--speaking .seat-main { outline: 2px solid #a4936f; outline-offset: 3px; }
 .hud-room-code { font-size: 11px; color: var(--muted); padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; }
 .stage-action-slot { position: relative; z-index: 2; margin: 16px; }
@@ -303,6 +314,12 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .modal-game-context { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border: 1px solid var(--line); background: #e9eff6; padding: 9px 12px; margin: 0 0 20px; font-size: 11px; position: sticky; top: -25px; z-index: 2; }
 .identity-view { font-size: 13px; }
 .identity-card { display: block; width: min(260px,100%); height: auto; margin: 0 auto 23px; }
+.identity-entry-reveal { width: min(620px, calc(100% - 28px)); text-align: center; overflow: auto; }
+.identity-entry-reveal__heading h2 { margin: 6px 0 2px; font-size: clamp(28px, 5vw, 42px); }
+.identity-entry-reveal__heading p { margin: 0 0 16px; color: var(--muted); font-weight: 700; }
+.identity-entry-reveal__card { display: block; width: min(310px, 78vw); max-height: 48svh; object-fit: contain; margin: 0 auto 16px; }
+.identity-entry-reveal__description { max-width: 48ch; margin: 0 auto 20px; line-height: 1.7; }
+.identity-entry-reveal__enter { min-width: min(260px, 100%); }
 .private-label { color: #79624f; font-size: 12px; text-align: center; }
 .identity-state > div { display: flex; justify-content: space-between; gap: 15px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .identity-state dd { margin: 0; color: var(--muted); }

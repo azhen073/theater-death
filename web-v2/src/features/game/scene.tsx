@@ -17,10 +17,13 @@ import { RulesBook } from '../rules/book.tsx';
 import { Stage } from './stage.tsx';
 import { Identity, authorizedPrivate } from './identity.tsx';
 import { GameSidebar } from './sidebar.tsx';
+import { SpeechAttention } from './speech-attention.tsx';
 import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
-import { DeathNotice } from './death-notice.tsx';
+import { PhaseTransition } from './phase-transition.tsx';
+import { IdentityEntryReveal } from './identity-entry-reveal.tsx';
+import { claimIdentityReveal, identityRevealHasUrgentAction, identityRevealKey } from './identity-reveal-model.ts';
 import { reconcileDraft } from '../actions/draft-reconciliation.ts';
 import { newRequestId } from '../../transport/ids.ts';
 
@@ -58,6 +61,7 @@ export function GameScene({
   });
   const drafts = draftState.scope === currentScope ? draftState.values : {};
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const [identityEntryReveal, setIdentityEntryReveal] = useState(false);
   const [manage, setManage] = useState(false);
   const [managementVisited, setManagementVisited] = useState(false);
 
@@ -113,6 +117,27 @@ export function GameScene({
   const availableTasks = combinedProposal
     ? authorizedTasks.filter(item => item !== proposalConfirmTask)
     : authorizedTasks;
+  const revealKey = identityRevealKey(view);
+  const revealUrgent = identityRevealHasUrgentAction(authorizedTasks, remaining);
+
+  useEffect(() => {
+    if (!active || !revealKey || !catalog.roles.some(role => role.roleId === view.private?.self.roleId)) {
+      setIdentityEntryReveal(false);
+      return;
+    }
+    const decision = claimIdentityReveal(window.sessionStorage, revealKey, revealUrgent);
+    if (decision === 'show') {
+      setOverlay(null);
+      setManage(false);
+      setIdentityEntryReveal(true);
+    } else if (decision === 'skip') {
+      setIdentityEntryReveal(false);
+    }
+  }, [active, catalog.roles, revealKey, revealUrgent, view.private?.self.roleId]);
+
+  useEffect(() => {
+    if (identityEntryReveal && revealUrgent) setIdentityEntryReveal(false);
+  }, [identityEntryReveal, revealUrgent]);
   const taskSignature = JSON.stringify(availableTasks.map(item => [taskKey(item), item.targets]));
 
   useEffect(() => {
@@ -318,7 +343,6 @@ export function GameScene({
     window => !['guard', 'laike', 'faction', 'check', 'rescue', 'revive'].includes(window.type)
   );
   const publicWindow = publicWindows.length === 1 ? publicWindows[0] : null;
-  const activePlayer = view.public?.seats.find(seat => seat.playerId === view.public?.day?.currentSpeakerId);
   const subject = view.public?.seats.find(seat => seat.playerId === view.viewer.subjectPlayerId);
 
   const context = (
@@ -392,7 +416,10 @@ export function GameScene({
         </div>
       )}
       <div className="game-scene" hidden={!active || manage}>
-        <DeathNotice view={view} online={online && active} />
+        <PhaseTransition view={view} enabled={online && active} urgent={revealUrgent} occupied={identityEntryReveal || overlay !== null || manage} />
+        {active && identityEntryReveal && (
+          <IdentityEntryReveal view={view} catalog={catalog} onEnter={() => setIdentityEntryReveal(false)} />
+        )}
         <header className="game-hud">
           <div>
             <span className="eyebrow">
@@ -448,11 +475,7 @@ export function GameScene({
         {!view.viewer.readOnly && subject && !subject.alive && (
           <Notice>你已死亡，仍可查看获准的信息；当前可用能力以舞台行动为准。</Notice>
         )}
-        {activePlayer && (
-          <p className="speaker-banner">
-            {view.public?.day?.speechPreparing ? '即将发言' : '当前发言'}：{activePlayer.seat}号 {activePlayer.nickname}
-          </p>
-        )}
+        <SpeechAttention view={view} active={active && online} window={publicWindow} remaining={remaining} />
         {view.public?.day?.election && ['vote', 'revote'].includes(view.public.day.election.phase) && (
           <p className="speaker-banner">
             天理投票进度：{view.public.day.election.votedCount} / {view.public.day.election.eligibleCount}。结算后公开票型。
@@ -467,6 +490,7 @@ export function GameScene({
         <div className="game-columns">
           <div className="game-play-area">
             <Stage
+              active={active && online}
               view={view}
               catalog={catalog}
               task={task}

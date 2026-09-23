@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { loadRoomAccounts, leaveRoom, loginRoomAccount } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, loadRoomAccounts, leaveRoom, loginRoomAccount } from '../helpers-v2/rooms.ts';
 import { loadAccountCase, type RoomAccount } from '../helpers-v2/account.ts';
 import { apiSessionFromContext, browserContextForApi, closeApiSessions, enterAndReady, loginApi, roomPost, roomView, type ApiSession, waitForView } from '../helpers-v2/recovery.ts';
 import { loadGameFixture, loadReviewDocument, loadReviewFixture, pushFixture, taskFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
@@ -30,6 +30,7 @@ async function createFivePlayerGame(browser: Browser, accounts: RoomAccount[]): 
   await expect(hostPage.getByRole('button', { name: '开始游戏', exact: true })).toBeEnabled();
   await hostPage.getByRole('button', { name: '开始游戏', exact: true }).click();
   await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 25_000 });
+  await dismissIdentityEntryReveal(hostPage);
 
   if (!code) throw new Error('recovery room code missing');
   let spirit = (await Promise.all(sessions.map(async session => ({ session, view: await roomView(session, code) })))).find(item => item.view.private?.self?.roleId === 'spirit')?.session;
@@ -46,6 +47,7 @@ async function createFivePlayerGame(browser: Browser, accounts: RoomAccount[]): 
   const spiritPage = await spiritContext.newPage();
   await spiritPage.goto(`/#/room/${code}`);
   await expect(spiritPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 25_000 });
+  await dismissIdentityEntryReveal(spiritPage);
   return { hostContext, hostPage, code, sessions, spirit, spiritIsHost: spirit.account.userId === accounts[0]!.userId, spiritLoggedOut: false, spiritContext, spiritPage };
 }
 

@@ -1,0 +1,16 @@
+.election-roster { margin: 12px 12px 0; padding: 12px; border: 1px solid #d5c7aa; border-radius: 8px; background: #fcf8ef; }
+.election-roster h2 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin: 0 0 8px; font-size: 14px; }
+.election-roster h2 > span { font-size: 12px; color: #725a2d; }
+.election-roster p { font-size: 12px; margin: 0; line-height: 1.6; }
+.election-roster ul { list-style: none; margin: 0; padding: 0; max-height: 144px; overflow: auto; scrollbar-width: thin; }
+.election-roster li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 6px; padding: 6px 0; align-items: baseline; font-size: 12px; }
+.election-roster li > span { overflow-wrap: anywhere; }
+.election-roster li > small { font-size: 10px; color: #705827; }
+.election-roster .election-roster__withdrawn { color: #69635a; }
+.election-roster__withdrawn > span { text-decoration: line-through; }
+#panel-public .chat-history { max-height: clamp(220px, 45svh, 480px); overscroll-behavior: contain; }
+#panel-public .chat-message { padding: 12px 0; }
+#panel-public .chat-message strong { font-size: 12px; line-height: 1.5; color: #455974; }
+#panel-public .chat-message p { font-size: 14px; line-height: 1.7; margin-top: 6px; }
+#panel-public .chat-composer textarea { font-size: 14px; line-height: 1.6; }
+#panel-public .chat-history:focus-visible { outline: 2px solid #6b82a5; outline-offset: 3px; }

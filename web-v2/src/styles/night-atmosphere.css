@@ -1,0 +1,22 @@
+.theater-stage.theater-stage--night {
+  --stage-scenery: linear-gradient(#13233bd6, #17253fd9), url('/assets/theater.png') center/cover;
+  background: var(--stage-scenery);
+  border-color: #708aab; isolation: isolate;
+}
+/* Standalone: use the parent scenery. With an independent backdrop: let it own brightness. */
+.theater-stage.theater-stage--night:has(> .stage-backdrop) { background: #26354d; }
+.night-atmosphere { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; filter: brightness(var(--stage-brightness, 1)); }
+.night-atmosphere__glow { position: absolute; inset: 0; background: url('/assets/ui-night/climax.png') center/cover; opacity: .2; }
+.night-atmosphere__vignette { position: absolute; inset: 0; background: url('/assets/ui-night/vignette.png') center/100% 100%; opacity: .6; }
+.night-atmosphere__motion { position: absolute; inset: 0; }
+.night-atmosphere__fog { position: absolute; inset: 20% -25%; background: radial-gradient(ellipse, #adceef36, transparent 60%); animation: night-fog 5s ease-out both; }
+.night-atmosphere__motion i { position: absolute; width: 2px; height: 2px; border-radius: 50%; left: var(--dust-x); top: var(--dust-y); background: #d9ecff; animation: night-dust 5s ease-out both; animation-delay: var(--dust-delay); }
+.theater-stage--night .stage-center { color: #edf4ff; border-color: #aac7e966; background: #152840a8; }
+.theater-stage--night .stage-center > span, .theater-stage--night .stage-center > small { color: #d0dff3; }
+.theater-stage--night .seat-main { background: #f5f8fd; }
+.theater-stage--night .stage-seat--selected .seat-main { background: #dceaff; border-color: #9bbfff; box-shadow: 0 0 0 4px #91b7ed66; }
+.theater-stage--night .stage-seat--unavailable .seat-main { background: #d7e0ee; color: #58677c; }
+.theater-stage--night .stage-action-card { background: #fcfdfe; }
+@keyframes night-fog { from { opacity: 0; translate: -6% 0; } 35% { opacity: .65; } to { opacity: 0; translate: 6% 0; } }
+@keyframes night-dust { from { opacity: 0; translate: 0 12px; } 30% { opacity: .5; } to { opacity: 0; translate: 12px -24px; } }
+:root[data-reduced-motion="true"] .night-atmosphere__motion { display: none; }

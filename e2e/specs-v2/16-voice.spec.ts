@@ -1,6 +1,6 @@
 import { expect, request as playwrightRequest, test, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
 import { advanceAcceptanceClock, createFormalRoomViaPage, loadFullGameAccounts } from '../helpers-v2/full-game.ts';
-import { enterRoom, loginRoomAccount, roomView } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, enterRoom, loginRoomAccount, roomView } from '../helpers-v2/rooms.ts';
 
 const CLOCK_SOCKET = process.env.ACCEPTANCE_CLOCK_SOCKET ?? '/clock-control/clock.sock';
 
@@ -37,6 +37,8 @@ test('v2 voice：双浏览器手动开麦、接收远端音频，发言结束后
     await expect(host.getByText('已准备 13 / 13')).toBeVisible();
     await host.getByRole('button', { name: '开始游戏', exact: true }).click();
     await expect(host.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 30_000 });
+    await dismissIdentityEntryReveal(host);
+    await dismissIdentityEntryReveal(speaker);
 
     let writer: Page | null = null;
     for (let attempt = 0; attempt < 180 && !writer; attempt += 1) {

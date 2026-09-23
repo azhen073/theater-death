@@ -49,6 +49,7 @@ function deathFixture(base: GameHarnessFixture, type: 'deaths_announced' | 'elim
     cursor, type, dayNumber: 1, stage: 1,
     payload: type === 'deaths_announced' ? { seats: [1] } : { seat: 2 },
   }];
+  next.view.public!.seats.forEach(seat => { if (seat.seat === (type === 'deaths_announced' ? 1 : 2)) seat.alive = false; });
   return next;
 }
 
@@ -70,7 +71,7 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
   await dialog.getByLabel('动画偏好').selectOption('system');
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}') as Record<string, unknown>);
-  expect(Object.keys(stored).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+  expect(Object.keys(stored).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
   expect(stored).toMatchObject({ deathEffects: true, motion: 'system', scale: 110 });
 
   await page.getByRole('button', { name: '关闭' }).click();
@@ -88,19 +89,19 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('false');
 });
 
-test('公开新死讯才显示短提示：重复/私有/重连基线/减少动画与关闭开关都不重播', async ({ page }) => {
+test('公开新死讯才播放粒子：不重播历史，减少动画与关闭特效仍保留公告', async ({ page }) => {
   const base = loadGameFixture('night-door-full.json');
   const mounted = await mountPlaying(page, base);
   await expect(page.locator('.death-notice')).toHaveCount(0);
   const firstDeath = deathFixture(base, 'deaths_announced', 3);
   await mounted.setFixture(firstDeath);
-  await expect(page.locator('.death-notice')).toContainText('1号已出局');
+  await expect(page.locator('.death-notice')).toContainText('1号已死亡');
   expect(await page.locator('.death-notice').evaluate(element => getComputedStyle(element).pointerEvents)).toBe('none');
   const records = page.getByRole('tab', { name: '记录' });
   await records.click();
   await expect(page.getByRole('tabpanel', { name: '记录' })).toContainText('晨间死讯');
   await mounted.setFixture(structuredClone(firstDeath));
-  await expect(page.locator('.death-notice')).toHaveCount(0, { timeout: 3_000 });
+  await expect(page.locator('.death-notice')).toHaveCount(0, { timeout: 4_000 });
 
   const offline = structuredClone(firstDeath); offline.online = false;
   await mounted.setFixture(offline);
@@ -119,13 +120,17 @@ test('公开新死讯才显示短提示：重复/私有/重连基线/减少动�
   await page.getByRole('button', { name: '关闭' }).click();
   const disabledDeath = deathFixture(privateOnly, 'elimination_announced', 5);
   await mounted.setFixture(disabledDeath);
-  await expect(page.locator('.death-notice')).toHaveCount(0);
+  await expect(page.locator('.death-notice')).toContainText('2号已死亡');
+  await expect(page.locator('.death-particles')).toHaveCount(0);
+  await expect(page.locator('.seat-death-mark')).toHaveCount(0);
   const reducedSettings = await openSettings(page);
   await reducedSettings.getByRole('checkbox', { name: '死亡特效', exact: true }).check();
   await reducedSettings.getByLabel('动画偏好').selectOption('reduced');
   await page.getByRole('button', { name: '关闭' }).click();
   await mounted.setFixture(deathFixture(disabledDeath, 'deaths_announced', 6));
-  await expect(page.locator('.death-notice')).toHaveCount(0);
+  await expect(page.locator('.death-notice')).toContainText('1号');
+  await expect(page.locator('.death-particles')).toHaveCount(0);
+  await expect(page.locator('[data-death-seat="1"] .seat-death-mark')).toBeVisible();
 });
 
 test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读且草稿跨resize保留', async ({ page }, testInfo) => {

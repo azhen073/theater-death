@@ -38,6 +38,7 @@ export function useDisplayPreferences() {
   useEffect(() => {
     document.documentElement.dataset.reducedMotion = String(reducedMotion);
     document.documentElement.style.setProperty('--display-scale', String(preferences.scale / 100));
-    return () => { delete document.documentElement.dataset.reducedMotion; document.documentElement.style.removeProperty('--display-scale'); };
-  }, [preferences.scale, reducedMotion]);
+    document.documentElement.style.setProperty('--stage-brightness', String(preferences.stageBrightness / 100));
+    return () => { delete document.documentElement.dataset.reducedMotion; document.documentElement.style.removeProperty('--display-scale'); document.documentElement.style.removeProperty('--stage-brightness'); };
+  }, [preferences.scale, preferences.stageBrightness, reducedMotion]);
 }

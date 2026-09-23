@@ -1,0 +1,7 @@
+.phase-ability { padding: 14px; margin: 12px 0; border: 1px solid #b6a2d5; border-radius: 9px; background: #f7f2fc; overflow-wrap: anywhere; }
+.phase-ability .phase-ability__scope { font-size: 11px; color: #625078; margin: 0 0 8px; }
+.phase-ability h3 { font-size: 15px; margin: 0 0 10px; color: #493461; }
+.phase-ability .phase-ability__current { font-size: 14px; line-height: 1.65; margin: 0 0 12px; color: #30243e; }
+.phase-ability .phase-ability__boundary, .phase-ability details, .phase-ability > small { font-size: 12px; line-height: 1.6; color: #655c70; }
+.phase-ability details { border-top: 1px solid #ded3e9; padding-top: 8px; margin: 10px 0; }
+.phase-ability summary { cursor: pointer; }
