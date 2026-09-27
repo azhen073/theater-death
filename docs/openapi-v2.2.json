@@ -362,7 +362,7 @@
                   },
                   "freeSpeech": {
                     "type": "boolean",
-                    "description": "必填：是否开启白天的「自由发言」阶段（发言轮之后、放逐投票之前，全体存活可同时开麦）。true/false 都可，但不能缺省。"
+                    "description": "必填：是否开启白天的「自由发言」阶段（发言轮之后、放逐投票之前，存活玩家可开麦）。true/false 都可，但不能缺省。"
                   }
                 },
                 "required": [
@@ -3910,6 +3910,13 @@
             "type": "object",
             "properties": {
               "spiritSeats": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "dyingSeats": {
+                "description": "本夜濒死名单（可选）：仅一阶段、夜间、名单已产生时下发给未死亡的降临者与未使用还魂曲的水妖；其余情况不含该字段（不以下发空数组代替）",
                 "type": "array",
                 "items": {
                   "type": "integer"
