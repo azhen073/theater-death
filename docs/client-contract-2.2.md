@@ -26,7 +26,23 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 
 ## 白天自由发言阶段（2026-09-23 新增，用户裁定 Q-11）
 
-`POST /api/v2/rooms` 新增**必填**布尔字段 `freeSpeech`（缺失或非布尔返回 400 `invalid_free_speech`；`true`/`false` 都可，没有默认值）。选择「开启」时，冻结规则 `room.config.timersSeconds.freeSpeech = 120`，`RoomSnapshot.room.freeSpeech === true`；选择「不开启」时该键从冻结规则里移除、`room.freeSpeech === false`（1.1 板本来就不带该键）。开启后**每个白天**在**发言轮结束、放逐投票开始之前**插入固定 **120 秒**的阶段：`DayDTO.step === 'free_speech'`，公开窗口 `windows[].id === 'free_speech'`（给全桌倒计时），该阶段**不提前结束**。语音上**全体存活玩家**的 `capabilities.canPublishVoice` 为 `true`（可同时开麦；死者仍为 `false`），`private.voice.delivery` 照常下发（无唯一发言者：聚合按窗口计数，任何发布者自己的回执都不计，见 `docs/frontend-v2-voice.md`）。新增可选 `PublicGameDTO.voice.uids`：频道 `uid → playerId` 映射，仅供客户端把本机远端电平归属到座位显示「谁在说话」，不含隐藏信息；对局中才出现。
+`POST /api/v2/rooms` 新增**必填**布尔字段 `freeSpeech`（缺失或非布尔返回 400 `invalid_free_speech`；`true`/`false` 都可，没有默认值）。选择「开启」时，冻结规则 `room.config.timersSeconds.freeSpeech = 120`，`RoomSnapshot.room.freeSpeech === true`；选择「不开启」时该键从冻结规则里移除、`room.freeSpeech === false`（1.1 板本来就不带该键）。开启后**每个白天**在**发言轮结束、放逐投票开始之前**插入固定 **120 秒**的阶段：`DayDTO.step === 'free_speech'`，公开窗口 `windows[].id === 'free_speech'`（给全桌倒计时），该阶段**不提前结束**。语音上**全体存活玩家**的 `capabilities.canPublishVoice` 为 `true`（可同时开麦；死者仍为 `false`），`private.voice.delivery` 照常下发（无唯一发言者：聚合按窗口计数，任何发布者自己的回执都不计，见 `docs/frontend-v2-voice.md`）。
+
+## 对局外语音与语音范围（2026-09-27 新增，用户裁定 Q-12）
+
+进出对局前后的语音范围统一挂在 `RoomSnapshot.voice`（**必有字段**，语音未启用时为 `null`）：
+
+- `voice.channel`：对局内是**对局频道**（等于 `gameId`）；进入对局前的大厅与复盘是**房间频道** `l_<roomId>`（跨局复用，与任何一局无关）。
+- `voice.uids`：频道 `uid → 语音主体`。对局频道里主体是 `playerId`（客户端与 `public.seats[].playerId` 比对），房间频道里是 `memberId`（大厅/复盘还没有 playerId，与 `room.formalMembers[].memberId` 比对）。仅用于按本机远端电平显示「谁在说话」，不含隐藏信息；观众/第二屏的租约 id 不是主体，不会出现在表里。
+
+对应的权限与生命周期：
+
+- `capabilities.canPublishVoice` 在**大厅与复盘**对正式成员为 `true`（自由开麦）、对观众与第二屏恒为 `false`；对局内仍按 R-43 / Q-11（含「窗口未开启即无发布权」）。
+- `POST /rooms/{code}/voice/token`：请求体 `gameId` 变为**可选**（仅对局内需要并被校验）；大厅/复盘的相位**以服务端为准**，此时即使带上 `gameId` 也只会签发房间频道凭证。签发后仍会复核身份，变化即撤销并返回 403 `authorization_changed`。
+- `private.voice.delivery` 只在 `playing` 相位出现（房间频道没有发言窗口）。
+- **开局即关闭房间频道**（避免有人带着大厅发布凭证留在频道内），客户端检测到范围变化会先离开再加入对局频道；终局后回到复盘即重新使用房间频道。频道对账（D 组）同时覆盖房间频道与对局频道。
+
+原先位于 `PublicGameDTO` 的可选 `voice.uids` **已移除**，统一由顶层 `RoomSnapshot.voice` 承载（契约版本仍为 2.2，属同版本内的结构调整；两个前端与本仓库的夹具已同步）。
 
 ## 公开夜幕时钟与私人身份知识
 

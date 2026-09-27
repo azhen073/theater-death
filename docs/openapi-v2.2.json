@@ -1897,7 +1897,7 @@
       ],
       "post": {
         "summary": "按当前身份获取声网语音凭证（加入频道 + 订阅，必要时含发布权）",
-        "description": "声网 RTC：响应即浏览器加入频道所需字段。服务端按 R-43 决定 token 角色——此刻持有发布权时返回发布凭证（150 秒 TTL），否则返回订阅凭证（可听不可发，30 分钟 TTL）；观众、第二屏与不在发言窗口的玩家只拿订阅。voice 关闭返回 voice_disabled，媒体未就绪返回 voice_unavailable，解析过程中身份变化返回 authorization_changed。限流 6 次 / 3 秒。",
+        "description": "声网 RTC：响应即浏览器加入频道所需字段。服务端按 R-43 决定 token 角色——此刻持有发布权时返回发布凭证（150 秒 TTL），否则返回订阅凭证（可听不可发，30 分钟 TTL）；观众、第二屏与不在发言窗口的玩家只拿订阅。**进入对局前的大厅与复盘（Q-12）走房间频道**：正式成员自由开麦（拿发布凭证），观众与第二屏只订阅；此时请求不带 gameId。voice 关闭返回 voice_disabled，媒体未就绪返回 voice_unavailable，解析过程中身份变化返回 authorization_changed。限流 6 次 / 3 秒。",
         "requestBody": {
           "required": true,
           "content": {
@@ -1909,12 +1909,12 @@
                     "$ref": "#/components/schemas/RequestId"
                   },
                   "gameId": {
+                    "description": "对局 id：只有对局频道要求（服务端校验它属于房间的当前一局）；大厅与复盘的房间频道不带该字段——相位以服务端为准，此时即使带上也会被忽略，只会签发房间频道凭证。",
                     "type": "string"
                   }
                 },
                 "required": [
-                  "requestId",
-                  "gameId"
+                  "requestId"
                 ],
                 "additionalProperties": true
               }
@@ -4063,29 +4063,6 @@
                 "type": "null"
               }
             ]
-          },
-          "voice": {
-            "description": "语音身份映射（频道 uid → playerId），仅用于把本机远端电平归属到座位显示「谁在说话」；不含隐藏信息。对局中才出现。",
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "uids": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "required": [
-                  "uids"
-                ],
-                "additionalProperties": false
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "required": [
@@ -4406,6 +4383,27 @@
           "everyone"
         ]
       },
+      "RoomVoice": {
+        "type": "object",
+        "description": "当前语音范围（Q-12）：对局内是对局频道（gameId），进入对局前的大厅与复盘是房间频道（独立于任何一局）。仅用于把本机远端电平归属到座位 / 成员卡显示「谁在说话」，不含隐藏信息（uid 本就是频道内可见编号）。",
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "uids": {
+            "description": "频道 uid → 语音主体：对局频道里是 playerId（座位卡比对），房间频道里是 memberId（大厅/复盘成员卡比对，因为那时还没有 playerId）。",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "channel",
+          "uids"
+        ],
+        "additionalProperties": false
+      },
       "RoomSnapshot": {
         "type": "object",
         "properties": {
@@ -4585,6 +4583,17 @@
               "$ref": "#/components/schemas/Window"
             }
           },
+          "voice": {
+            "description": "当前语音范围（Q-12）。语音未启用时为 null。",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoomVoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "tasks": {
             "type": "array",
             "items": {
@@ -4633,6 +4642,7 @@
           "private",
           "capabilities",
           "windows",
+          "voice",
           "tasks",
           "submissionState",
           "chat"
