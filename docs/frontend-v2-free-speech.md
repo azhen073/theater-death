@@ -39,7 +39,7 @@
 
 - `server/v2/snapshots.ts`：`freeSpeechEnabled(room)`；`RoomSnapshot.room.freeSpeech`；公开视图新增 `voice: { uids: uidMap(gameId) }`（仅对局中有值）。
 - `server/v2/app.ts`：`POST /rooms` 校验必填布尔 `freeSpeech`，缺失或非布尔 → 400 `invalid_free_speech`；为 `false` 时构造 timers 时删除 `freeSpeech` 键；快照依赖注入 `uidMap`。
-- `contracts/v2.ts`：`DayStep` 加 `'free_speech'`、`DayDTO.step` 联合类型、`PublicGameDTO.voice?: { uids: Record<string, string> } | null`、`room.freeSpeech: boolean`。
+- `contracts/v2.ts`：`DayStep` 加 `'free_speech'`、`DayDTO.step` 联合类型、`RoomSnapshot.voice: { channel, uids } | null`（Q-12 起从 `PublicGameDTO` 移到顶层）、`room.freeSpeech: boolean`。
 - `docs/openapi-v2.2.json`：`timersSeconds.freeSpeech`、`Day.step` 枚举加 `free_speech`、`room.freeSpeech`（必填）、`/rooms` 请求体 `freeSpeech` 必填、`PublicGame.voice`。
 
 **前端（web-v2）**
