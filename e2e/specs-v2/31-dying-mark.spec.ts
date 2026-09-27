@@ -4,12 +4,24 @@ import { loadGameFixture, pushFixture, type GameHarnessFixture } from '../helper
 
 /** 座位左下角「濒死」标记（R-20/R-24）：只对有名单视野的人可见，服务端已按授权裁剪。 */
 
+/**
+ * 夹具是「4 号魂灵看 13 号」的快照（`knowledge.spiritSeats = [13]`）。改写视角身份时**必须同步改写
+ * `spiritSeats`**，否则会造出真实服务端不可能出现的组合——例如「降临者视角」还挂着「魂灵」徽标，
+ * 看图的人会误以为魂灵也能看到濒死名单。真实口径见 `server/v2/view.ts` 的 `knowledgeFor()`：
+ * 死神 / 丧亲者 → 全部魂灵（含本人）；魂灵 → 其他魂灵；其余身份（含降临者、水妖）→ 空。
+ */
 function fixtureWithDying(seats: number[] | null, role?: string): GameHarnessFixture {
   const base = loadGameFixture('night-spirit-full.json');
   const view = structuredClone(base.view);
-  if (role) view.private!.self.roleId = role as typeof view.private.self.roleId;
-  if (seats === null) delete (view.private!.knowledge as { dyingSeats?: number[] }).dyingSeats;
-  else view.private!.knowledge.dyingSeats = seats;
+  const knowledge = view.private!.knowledge as { spiritSeats: number[]; dyingSeats?: number[] };
+  if (role) {
+    view.private!.self.roleId = role as typeof view.private.self.roleId;
+    if (role === 'death' || role === 'mourner') knowledge.spiritSeats = [view.private!.self.seat, ...knowledge.spiritSeats].sort((a, b) => a - b);
+    else if (role === 'spirit') knowledge.spiritSeats = knowledge.spiritSeats.filter(seat => seat !== view.private!.self.seat);
+    else knowledge.spiritSeats = [];
+  }
+  if (seats === null) delete knowledge.dyingSeats;
+  else knowledge.dyingSeats = seats;
   return { ...base, view };
 }
 

@@ -447,6 +447,9 @@ test('多个徽标同时存在：身份+天理 一个底色框等分，且不与
   // 3 字身份（门先生）+ 天理：8px 徽标下也能与号码同排（不换行、卡片不加高、行内仍有 ≥12px 余量）
   const longRole = loadGameFixture('night-spirit-full.json');
   longRole.view.private!.self.roleId = 'door';
+  // 视角身份换成门先生后必须同步清掉魂灵夹具的 `spiritSeats`：门先生没有魂灵知识，
+  // 真实服务端（server/v2/view.ts 的 knowledgeFor）对非死神/丧亲者/魂灵一律返回空数组。
+  longRole.view.private!.knowledge.spiritSeats = [];
   const longSelfId = longRole.view.private!.self.playerId;
   const longPicks = longRole.view.public!.seats.filter(seat => seat.alive).slice(0, 4).map(seat => seat.playerId);
   const longTask = taskFixture(longRole.view, 'EDIT_PROPOSAL', { playerIds: longPicks, maxTargets: 2, allowRepeated: true, canSkip: true, forbiddenPairs: [] });
