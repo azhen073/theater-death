@@ -194,7 +194,7 @@ export function createDayDriver(options: {
         openSpeechRoundWindow(context);
         return;
       case 'free_speech':
-        // 全体存活玩家可同时开麦的固定时长阶段；不提前结束（固定时长是防泄露设计）。
+        // 存活玩家可同时开麦的固定时长阶段；不提前结束（固定时长是防泄露设计）。
         scheduleWindow('free_speech', timers().freeSpeech ?? 120, timeoutFreeSpeech);
         return;
       case 'vote':

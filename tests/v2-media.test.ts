@@ -62,7 +62,7 @@ function mockVoice(options: { issue?: (input: { roomName: string; uid: number })
 describe('V2Media 授权与媒体副作用（声网）', () => {
   it('自由发言阶段：多名发布者同时有效，送达聚合按窗口计数且任何发布者自己的回执都不算', async () => {
     const f = fixture();
-    // 切换到自由发言窗口（全体存活都有发布权）
+    // 切换到自由发言窗口（存活玩家都有发布权）
     f.room.state = { ...f.room.state!, day: { ...f.room.state!.day!, step: 'free_speech', freeSpeechDone: true } };
     f.room.driver = { windows: () => [{ id: 'free_speech', instanceId: 'win-free', closesAt: f.clock.now() + 120_000 }], proposalState: () => null } as unknown as NonNullable<Room['driver']>;
     // 再绑定两名正式玩家：自由发言阶段应当同时拥有发布权

@@ -15,7 +15,7 @@ interface DeliveryWindow { windowInstanceId: string; speakerMediaIds: readonly s
 
 /**
  * 拥有发布权的窗口（与客户端 `bar.tsx` 的判据保持一致）。
- * `free_speech` 是「全体存活可同时开麦」的阶段：发布者可能有多人。
+ * `free_speech` 是「存活玩家可开麦」的阶段：发布者可能有多人。
  */
 const SPEAKING_WINDOWS = new Set(['election_speech', 'speech_round', 'last_words', 'tie_speech', 'free_speech']);
 /** D 组对账：每轮最多踢的人数，避免一次异常把频道清空 */
@@ -91,7 +91,7 @@ export class V2Media {
   }
   /**
    * 当前"有人有发布权"的窗口（窗口实例 + **所有**有发布权的媒体身份）。没有正在发言的人时返回 null。
-   * 常规时段只有当前发言者一人有发布权；「自由发言」阶段全体存活都有，因此这里按集合处理：
+   * 常规时段只有当前发言者一人有发布权；「自由发言」阶段存活玩家都有，因此这里按集合处理：
    * 送达聚合只以窗口实例为 key，且任何发布者自己的回执都不算（那是自证）。
    */
   private currentWindow(meta: RoomAccess): { windowInstanceId: string; speakerMediaIds: readonly string[] } | null {

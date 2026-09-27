@@ -67,7 +67,7 @@ describe('白天自由发言（房主开关 · 发言轮之后、放逐投票之
     const ended = finishSpeechRound(toSpeechRound(on));
     expect(ended.day?.step).toBe('free_speech');
     expect(ended.day?.freeSpeechDone).toBe(true);
-    // 自由发言阶段没有"当前发言者"：全体存活可同时开麦
+    // 自由发言阶段没有"当前发言者"：存活玩家可开麦
     const alive = ended.players.filter((player) => player.life !== 'dead');
     for (const player of alive) expect(voicePermission(ended, player.playerId).canPublish).toBe(true);
     const dead = ended.players.find((player) => player.life === 'dead');

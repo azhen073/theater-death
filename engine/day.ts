@@ -923,7 +923,7 @@ function enterDayVote(state: GameState, day: DayContext, emitter: EventCollector
   return { ...day, step: 'vote', speechRound: round, ballot };
 }
 
-/** 发言轮结束后的分流：房主开启且当天未走过 → 自由发言（全体存活可开麦），否则直接放逐投票。 */
+/** 发言轮结束后的分流：房主开启且当天未走过 → 自由发言（存活玩家可开麦），否则直接放逐投票。 */
 function enterFreeSpeechOrVote(state: GameState, day: DayContext, emitter: EventCollector, round: SpeechRoundState): DayContext {
   if (freeSpeechSeconds(state) !== null && day.freeSpeechDone !== true) {
     emitter.emit('free_speech_started', { seconds: freeSpeechSeconds(state) }, { kind: 'public' });

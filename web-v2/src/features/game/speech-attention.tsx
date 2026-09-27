@@ -89,7 +89,7 @@ export function SpeechAttention({ view, active, window: speechWindow, remaining 
 
   return <section className={`speech-attention ${own ? 'speech-attention--own' : ''}`} aria-label="发言与提醒">
     {freeSpeech && <div className="speech-attention__speaker">
-      <strong>自由发言进行中 · 全体存活可同时开麦</strong>
+      <strong>自由发言进行中 · 存活玩家可开麦</strong>
       {speechWindow && <span role="timer" aria-label="自由发言剩余时间">{formatCountdown(remaining(speechWindow.closesAt))}</span>}
       <small>本轮为固定 2 分钟，不会因为无人发言而提前结束。</small>
     </div>}

@@ -45,9 +45,9 @@ export function CreateRoom({ userId, catalog, bootstrap, blocked, loading, onCre
           <button type="button" role="radio" aria-checked={publicChat === 'everyone'} aria-label="公屏权限：存活与死者全体" className={`preset-choice ${publicChat === 'everyone' ? 'selected' : ''}`} disabled={locked} onClick={() => setPublicChat('everyone')}><strong>存活与死者全体</strong><span>出局后仍可在公屏发言（含夜间）</span></button>
         </div>
         {publicChat === null && <Notice>请先选择公屏权限：这一项没有默认值，创建后不可修改。</Notice>}</section>
-      <section className="panel"><h2>白天自由发言</h2><p className="muted">开启后，每个白天的「发言轮」结束、放逐投票开始之前，插入一段固定 2 分钟的自由发言：全体存活玩家可同时开麦，不会因为无人发言提前结束；死者仍只能旁听。创建后不可修改。</p>
+      <section className="panel"><h2>白天自由发言</h2><p className="muted">开启后，每个白天的「发言轮」结束、放逐投票开始之前，插入一段固定 2 分钟的自由发言：存活玩家可开麦，不会因为无人发言提前结束；死者仍只能旁听。创建后不可修改。</p>
         <div className="preset-row" role="radiogroup" aria-label="白天自由发言">
-          <button type="button" role="radio" aria-checked={freeSpeech === true} aria-label="自由发言：开启" className={`preset-choice ${freeSpeech === true ? 'selected' : ''}`} disabled={locked} onClick={() => setFreeSpeech(true)}><strong>开启</strong><span>发言轮后 2 分钟 · 全体存活可同时开麦</span></button>
+          <button type="button" role="radio" aria-checked={freeSpeech === true} aria-label="自由发言：开启" className={`preset-choice ${freeSpeech === true ? 'selected' : ''}`} disabled={locked} onClick={() => setFreeSpeech(true)}><strong>开启</strong><span>发言轮后 2 分钟 · 存活玩家可开麦</span></button>
           <button type="button" role="radio" aria-checked={freeSpeech === false} aria-label="自由发言：不开启" className={`preset-choice ${freeSpeech === false ? 'selected' : ''}`} disabled={locked} onClick={() => setFreeSpeech(false)}><strong>不开启</strong><span>保持现有白天流程</span></button>
         </div>
         {freeSpeech === null && <Notice>请先选择是否开启白天自由发言：这一项没有默认值，创建后不可修改。</Notice>}</section>
