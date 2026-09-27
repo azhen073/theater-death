@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { dismissIdentityEntryReveal, loadRoomAccounts, leaveRoom, loginRoomAccount } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, loadRoomAccounts, leaveRoom, loginRoomAccount, selectPublicChat, revealHudActions } from '../helpers-v2/rooms.ts';
 import { loadAccountCase, type RoomAccount } from '../helpers-v2/account.ts';
 import { apiSessionFromContext, browserContextForApi, closeApiSessions, enterAndReady, loginApi, roomPost, roomView, type ApiSession, waitForView } from '../helpers-v2/recovery.ts';
 import { loadGameFixture, loadReviewDocument, loadReviewFixture, pushFixture, taskFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
@@ -13,12 +13,12 @@ async function createFivePlayerGame(browser: Browser, accounts: RoomAccount[]): 
   await loginRoomAccount(hostPage, accounts[0]!);
   const sessions: ApiSession[] = [];
   let code: string;
-  await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(hostPage); await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(hostPage.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
   await hostPage.getByRole('button', { name: '自定义角色组成' }).click();
   await hostPage.getByLabel('玩家人数').fill('5');
   for (const [label, value] of [['莱莱可人数', '0'], ['门先生人数', '1'], ['水妖人数', '0'], ['降临者人数', '0'], ['科研员人数', '1'], ['平民人数', '1'], ['死神人数', '1'], ['魂灵人数', '1'], ['丧亲者人数', '0']] as const) await hostPage.getByLabel(label).fill(value);
-  await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(hostPage); await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(hostPage.getByRole('heading', { name: '房间大厅' })).toBeVisible();
   code = (await hostPage.locator('.room-code strong').innerText()).trim();
   for (const account of accounts.slice(1, 5)) {
@@ -96,20 +96,20 @@ test('真实 spirit：导航往返保留 faction 草稿，20秒未知命令可�
     const target = task.targets.playerIds[0];
     await game.spiritPage.getByRole('button', { name: new RegExp(`^${spiritView.public.seats.find((seat: any) => seat.playerId === target).seat}号 .*可选目标$`) }).click();
     await expect(game.spiritPage.locator('.selection-summary')).toContainText('1 /');
-    await game.spiritPage.getByRole('tab', { name: '情报' }).click();
+    await game.spiritPage.getByRole('tab', { name: '公屏' }).click();
     const factionDraft = game.spiritPage.getByLabel('阵营消息');
     await factionDraft.fill('导航保留的阵营草稿');
     await expect(game.spiritPage.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认方案');
     await game.spiritPage.getByTestId('stage-submit').click();
     await expect(game.spiritPage.getByTestId('stage-submit')).toHaveAccessibleName(/正在提交/);
 
-    await game.spiritPage.getByRole('button', { name: '导航' }).click();
+    await revealHudActions(game.spiritPage); await game.spiritPage.getByRole('button', { name: '导航' }).click();
     await game.spiritPage.getByRole('dialog', { name: '剧院导航' }).getByRole('button', { name: '我的账户' }).click();
     await expect(game.spiritPage.getByRole('heading', { name: '你的账户' })).toBeVisible();
     await game.spiritPage.getByRole('button', { name: '我的房间' }).click();
     await expect(game.spiritPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible();
     await expect(game.spiritPage.locator('.selection-summary')).toContainText('1 /');
-    await game.spiritPage.getByRole('tab', { name: '情报' }).click();
+    await game.spiritPage.getByRole('tab', { name: '公屏' }).click();
     await expect(game.spiritPage.getByLabel('阵营消息')).toHaveValue('导航保留的阵营草稿');
     await expect(game.spiritPage.getByText('连接中断，正在确认行动结果。')).toBeVisible({ timeout: 26_000 });
     const beforeRetry = await roomView(game.spirit, game.code);
@@ -155,7 +155,7 @@ test('真实 API 跨账号：A 的挂起命令在 logout 后释放，B 保持登
     await expect(game.spiritPage.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认方案');
     await game.spiritPage.getByTestId('stage-submit').click();
     await expect(game.spiritPage.getByTestId('stage-submit')).toHaveAccessibleName(/正在提交/);
-    await game.spiritPage.getByRole('button', { name: '导航' }).click();
+    await revealHudActions(game.spiritPage); await game.spiritPage.getByRole('button', { name: '导航' }).click();
     await game.spiritPage.getByRole('dialog', { name: '剧院导航' }).getByRole('button', { name: '剧院首页' }).click();
     await expect(game.spiritPage.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
     await game.spiritPage.getByRole('button', { name: '退出登录' }).click();

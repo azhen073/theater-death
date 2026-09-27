@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { dismissIdentityEntryReveal, loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom, selectPublicChat, revealHudActions } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
 async function open(browser: Browser, account: RoomAccount): Promise<{ context: BrowserContext; page: Page }> {
@@ -12,13 +12,13 @@ async function open(browser: Browser, account: RoomAccount): Promise<{ context: 
 async function setupSix(browser: Browser, accounts: RoomAccount[]) {
   const contexts: Array<{ context: BrowserContext; page: Page }> = [];
   const host = await open(browser, accounts[0]!); contexts.push(host);
-  await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(host.page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
   await host.page.getByRole('button', { name: '自定义角色组成' }).click();
   await host.page.getByLabel('玩家人数').fill('6');
   for (const [label, value] of [['莱莱可人数', '0'], ['门先生人数', '1'], ['水妖人数', '0'], ['降临者人数', '0'], ['科研员人数', '1'], ['平民人数', '1'], ['死神人数', '1'], ['魂灵人数', '2'], ['丧亲者人数', '0']] as const) await host.page.getByLabel(label).fill(value);
   const create = host.page.waitForRequest(request => request.url().endsWith('/api/v2/rooms') && request.method() === 'POST');
-  await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
   expect((await create).postDataJSON()).toMatchObject({ playerCount: 6 });
   await waitRoom(host.page);
   const code = (await host.page.locator('.room-code strong').innerText()).trim();
@@ -46,7 +46,8 @@ test('真实阵营交流与第二屏授权撤销：只读公开/私人视角边�
     const otherSpirit = contexts[spiritIndexes[1]!]!.page;
     const door = contexts[doorIndex]!.page;
     const observer = contexts[6]!.page;
-    await spirit.getByRole('tab', { name: '情报' }).click();
+    // 阵营交流记录已并入「公屏」页签（公屏之下）
+    await spirit.getByRole('tab', { name: '公屏' }).click();
     const factionInput = spirit.getByLabel('阵营消息');
     await expect(factionInput).toBeVisible();
     const factionRequest = spirit.waitForRequest(request => request.url().endsWith('/chat') && request.method() === 'POST');
@@ -55,15 +56,33 @@ test('真实阵营交流与第二屏授权撤销：只读公开/私人视角边�
     expect((await factionRequest).postDataJSON()).toMatchObject({ channel: 'faction', text: '夜间阵营消息', gameId: views[spiritIndexes[0]!]!.gameId });
     await expect.poll(async () => (await roomView(otherSpirit, code)).chat.faction.some((message: Record<string, any>) => message.text === '夜间阵营消息')).toBe(true);
     for (const index of [0, 1, 2, 3, 4, 5, 6]) if (!spiritIndexes.includes(index)) expect((await roomView(contexts[index]!.page, code)).chat.faction.some((message: Record<string, any>) => message.text === '夜间阵营消息')).toBe(false);
-    await expect(door.getByLabel('公屏消息')).toBeDisabled();
+    // 魂灵的「阵营交流记录」（R-34：唯一阵营房，初始成员＝魂灵；二阶段死神才加入）
+    await expect(spirit.getByRole('heading', { name: '阵营交流记录' })).toBeVisible();
+    // 先回顶再截图：sticky HUD 在 fullPage 合成里会被画在滚动偏移处，造成「HUD 悬在座位中间」的假象
+    await spirit.evaluate(() => window.scrollTo(0, 0));
+    await expect(spirit.getByRole('button', { name: '房间管理', exact: true })).toBeVisible();
+    await spirit.screenshot({ path: `/results/real-faction-room-${testInfo.project.name}.png`, fullPage: true });
+    // v2.0.7-alpha：公屏改为对局内全阶段可写；本房间建房时选了「仅存活正式玩家」，夜间活人也能发
+    const nightWriterIndex = views.findIndex(view => view.capabilities?.canPostPublic === true);
+    expect(nightWriterIndex).toBeGreaterThanOrEqual(0);
+    const nightWriter = contexts[nightWriterIndex]!.page;
+    await nightWriter.getByRole('tab', { name: '公屏' }).click();
+    const nightText = `夜间公屏-${Date.now()}`;
+    const nightRequest = nightWriter.waitForRequest(request => request.url().endsWith('/chat') && request.method() === 'POST');
+    await nightWriter.getByLabel('公屏消息').fill(nightText);
+    await nightWriter.getByRole('button', { name: '发送公屏消息' }).click();
+    expect((await nightRequest).postDataJSON()).toMatchObject({ channel: 'public', text: nightText, gameId: views[nightWriterIndex]!.gameId });
+    await expect.poll(async () => (await roomView(door, code)).chat.public.some((message: Record<string, any>) => message.text === nightText)).toBe(true);
+    await expect(observer.getByLabel('公屏消息')).toHaveCount(0);
+    await nightWriter.screenshot({ path: `/results/real-chat-night-${testInfo.project.name}.png`, fullPage: true });
 
-    await spirit.getByRole('button', { name: '第二屏', exact: true }).click();
+    await revealHudActions(spirit); await spirit.getByRole('button', { name: '第二屏', exact: true }).click();
     await spirit.getByRole('button', { name: '生成第二屏邀请' }).click();
     const token = await spirit.getByLabel('私人邀请码').inputValue();
     expect(token.length).toBeGreaterThan(10);
     await spirit.getByRole('button', { name: '关闭' }).click();
     await spirit.screenshot({ path: `/results/real-screen-invite-${testInfo.project.name}.png` });
-    await observer.getByRole('button', { name: '第二屏', exact: true }).click();
+    await revealHudActions(observer); await observer.getByRole('button', { name: '第二屏', exact: true }).click();
     await observer.getByLabel('输入私人邀请').fill(token);
     await observer.getByRole('button', { name: '兑换第二屏邀请' }).click();
     await expect.poll(async () => (await roomView(observer, code)).viewer.kind).toBe('private_spectator');
@@ -73,7 +92,7 @@ test('真实阵营交流与第二屏授权撤销：只读公开/私人视角边�
     expect(privateObserver.private?.factionRoom?.readOnly).toBe(true);
     await expect(observer.getByLabel('公屏消息')).toHaveCount(0);
     await expect(observer.getByLabel('阵营消息')).toHaveCount(0);
-    await spirit.getByRole('button', { name: '第二屏', exact: true }).click();
+    await revealHudActions(spirit); await spirit.getByRole('button', { name: '第二屏', exact: true }).click();
     await spirit.getByRole('button', { name: '撤销第二屏授权' }).click();
     await spirit.getByRole('button', { name: '确认撤销' }).click();
     await expect.poll(async () => (await roomView(observer, code)).viewer.kind).toBe('public_spectator');

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { ControlReason } from '../../contracts/v2.ts';
+import type { ControlReason, PublicChatMode } from '../../contracts/v2.ts';
 import type { RulesetConfig } from '../../rulesets/types.ts';
 import type { AccountSession } from './account-store.ts';
 import { ApiError } from './errors.ts';
@@ -55,7 +55,7 @@ export class RoomDirectory {
     const current = this.current.get(userId);
     if (current && current !== roomId) throw new ApiError(409, 'already_in_room');
   }
-  create(session: AccountSession, ruleset: RulesetConfig): Promise<StableRoom> {
+  create(session: AccountSession, ruleset: RulesetConfig, publicChat: PublicChatMode): Promise<StableRoom> {
     return this.transaction(async () => {
       await this.expireCurrent(session.userId);
       this.checkSession(session); this.checkCurrent(session.userId);
@@ -63,7 +63,7 @@ export class RoomDirectory {
       let code: string;
       const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       do { code = [...randomBytes(6)].map((n) => alphabet[n % alphabet.length]).join(''); } while (this.byCode.has(code));
-      const room = new StableRoom(code, ruleset, this.deps);
+      const room = new StableRoom(code, ruleset, publicChat, this.deps);
       this.byId.set(room.roomId, room); this.byCode.set(code, room);
       const member = this.addMember(room, session, 'formal');
       room.hostMemberId = member.memberId;

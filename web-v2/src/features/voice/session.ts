@@ -116,9 +116,13 @@ export class VoiceSession {
   #deliveryKey = '';
   #deliveryAt = 0;
   #listeners = new Set<(state: VoiceState) => void>();
+  #levels = new Map<number, number>();
+  #levelListeners = new Set<(levels: ReadonlyMap<number, number>) => void>();
 
   state() { return this.#state; }
   subscribe(listener: (state: VoiceState) => void) { this.#listeners.add(listener); return () => { this.#listeners.delete(listener); }; }
+  /** 每次音量采样（含自己）的 uid → 电平；只在本机使用，用于判定「谁在说话」。 */
+  onLevels(listener: (levels: ReadonlyMap<number, number>) => void) { this.#levelListeners.add(listener); return () => { this.#levelListeners.delete(listener); }; }
   #set(patch: Partial<VoiceState>) { this.#state = { ...this.#state, ...patch }; for (const listener of this.#listeners) listener(this.#state); }
 
   setContext(context: VoiceContext | null) {
@@ -149,12 +153,16 @@ export class VoiceSession {
       indicator.onVolumeIndicator?.((users) => {
         let own = 0;
         let remote = 0;
+        this.#levels.clear();
         for (const user of users) {
           const level = typeof user.level === 'number' && Number.isFinite(user.level) ? Math.min(100, Math.max(0, Math.round(user.level))) : 0;
-          if (Number(user.uid) === this.#uid) own = Math.max(own, level);
+          const uid = Number(user.uid);
+          if (Number.isFinite(uid)) this.#levels.set(uid, level);
+          if (uid === this.#uid) own = Math.max(own, level);
           else remote = Math.max(remote, level);
         }
         this.#set({ level: own, remoteLevel: remote });
+        for (const listener of this.#levelListeners) listener(this.#levels);
       });
       client.on('user-published', (user, mediaType) => {
         void (async () => {
@@ -386,6 +394,9 @@ export class VoiceSession {
     // 离开后不再把自动播放失败记到已销毁的会话上（新会话 join 时会重新注册）
     AgoraRTC.onAutoplayFailed = () => undefined;
     this.#uid = 0;
+    // 离开/重连时清空远端电平，避免「谁在说话」的光环停在旧状态。
+    this.#levels.clear();
+    for (const listener of this.#levelListeners) listener(this.#levels);
     void this.#stopTrack();
     client?.removeAllListeners();
   }

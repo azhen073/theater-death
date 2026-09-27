@@ -30,7 +30,7 @@ describe('StableRoom lifecycle contract', () => {
   it('deep clones and freezes the ruleset snapshot', () => {
     const { deps } = setup();
     const source = structuredClone(THEATER_DEATH_13_V2);
-    const room = new StableRoom('STABLE01', source, deps);
+    const room = new StableRoom('STABLE01', source, 'alive_only', deps);
     (source.roles as Record<string, number>).civilian = 99;
     expect(room.ruleset.roles.civilian).toBe(THEATER_DEATH_13_V2.roles.civilian);
     expect(Object.isFrozen(room.ruleset)).toBe(true);
@@ -39,7 +39,7 @@ describe('StableRoom lifecycle contract', () => {
 
   it('starts in lobby with no gameId, then creates a separate match and excludes spectators', () => {
     const { deps, accounts } = setup();
-    const room = new StableRoom('STABLE02', THEATER_DEATH_13_V2, deps);
+    const room = new StableRoom('STABLE02', THEATER_DEATH_13_V2, 'alive_only', deps);
     expect(room.gameId).toBeNull();
     const formal: string[] = [];
     for (let index = 1; index <= 13; index += 1) {
@@ -66,7 +66,7 @@ describe('StableRoom lifecycle contract', () => {
 
   it('serializes runtime.enqueue through the stable room queue', async () => {
     const { deps, accounts } = setup();
-    const room = new StableRoom('STABLE03', THEATER_DEATH_13_V2, deps);
+    const room = new StableRoom('STABLE03', THEATER_DEATH_13_V2, 'alive_only', deps);
     for (let index = 1; index <= 13; index += 1) {
       const account = accounts.register(`queue-${index}`, `queue${String.fromCharCode(97 + index)}`, 'hash').account;
       const session = accounts.createSession(account.id);
@@ -83,7 +83,7 @@ describe('StableRoom lifecycle contract', () => {
 
   it('records completion once while preserving startedAt and endedAt', () => {
     const { deps, accounts, logStore, clock } = setup();
-    const room = new StableRoom('STABLE04', THEATER_DEATH_13_V2, deps);
+    const room = new StableRoom('STABLE04', THEATER_DEATH_13_V2, 'alive_only', deps);
     for (let index = 1; index <= 13; index += 1) {
       const account = accounts.register(`complete-${index}`, `complete${String.fromCharCode(97 + index)}`, 'hash').account;
       const session = accounts.createSession(account.id);

@@ -18,12 +18,14 @@ const voiceStub = (() => {
   const base: VoiceState = { connection: 'idle', requested: false, microphoneEnabled: false, audioBlocked: false, error: '', microphoneError: '', notice: '', devices: [], activeDeviceId: '', level: 0, remoteLevel: 0 };
   let state: VoiceState = base;
   const listeners = new Set<(next: VoiceState) => void>();
+  const levelListeners = new Set<(levels: ReadonlyMap<number, number>) => void>();
   const calls: string[] = [];
   const push = (patch: Partial<VoiceState>) => { state = { ...state, ...patch }; for (const listener of listeners) listener(state); };
-  const session: VoiceSessionLike & { hydrate(next?: Partial<VoiceState>): void; calls: string[] } = {
+  const session: VoiceSessionLike & { hydrate(next?: Partial<VoiceState>): void; emitLevels(levels: Record<number, number>): void; calls: string[] } = {
     calls,
     state: () => state,
     subscribe: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    onLevels: (listener) => { levelListeners.add(listener); return () => { levelListeners.delete(listener); }; },
     setContext: () => undefined,
     join: async () => { calls.push('join'); push({ connection: 'connected' }); },
     leave: async () => { calls.push('leave'); push({ connection: 'idle', microphoneEnabled: false, level: 0, remoteLevel: 0 }); },
@@ -34,8 +36,10 @@ const voiceStub = (() => {
     setOutputVolume: (volume) => { calls.push(`output:${volume}`); },
     setInputVolume: (volume) => { calls.push(`input:${volume}`); },
     hydrate: (next) => { state = { ...base, ...(next ?? {}) }; for (const listener of listeners) listener(state); },
+    emitLevels: (levels) => { const map = new Map(Object.entries(levels).map(([uid, level]) => [Number(uid), level])); for (const listener of levelListeners) listener(map); },
   };
   (window as unknown as { __voiceCalls?: string[] }).__voiceCalls = calls;
+  (window as unknown as { __emitVoiceLevels?: (levels: Record<number, number>) => void }).__emitVoiceLevels = (levels) => session.emitLevels(levels);
   return session;
 })();
 

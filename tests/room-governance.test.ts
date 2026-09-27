@@ -38,7 +38,7 @@ function account(accounts: AccountStore, name: string) {
 
 async function fullMatch(directory: RoomDirectory, accounts: AccountStore, prefix: string) {
   const host = account(accounts, `${prefix}_host`);
-  const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+  const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
   const players = [host];
   for (let index = 1; index < 13; index += 1) {
     const player = account(accounts, `${prefix}_${index}`);
@@ -54,7 +54,7 @@ describe('v2 room governance', () => {
   it('keeps the creator host before first socket, then assigns the earliest online formal member after grace', async () => {
     const { clock, accounts, directory, governance, presence, controls } = setup();
     const host = account(accounts, 'gov_host');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     const target = account(accounts, 'gov_target');
     await directory.enter(room, target.session);
     const later = account(accounts, 'gov_later');
@@ -94,7 +94,7 @@ describe('v2 room governance', () => {
     const { accounts, directory, governance, presence, clock } = setup();
     const host = account(accounts, 'gov_empty_host');
     const target = account(accounts, 'gov_empty_target');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     await directory.enter(room, target.session);
     await presence.connect(room, host.session, 'host');
     await presence.disconnect(room, host.session, 'host', 'transport close');
@@ -116,7 +116,7 @@ describe('v2 room governance', () => {
     const lobby = setup();
     const host = account(lobby.accounts, 'transfer_lobby_host');
     const target = account(lobby.accounts, 'transfer_lobby_target');
-    const lobbyRoom = await lobby.directory.create(host.session, THEATER_DEATH_13_V2);
+    const lobbyRoom = await lobby.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     await lobby.directory.enter(lobbyRoom, target.session);
     await lobby.presence.connect(lobbyRoom, host.session, 'h');
     await lobby.presence.connect(lobbyRoom, target.session, 't');
@@ -149,7 +149,7 @@ describe('v2 room governance', () => {
     const lobby = setup();
     const host = account(lobby.accounts, 'dissolve_host');
     const target = account(lobby.accounts, 'dissolve_target');
-    const room = await lobby.directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await lobby.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     await lobby.directory.enter(room, target.session);
     await lobby.governance.kick(room, host.session, room.members.get(target.userId)!.memberId);
     expect(room.members.has(target.userId)).toBe(false);
@@ -191,7 +191,7 @@ describe('v2 room governance', () => {
   it('treats a host leaving as dissolve only in lobby, as a temporary absence during play, and as a plain leave in review', async () => {
     const lobby = setup();
     const lobbyHost = account(lobby.accounts, 'leave_lobby_host');
-    const lobbyRoom = await lobby.directory.create(lobbyHost.session, THEATER_DEATH_13_V2);
+    const lobbyRoom = await lobby.directory.create(lobbyHost.session, THEATER_DEATH_13_V2, 'alive_only');
     const lobbyOther = account(lobby.accounts, 'leave_lobby_other');
     await lobby.directory.enter(lobbyRoom, lobbyOther.session);
     expect(await lobby.governance.leave(lobbyRoom, lobbyHost.session)).toMatchObject({ left: true, dissolved: true, seatRetained: false });

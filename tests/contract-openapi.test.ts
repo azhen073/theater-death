@@ -39,7 +39,7 @@ function responseSchema(path: string, method: 'get' | 'post', status: string) {
 }
 
 async function startFull(h: HttpHarness) {
-  const created = await request(h, '/api/v2/rooms', post({ requestId: 'contract-create' }), h.users[0]);
+  const created = await request(h, '/api/v2/rooms', post({ requestId: 'contract-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
   expect(created.status).toBe(201);
   const room = await json(created) as { roomId: string; roomCode: string };
   assertSchema(responseSchema('/rooms', 'post', '201'), room, 'room entry');
@@ -89,6 +89,32 @@ describe('client contract OpenAPI verification', () => {
     expect(check({ ...base, action: 'SUBMIT_GUARD', confirmSelf: true, expectedRevision: 0 })).toBe(false);
   });
 
+  it('documents the Agora voice token/receipt shapes and keeps the LiveKit webhook marked deprecated', () => {
+    const token = responseSchema('/rooms/{code}/voice/token', 'post', '200');
+    assertSchema(token, { appId: 'app-id', channel: 'g1', uid: 7, token: 'token' }, 'voice token');
+    // 上一代 LiveKit 形状（url/roomName）必须不再被接受
+    expect(validator(token)({ url: 'wss://media', roomName: 'g1', token: 'token' })).toBe(false);
+    expect(validator(token)({ appId: 'app-id', channel: 'g1', uid: 7 })).toBe(false);
+
+    const receiptPath = (openapi as any).paths['/rooms/{code}/voice/receipt'];
+    const receipt = receiptPath.post.requestBody.content['application/json'].schema;
+    assertSchema(receipt, { requestId: 'r1', gameId: 'g1', windowInstanceId: 'w1', state: 'playing' }, 'voice receipt');
+    assertSchema(receipt, { requestId: 'r1', gameId: 'g1', windowInstanceId: 'w1', state: 'failed', client: { connectionState: 'CONNECTED', remoteUsers: 3 } }, 'voice receipt with client snapshot');
+    assertSchema(receipt, { requestId: 'r1', gameId: 'g1', windowInstanceId: 'w1', state: 'silent-output', client: { connectionState: 'CONNECTED', sendBitrate: 12.5, remoteUsers: 2 } }, 'voice receipt with bitrate');
+    expect(validator(receipt)({ requestId: 'r1', gameId: 'g1', windowInstanceId: 'w1', state: 'bogus' })).toBe(false);
+    // 身份不进载荷：多带 playerId/uid 一律被拒（服务端从会话解析）
+    expect(validator(receipt)({ requestId: 'r1', gameId: 'g1', windowInstanceId: 'w1', state: 'playing', playerId: 'p_1' })).toBe(false);
+
+    const receiptResponse = receiptPath.post.responses['200'].content['application/json'].schema;
+    assertSchema(receiptResponse, { recorded: false, delivery: null }, 'voice receipt without window');
+    assertSchema(receiptResponse, {
+      recorded: true,
+      delivery: { windowInstanceId: 'w1', delivered: 3, blocked: 0, silentOutput: 1, failed: 0, listeners: 4, updatedAt: 1_700_000_000_000 },
+    }, 'voice receipt aggregate');
+
+    expect((openapi as any).paths['/voice/webhook'].post.deprecated).toBe(true);
+  });
+
   it('validates anonymous catalog/auth/room/snapshot/realtime payloads against OpenAPI schemas', async () => {
     const h = await makeHarness();
     const bootstrap = await request(h, '/api/v2/bootstrap');
@@ -104,7 +130,7 @@ describe('client contract OpenAPI verification', () => {
     expect(me.status).toBe(200);
     const meBody = await json(me); assertSchema(responseSchema('/auth/me', 'get', '200'), meBody, 'auth me');
     await exportFixture('auth-me-full.json', 'AuthMe', 'GET /api/v2/auth/me', 'authenticated account', meBody);
-    const lobby = await request(h, '/api/v2/rooms', post({ requestId: 'contract-lobby' }), h.users[0]);
+    const lobby = await request(h, '/api/v2/rooms', post({ requestId: 'contract-lobby', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
     expect(lobby.status).toBe(201);
     const lobbyBody = await json(lobby);
     assertSchema(responseSchema('/rooms', 'post', '201'), lobbyBody, 'lobby entry');

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loadRoomAccounts, loginRoomAccount } from '../helpers-v2/rooms.ts';
+import { loadRoomAccounts, loginRoomAccount, revealHudActions } from '../helpers-v2/rooms.ts';
 import { loadGameFixture, pushFixture } from '../helpers-v2/game.ts';
 
 test('账户亮度跨页面和房间保存，仅滤镜背景，日夜及移动端不影响操作', async ({ page, context }, testInfo) => {
@@ -63,7 +63,7 @@ test('账户亮度跨页面和房间保存，仅滤镜背景，日夜及移动�
     const target = game.locator('.seat-main[aria-label*="可选目标"]').first();
     await target.click(); await expect(target).toHaveAttribute('aria-pressed', 'true');
 
-    await game.getByRole('button', { name: '导航', exact: true }).click();
+    await revealHudActions(game); await game.getByRole('button', { name: '导航', exact: true }).click();
     await game.getByRole('dialog', { name: '剧院导航' }).getByRole('button', { name: '显示设置' }).click();
     await expect(game.getByRole('dialog', { name: '显示设置' }).getByRole('slider', { name: '舞台背景亮度' })).toHaveCount(0);
     await page.getByRole('button', { name: '恢复默认亮度' }).click();

@@ -23,7 +23,7 @@
 
 | 方法与路径 | JSON输入/输出要点 |
 | --- | --- |
-| POST /api/v2/rooms | nickname；可选roles数量表，自定义为experimental；返回roomCode/gameId/playerId |
+| POST /api/v2/rooms | **publicChat 必填**（`alive_only` / `everyone`，无默认值，缺省或非法→400 `invalid_public_chat`）；**freeSpeech 必填布尔**（是否开启白天自由发言，缺省或非布尔→400 `invalid_free_speech`）；可选roles数量表，自定义为experimental；返回roomCode/gameId/playerId |
 | GET /api/v2/me/rooms | 本人房间列表、playerId和是否有当前控制租约 |
 | POST /api/v2/rooms/:code/join | nickname；同一账号不能重复占同一房间席位 |
 | POST /api/v2/rooms/:code/ready | ready布尔值 |
@@ -32,7 +32,7 @@
 | POST /api/v2/rooms/:code/leave | {}；房主在**大厅**退出即解散整房；**复盘**阶段按普通离开（房间保留、房主由其他在线正式成员继任）；对局中退出保留席位、角色与计时，能再次接管 |
 | GET /api/v2/rooms/:code/view | 完整授权快照，见下文 |
 | POST /api/v2/rooms/:code/command | requestId、windowInstanceId、action；按需targets、revision、direction |
-| POST /api/v2/rooms/:code/chat | channel=public或faction，text=1–500字符 |
+| POST /api/v2/rooms/:code/chat | channel=public或faction，text=1–500字符；公屏对局内**所有阶段**可写，写权限按建房时选定的 `room.publicChat` 档位（`alive_only`＝仅存活正式玩家，`everyone`＝存活与死者全体）；观众与第二屏只读 |
 | GET /api/v2/rooms/:code/review | 终局后开放完整复盘 |
 | POST /api/v2/rooms/:code/kick | playerId；仅房主、仅大厅 |
 

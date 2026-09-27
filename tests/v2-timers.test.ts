@@ -64,6 +64,27 @@ describe('v2 白天发言计时', () => {
     expect(driver.submit({ type: 'START_SPEECH', playerId: 'p_7' }).code).toBe('not_current_speaker');
   });
 
+  it('开启白天自由发言：发言轮走完后插入 120 秒窗口，截止才进入放逐投票', () => {
+    const clock = createFakeClock();
+    const driver = createDayDriver({ clock, onStep: () => undefined });
+    const base = v2Day();
+    driver.start({ ...base, ruleset: { ...THEATER_DEATH_13_V2, timersSeconds: { ...THEATER_DEATH_13_V2.timersSeconds, freeSpeech: 120 } } });
+    // 逐个窗口推进（指定顺序 → 每人 15 秒准备 + 120 秒发言），直到出现自由发言窗口
+    let guard = 0;
+    while (driver.windows()[0]?.id !== 'free_speech' && guard < 80) {
+      const window = driver.windows()[0]!;
+      clock.advance(Math.max(1, window.closesAt - clock.now()));
+      guard += 1;
+    }
+    expect(driver.windows().map(window => window.id)).toEqual(['free_speech']);
+    const opensAt = clock.now();
+    expect(driver.windows()[0]!.closesAt).toBe(opensAt + 120_000);
+    expect(driver.snapshot()?.day?.step).toBe('free_speech');
+    clock.advance(120_000);
+    expect(driver.windows().map(window => window.id)).toEqual(['vote']);
+    expect(driver.snapshot()?.day?.step).toBe('vote');
+  });
+
   it('首夜固定窗口不因 v2 白天计时提前结束', () => {
     const clock = createFakeClock();
     const driver = createNightDriver({

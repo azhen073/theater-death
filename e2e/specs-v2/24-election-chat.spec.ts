@@ -24,10 +24,10 @@ async function expectNoOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
-test('公开上警名单覆盖报名、退选、重投和结束，跨四页签与公开观众一致且不泄露私密', async ({ page }) => {
+test('公开竞选名单覆盖报名、退选、重投和结束，跨四页签与公开观众一致且不泄露私密', async ({ page }) => {
   const fixture = electionFixture();
   const mounted = await mount(page, fixture);
-  const roster = page.getByRole('region', { name: '公开上警名单' });
+  const roster = page.getByRole('region', { name: '公开竞选名单' });
   await expect(roster).toContainText('2 人参选');
   await expect(roster).toContainText('2号');
   await expect(roster).toContainText('4号');
@@ -63,9 +63,9 @@ test('公开上警名单覆盖报名、退选、重投和结束，跨四页签�
   await expect(page.getByRole('button', { name: /身份/ })).toHaveCount(0);
 
   await mounted.set(loadGameFixture('night-door-full.json'));
-  await expect(page.getByRole('region', { name: '公开上警名单' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '公开竞选名单' })).toHaveCount(0);
   await mounted.set(loadReviewFixture());
-  await expect(page.getByRole('region', { name: '公开上警名单' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '公开竞选名单' })).toHaveCount(0);
 });
 
 test('公屏底部跟随、阅读历史未读回最新、分页锚点和跨页签草稿均保持', async ({ page }) => {
@@ -125,7 +125,7 @@ test('选举名单和长公屏内容在320至1440宽度均无横向溢出', asyn
   await mount(page, fixture);
   for (const size of [{ width: 320, height: 720 }, { width: 390, height: 844 }, { width: 844, height: 700 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(size);
-    await expect(page.getByRole('region', { name: '公开上警名单' })).toBeVisible();
+    await expect(page.getByRole('region', { name: '公开竞选名单' })).toBeVisible();
     await expect(page.getByLabel('公屏历史')).toBeVisible();
     await expectNoOverflow(page);
   }

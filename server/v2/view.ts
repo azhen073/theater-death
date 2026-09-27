@@ -2,6 +2,7 @@ import type { Room } from '../rooms.ts';
 import { publishedState } from '../../visibility/knowledge.ts';
 import { buildPlayerView, publicEventLog } from '../../visibility/projection.ts';
 import { capabilities } from '../capabilities.ts';
+import type { PublicChatPolicy } from '../../visibility/chat.ts';
 import { legalTargets, type TargetAction } from '../../engine/targets.ts';
 import type { GameState } from '../../engine/types.ts';
 
@@ -16,7 +17,7 @@ function knowledgeFor(self: { roleId: string; seat: number }, state: GameState) 
   return { spiritSeats: [] };
 }
 
-export function gameView(room: Room, identity: ViewIdentity, now: number) {
+export function gameView(room: Room, identity: ViewIdentity, now: number, publicChat: PublicChatPolicy = 'legacy_day_only') {
   const state = room.state;
   if (state === null) return {
     apiVersion: 2, rulesVersion: room.ruleset.version, serverTime: now, gameId: room.gameId, roomCode: room.code,
@@ -29,12 +30,12 @@ export function gameView(room: Room, identity: ViewIdentity, now: number) {
   // Global audit sequence numbers must never become a hidden-event count side channel.
   const factionRoom = view?.room ? { roomId: view.room.roomId, readOnly: view.room.readOnly, canWrite: view.room.canWrite, members: view.room.members } : null;
   const subject = identity.subjectPlayerId;
-  const subjectCaps = capabilities(known, subject, windows, now);
+  const subjectCaps = capabilities(known, subject, windows, now, false, publicChat);
   // Only the water role is entitled to learn the unannounced dead roster for its return choice.
-  const actualCaps = capabilities(state, subject, windows, now);
+  const actualCaps = capabilities(state, subject, windows, now, false, publicChat);
   if (actualCaps.allowedCommands.includes('SUBMIT_REVIVE')) subjectCaps.allowedCommands.push('SUBMIT_REVIVE');
   const allowedTargets = Object.fromEntries(subjectCaps.allowedCommands.filter((c) => targeted.has(c)).map((action) => [action, legalTargets(action === 'SUBMIT_REVIVE' ? state : known, subject!, action as TargetAction)]));
-  const callerCaps = identity.readOnly ? capabilities(known, null, windows, now, true) : subjectCaps;
+  const callerCaps = identity.readOnly ? capabilities(known, null, windows, now, true, publicChat) : subjectCaps;
   const nightDeadline = room.driver !== null && 'nightDeadline' in room.driver ? room.driver.nightDeadline() : null;
   return {
     apiVersion: 2, rulesVersion: state.ruleset.version, serverTime: now, gameId: room.gameId, roomCode: room.code,

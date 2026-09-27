@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RoomSnapshot, WindowDTO } from '../../../../contracts/v2.ts';
 import { formatCountdown } from '../../presentation/labels.ts';
+import { usePreferences } from '../../state/preferences.ts';
 import '../../styles/speech-attention.css';
 
 export function SpeechAttention({ view, active, window: speechWindow, remaining }: {
@@ -8,9 +9,12 @@ export function SpeechAttention({ view, active, window: speechWindow, remaining 
   remaining: (deadline: number) => number | null;
 }) {
   const day = view.public?.day;
+  const freeSpeech = day?.step === 'free_speech';
   const speaker = view.public?.seats.find(seat => seat.playerId === day?.currentSpeakerId);
   const own = view.viewer.kind === 'formal' && !view.viewer.readOnly && speaker?.playerId === view.viewer.subjectPlayerId;
-  const [sound, setSound] = useState(false);
+  const { preferences } = usePreferences();
+  const sound = preferences.attentionSound;
+  const [unlocked, setUnlocked] = useState(false);
   const [audioError, setAudioError] = useState('');
   const context = useRef<AudioContext | null>(null);
   const [visible, setVisible] = useState(() => document.visibilityState === 'visible');
@@ -26,6 +30,37 @@ export function SpeechAttention({ view, active, window: speechWindow, remaining 
   }, []);
   useEffect(() => () => { void context.current?.close(); context.current = null; }, []);
 
+  /** Web Audio 必须由用户手势解锁；开关已移到账户「显示与动画」，这里在局内首次点击/按键时自动解锁。 */
+  const unlock = useCallback(async (): Promise<boolean> => {
+    try {
+      context.current ??= new AudioContext();
+      await context.current.resume();
+      if (context.current.state !== 'running') throw new Error('blocked');
+      setUnlocked(true);
+      setAudioError('');
+      return true;
+    } catch {
+      setUnlocked(false);
+      setAudioError('浏览器未允许提示音；文字提醒仍然可用。');
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sound || unlocked) return;
+    // 不设 once：解锁失败或手势早于监听挂载时，后续任意点击/按键都能再试。
+    const attempt = () => { void unlock(); };
+    document.addEventListener('pointerdown', attempt);
+    document.addEventListener('keydown', attempt);
+    return () => { document.removeEventListener('pointerdown', attempt); document.removeEventListener('keydown', attempt); };
+  }, [sound, unlocked, unlock]);
+
+  useEffect(() => {
+    if (sound || context.current === null) return;
+    void context.current.suspend();
+    setUnlocked(false);
+  }, [sound]);
+
   useEffect(() => {
     const old = previous.current;
     previous.current = { phase: publicPhase, ownCue, active: ready };
@@ -36,7 +71,7 @@ export function SpeechAttention({ view, active, window: speechWindow, remaining 
       if (sessionStorage.getItem(key)) return;
       sessionStorage.setItem(key, 'seen');
     } catch { return; }
-    if (!old?.active || !ready || !sound || context.current?.state !== 'running') return;
+    if (!old?.active || !ready || !sound || !unlocked || context.current?.state !== 'running') return;
     const audio = context.current;
     // Local playback only. No microphone, voice session, or game command is touched.
     [523.25, 783.99].forEach((frequency, index) => {
@@ -50,25 +85,20 @@ export function SpeechAttention({ view, active, window: speechWindow, remaining 
       oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
       oscillator.start(start); oscillator.stop(start + .22);
     });
-  }, [publicPhase, ownCue, ready, sound]);
-
-  const toggleSound = async () => {
-    if (sound) { setSound(false); await context.current?.suspend(); return; }
-    try {
-      context.current ??= new AudioContext();
-      await context.current.resume();
-      if (context.current.state !== 'running') throw new Error('blocked');
-      setSound(true); setAudioError('');
-    } catch { setSound(false); setAudioError('浏览器未允许提示音；文字提醒仍然可用。'); }
-  };
+  }, [publicPhase, ownCue, ready, sound, unlocked]);
 
   return <section className={`speech-attention ${own ? 'speech-attention--own' : ''}`} aria-label="发言与提醒">
-    {speaker && <div className="speech-attention__speaker">
+    {freeSpeech && <div className="speech-attention__speaker">
+      <strong>自由发言进行中 · 全体存活可同时开麦</strong>
+      {speechWindow && <span role="timer" aria-label="自由发言剩余时间">{formatCountdown(remaining(speechWindow.closesAt))}</span>}
+      <small>本轮为固定 2 分钟，不会因为无人发言而提前结束。</small>
+    </div>}
+    {!freeSpeech && speaker && <div className="speech-attention__speaker">
       <strong>{own ? '轮到你了 · ' : ''}{day?.speechPreparing ? '即将发言' : '正在发言'}：{speaker.seat}号 {speaker.nickname}</strong>
       {speechWindow && <span role="timer" aria-label={day?.speechPreparing ? '发言准备剩余时间' : '发言剩余时间'}>{formatCountdown(remaining(speechWindow.closesAt))}</span>}
       {own && day?.speechPreparing && <small>最多准备 15 秒，倒计时结束自动开始；可在舞台行动中提前开始。</small>}
     </div>}
-    <button type="button" className="text-button" aria-pressed={sound} onClick={() => void toggleSound()} aria-label="阶段与本人发言提示音">提示音：{sound ? '开启' : '关闭'}<small>仅本页，刷新后关闭</small></button>
-    {audioError && <small role="status">{audioError}</small>}
+    {sound && !unlocked && <button type="button" className="text-button speech-attention__sound" aria-label="启用提示音" onClick={() => void unlock()}>提示音未解锁 · 点此启用<small>仅需一次，之后自动生效（开关在账户「显示与动画」）</small></button>}
+    {sound && !unlocked && audioError && <small role="status">{audioError}</small>}
   </section>;
 }

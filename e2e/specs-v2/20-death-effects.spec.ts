@@ -36,6 +36,22 @@ test('公开死讯绘制座位粒子，常驻星芒覆盖头像；不挡点击�
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   const first = announce(base, [1], 1); await mounted.set(first);
   await expect(page.locator('.death-notice')).toContainText('1号已死亡');
+  // 公告横幅必须落在 HUD 与其工具行之下（HUD 高度随宽度/显示缩放变化，不能用写死的 top）
+  const noticeBox = await page.locator('.death-notice').boundingBox();
+  const hudBox = await page.locator('.game-hud').boundingBox();
+  const toolsBox = await page.locator('.hud-tools').boundingBox();
+  expect(noticeBox).not.toBeNull(); expect(hudBox).not.toBeNull(); expect(toolsBox).not.toBeNull();
+  expect(noticeBox!.y).toBeGreaterThanOrEqual(hudBox!.y + hudBox!.height);
+  expect(noticeBox!.y).toBeGreaterThanOrEqual(toolsBox!.y + toolsBox!.height);
+  // 滚动后 HUD 吸附在顶部：横幅跟随其下沿，仍不得压住 HUD
+  await page.evaluate(() => window.scrollTo(0, 300));
+  await page.waitForTimeout(120);
+  const scrolledNotice = await page.locator('.death-notice').boundingBox();
+  const scrolledHud = await page.locator('.game-hud').boundingBox();
+  expect(scrolledNotice).not.toBeNull(); expect(scrolledHud).not.toBeNull();
+  expect(scrolledNotice!.y).toBeGreaterThanOrEqual(scrolledHud!.y + scrolledHud!.height);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(120);
   await expect(mark(page, 1)).toBeVisible();
   await expect(page.locator('.death-particles')).toHaveCount(1);
   await expect.poll(() => page.locator('.death-particles').evaluate(element => {

@@ -894,22 +894,65 @@ export function advanceSpeech(
     );
     updated = { ...day, speechRound: { ...round, index: nextIndex } };
   } else {
-    emitter.emit(
-      'day_vote_started',
-      { round: 1, eligibleSeats: eligibleVoters(state).map((id) => seatOf(state, id)) },
-      { kind: 'public' },
-    );
-    const ballot: BallotState = {
-      phase: 'vote',
-      round: 1,
-      votes: {},
-      tiedIds: [],
-      tieSpeechIndex: 0,
-      eliminatedId: null,
-    };
-    updated = { ...day, step: 'vote', speechRound: { ...round, index: nextIndex }, ballot };
+    updated = enterFreeSpeechOrVote(state, day, emitter, { ...round, index: nextIndex });
   }
   return result(state, updated, emitter);
+}
+
+/** 房主开启（规则集带正数 freeSpeech）时返回该阶段秒数，否则 null。 */
+export function freeSpeechSeconds(state: GameState): number | null {
+  const seconds = state.ruleset.timersSeconds.freeSpeech;
+  return typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+/** 进入放逐投票：公示票型窗口并建立第一轮票箱（发言轮 / 自由发言结束后共用）。 */
+function enterDayVote(state: GameState, day: DayContext, emitter: EventCollector, round: SpeechRoundState | null): DayContext {
+  emitter.emit(
+    'day_vote_started',
+    { round: 1, eligibleSeats: eligibleVoters(state).map((id) => seatOf(state, id)) },
+    { kind: 'public' },
+  );
+  const ballot: BallotState = {
+    phase: 'vote',
+    round: 1,
+    votes: {},
+    tiedIds: [],
+    tieSpeechIndex: 0,
+    eliminatedId: null,
+  };
+  return { ...day, step: 'vote', speechRound: round, ballot };
+}
+
+/** 发言轮结束后的分流：房主开启且当天未走过 → 自由发言（全体存活可开麦），否则直接放逐投票。 */
+function enterFreeSpeechOrVote(state: GameState, day: DayContext, emitter: EventCollector, round: SpeechRoundState): DayContext {
+  if (freeSpeechSeconds(state) !== null && day.freeSpeechDone !== true) {
+    emitter.emit('free_speech_started', { seconds: freeSpeechSeconds(state) }, { kind: 'public' });
+    return { ...day, step: 'free_speech', speechRound: round, freeSpeechDone: true };
+  }
+  return enterDayVote(state, day, emitter, round);
+}
+
+export function freeSpeechIssue(state: GameState): DayValidationIssue | null {
+  const stepIssue = requireStep(state, 'free_speech');
+  if (stepIssue !== null) {
+    return stepIssue;
+  }
+  if (freeSpeechSeconds(state) === null) {
+    return issue('free_speech_disabled', '本局未开启白天自由发言');
+  }
+  return null;
+}
+
+/** 自由发言窗口截止：进入放逐投票。 */
+export function advanceFreeSpeech(state: GameState): { state: GameState; events: GameEvent[] } {
+  const advanceIssue = freeSpeechIssue(state);
+  if (advanceIssue !== null) {
+    throw new Error(`推进自由发言失败：${advanceIssue.message}`);
+  }
+  const day = requireDay(state);
+  const emitter = emitterFor(state);
+  emitter.emit('free_speech_finished', {}, { kind: 'public' });
+  return result(state, enterDayVote(state, day, emitter, day.speechRound), emitter);
 }
 
 export function submitDayVoteIssue(

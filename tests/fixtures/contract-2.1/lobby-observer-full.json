@@ -69,6 +69,8 @@
       "simultaneousWinPriority": "death_faction",
       "researcherCondition": "currently_dead"
     },
+    "publicChat": "alive_only",
+    "freeSpeech": false,
     "requiredPlayers": 13,
     "hostMemberId": "m_6a1afefa4f953b73a4cc8408ebb15f86",
     "formalMembers": [

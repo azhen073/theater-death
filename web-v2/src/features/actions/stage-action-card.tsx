@@ -90,9 +90,8 @@ export function StageActionCard({
                 {draft.targets.length ? targetSummary(view, draft.targets) : '尚未选择目标'}
                 <span> · {draft.targets.length} / {task.targets.maxTargets}</span>
               </p>
-              <p className="muted">
-                点击舞台上的可选玩家，仅改变选择；确认后才提交。
-                {task.targets.allowRepeated ? '同一目标可重复选择，使用加减调整次数。' : ''}
+              <p className="action-hint">
+                点击舞台上的可选玩家进行选中 / 取消选中，仅改变选择；确认后才提交。
               </p>
             </>
           )}

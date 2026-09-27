@@ -20,7 +20,7 @@ function roles(overrides: Record<string, number> = {}): Record<string, number> {
 }
 
 async function create(h: Awaited<ReturnType<typeof makeHarness>>, userIndex: number, body: Record<string, unknown>) {
-  const response = await request(h, '/api/v2/rooms', post(body), h.users[userIndex]);
+  const response = await request(h, '/api/v2/rooms', post({ publicChat: 'alive_only', freeSpeech: false, ...body }), h.users[userIndex]);
   return { response, body: await json(response) };
 }
 

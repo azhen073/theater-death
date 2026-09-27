@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { loadGameFixture, loadObservedActionsFixture, loadReviewDocument, loadReviewFixture, pushFixture, type GameHarnessFixture, type ReviewEnvelope } from '../helpers-v2/game.ts';
 
 type ReviewMode = 'ok' | 'slow' | 'fail-once' | 'wrong-once';
@@ -185,14 +186,14 @@ test('复盘管理转移房主未知结果返回复盘后再入管理，沿用�
   });
   await page.goto('/game-test.html');
   await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
-  await page.getByRole('button', { name: '房间管理' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '房间管理' }).click();
   const target = page.locator('.member-card').filter({ hasText: fixture.view.room.formalMembers[1]!.nickname }).first();
   await target.getByRole('button', { name: '转移房主' }).click();
   await page.getByRole('dialog', { name: '转移房主？' }).getByRole('button', { name: '确认操作' }).click();
   await expect(page.getByRole('alert')).toContainText('尚未确认结果');
   await page.getByRole('button', { name: '返回复盘' }).click();
   await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
-  await page.getByRole('button', { name: '房间管理' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '房间管理' }).click();
   await expect(page.getByRole('alert')).toContainText('尚未确认结果');
   await page.getByRole('alert').getByRole('button', { name: '确认原操作结果' }).click();
   await expect.poll(() => bodies.length).toBe(2);

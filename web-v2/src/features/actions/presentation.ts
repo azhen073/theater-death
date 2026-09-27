@@ -2,6 +2,7 @@ import type { CommandAction, RoomSnapshot, SubmissionDTO, TaskDTO } from '../../
 import type { TrackedCommand } from './commands.ts';
 import type { ActionDraft } from './model.ts';
 import { actionIssue, currentTask, skipLabels, targetActions, taskKey } from './model.ts';
+import { electionVoteNote, electionVoteNoteText } from '../game/election-vote-notes.ts';
 import { actionLabels } from '../../presentation/labels.ts';
 import { targetSummary } from '../../presentation/targets.ts';
 import { ApiFailure, errorMessage } from '../../transport/http.ts';
@@ -279,10 +280,14 @@ export function deriveActionPresentation({
   // 2. Formal player with no valid current task
   const validTask = task ? currentTask(view, task) : null;
   if (!validTask) {
+    // 竞选投票阶段：本人被排除（候选人 / 重投平票者 / 死者 / 票权冻结）或已投票时，
+    // 用具体原因或回执替换通用文案；其余情况逐字不变。
+    const electionNote = electionVoteNote(view);
+    const electionText = electionNote === null ? null : electionVoteNoteText(electionNote);
     return {
       mode: 'idle',
-      title: '本阶段无需操作',
-      summary: '等待其他玩家或服务端推进阶段。',
+      title: electionText?.title ?? '本阶段无需操作',
+      summary: electionText?.summary ?? '等待其他玩家或服务端推进阶段。',
       serverSummary: null,
       status: 'idle',
       statusText: '无需操作',

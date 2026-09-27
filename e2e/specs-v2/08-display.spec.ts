@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { alivePlayers, loadGameFixture, loadReviewDocument, loadReviewFixture, pushFixture, resizeSeats, taskFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
 
 async function mountPlaying(page: Page, fixture: GameHarnessFixture) {
@@ -19,7 +20,7 @@ async function mountReview(page: Page, fixture = loadReviewFixture()) {
 }
 
 async function openSettings(page: Page) {
-  await page.getByRole('button', { name: '导航' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '导航' }).click();
   await page.getByRole('dialog', { name: '剧院导航' }).getByRole('button', { name: '显示设置' }).click();
   return page.getByRole('dialog', { name: '显示设置' });
 }
@@ -71,7 +72,7 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
   await dialog.getByLabel('动画偏好').selectOption('system');
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}') as Record<string, unknown>);
-  expect(Object.keys(stored).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+  expect(Object.keys(stored).sort()).toEqual(['attentionSound', 'autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
   expect(stored).toMatchObject({ deathEffects: true, motion: 'system', scale: 110 });
 
   await page.getByRole('button', { name: '关闭' }).click();

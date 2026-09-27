@@ -4,6 +4,9 @@
   color: #29374c; background: #edf0f3; font-synthesis: none;
   --ink: #29374c; --muted: #6b788b; --line: #cbd3de; --paper: #f9fafb;
   --accent: #455974; --gold: #a69a7e; --danger: #944b56; --radius: 12px;
+  /* 座位目标配色：昼/夜与图例、角标共用同一套（夜间不再另用淡蓝，避免与图例不符） */
+  --seat-selected: #455974; --seat-selected-bg: #eaf0f8; --seat-selected-ring: #45597440;
+  --seat-draft: #2f7d8c; --seat-draft-bg: #eef7f8; --seat-draft-ring: #2f7d8c66;
 }
 * { box-sizing: border-box; }
 .game-scene[hidden] { display: none; }
@@ -226,11 +229,16 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .seat-status { font-size: 9px; color: var(--muted); min-height: 14px; }
 .seat-tools { display: flex; justify-content: center; gap: 1px; margin-top: 3px; }
 .seat-tools button { padding: 5px 9px; min-height: 28px; border: 0; border-radius: 4px; background: #eef2f8d9; color: #596d8b; font-size: 10px; }
-.seat-count { position: absolute; right: -9px; top: -11px; background: var(--accent); color: #fff; padding: 4px 7px; border-radius: 4px; font-size: 10px; }
+.seat-count { position: absolute; right: -9px; top: -11px; background: var(--seat-selected); color: #fff; padding: 4px 7px; border-radius: 4px; font-size: 10px; }
 .seat-sheriff { position: absolute; right: 4px; top: 28px; writing-mode: vertical-rl; color: #81704c; font-size: 9px; }
 .seat-known { position: absolute; left: 4px; top: 28px; writing-mode: vertical-rl; color: #6b4c78; font-size: 9px; }
 .identity-known { padding: 6px 10px; border: 1px solid #d8c9de; border-radius: 6px; background: #f7f1fa; color: #5d4a66; font-size: 12px; }
-.stage-seat--selected .seat-main { border: 2px solid #455974; padding: 7px 4px; background: #eaf0f8; box-shadow: 0 0 0 4px #4559741a; }
+/* 用 .theater-stage 提升特异度：夜间只有 `.theater-stage--night .seat-main` 的底色覆盖，这里必须稳赢，昼夜同色 */
+.theater-stage .stage-seat--selected .seat-main { border: 2px solid var(--seat-selected); padding: 7px 4px; background: var(--seat-selected-bg); box-shadow: 0 0 0 4px var(--seat-selected-ring); }
+/* 队伍草稿目标：青色虚线（与「我的选择」的深蓝实线区分），边框+内边距与选中态同值以免布局跳动 */
+.theater-stage .stage-seat--draft .seat-main { border: 2px dashed var(--seat-draft); padding: 7px 4px; background: var(--seat-draft-bg); }
+.theater-stage .stage-seat--selected.stage-seat--draft .seat-main { border: 2px solid var(--seat-selected); padding: 7px 4px; background: var(--seat-selected-bg); box-shadow: 0 0 0 3px var(--seat-draft-ring), 0 0 0 6px var(--seat-selected-ring); }
+.seat-draft { position: absolute; left: -9px; top: -11px; background: var(--seat-draft); color: #fff; padding: 4px 7px; border-radius: 4px; font-size: 10px; }
 .stage-seat--unavailable .seat-main { background: #e7ebf0b0; color: #788393; }
 .stage-seat--dead .avatar { filter: grayscale(1); opacity: .65; }
 .stage-seat--dead .seat-status { color: #874c57; }
@@ -260,6 +268,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .stage-action-card .select-field { display: flex; align-items: center; gap: 10px; font-size: 13px; margin: 8px 0; min-width: 0; }
 .stage-action-card .select-field select { min-width: 0; flex: 1; max-width: 200px; }
 .stage-action-card .speech-preview { margin-top: 6px; padding: 6px 10px; background: #edf3f8; border-radius: 4px; font-size: 12px; color: #3b506a; overflow-wrap: anywhere; }
+/* 目标选择提示：加粗并回到正文色，强调"点击＝选中/取消"这一交互（各目标类行动共用） */
+.stage-action-card .action-hint { font-weight: 700; font-size: 13px; color: var(--ink); margin: 6px 0 0; }
 .stage-action-card .feedback { margin-top: 8px; }
 .selection-summary { font-size: 14px; font-weight: 600; line-height: 1.7; }
 .selection-summary span { color: var(--muted); font-weight: 400; }
@@ -298,6 +308,11 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .team-proposal h3 { margin-top: 0; }
 .team-proposal > p { font-size: 12px; margin: 10px 0; }
 .proposal-confirmations { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; padding: 0; font-size: 11px; color: var(--muted); }
+.proposal-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+.proposal-legend__mine, .proposal-legend__draft { position: relative; padding-left: 15px; }
+.proposal-legend__mine::before, .proposal-legend__draft::before { content: ''; position: absolute; left: 0; top: 3px; width: 8px; height: 8px; border-radius: 2px; }
+.proposal-legend__mine::before { border: 2px solid var(--seat-selected); background: var(--seat-selected-bg); }
+.proposal-legend__draft::before { border: 2px dashed var(--seat-draft); background: var(--seat-draft-bg); }
 .speech-preview { font-size: 12px; color: var(--muted); }
 .effective-proposal { border-top: 1px solid #c8d2df; padding-top: 12px; font-size: 12px; }
 .effective-proposal small { font-size: 10px; color: var(--muted); }
@@ -444,6 +459,17 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .hud-meta span { font-size: 10px; }
   .hud-tools { width: 100%; justify-content: flex-end; }
   .hud-tools .button { min-height: 34px; font-size: 11px; padding: 6px 11px; }
+  /* 窄屏滚动后：HUD 收成细条，工具行收进「更多」菜单，避免吸附的头条盖住座位 */
+  .game-hud--compact { gap: 10px; flex-wrap: nowrap; padding: 6px 0 7px; margin-bottom: 10px; }
+  .game-hud--compact h1 { font-size: 15px; margin: 2px 0 0; }
+  .game-hud--compact .hud-meta { margin-left: auto; margin-right: 0; gap: 3px; }
+  .game-hud--compact .hud-meta span { display: none; }
+  .game-hud--compact .hud-meta strong { font-size: 13px; }
+  .hud-tools--compact { width: auto; }
+  .hud-more { min-height: 32px; font-size: 12px; padding: 6px 12px; }
+  .hud-menu { position: absolute; top: 100%; right: 12px; display: grid; gap: 6px; min-width: 172px; padding: 10px;
+    background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 26px #1d2b4422; }
+  .hud-menu__room { font-size: 11px; color: var(--muted); }
   .voice-bar { align-items: stretch; }
   .voice-bar__status { width: 100%; }
   .voice-bar__device { width: 100%; justify-content: space-between; }

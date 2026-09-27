@@ -34,7 +34,7 @@ function account(accounts: AccountStore, name: string) {
 
 async function fullMatch(directory: RoomDirectory, accounts: AccountStore, prefix: string) {
   const host = account(accounts, `${prefix}_host`);
-  const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+  const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
   const players = [host];
   for (let index = 1; index < 13; index += 1) {
     const user = account(accounts, `${prefix}_${index}`);
@@ -50,7 +50,7 @@ describe('v2 member presence', () => {
   it('counts control tabs: one disconnect stays online, final disconnect enters grace then offline', async () => {
     const { clock, accounts, directory, presence } = setup();
     const user = account(accounts, 'presence_tabs');
-    const room = await directory.create(user.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(user.session, THEATER_DEATH_13_V2, 'alive_only');
     const member = room.members.get(user.userId)!;
     member.ready = true;
     await presence.connect(room, user.session, 'tab-1');
@@ -71,7 +71,7 @@ describe('v2 member presence', () => {
   it('cancels the old grace timer on reconnect and ping timeout goes offline immediately', async () => {
     const { clock, accounts, directory, presence } = setup();
     const user = account(accounts, 'presence_reconnect');
-    const room = await directory.create(user.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(user.session, THEATER_DEATH_13_V2, 'alive_only');
     const member = room.members.get(user.userId)!;
     await presence.connect(room, user.session, 'old');
     await presence.disconnect(room, user.session, 'old', 'transport close');
@@ -87,7 +87,7 @@ describe('v2 member presence', () => {
   it('disconnecting an old socket after takeover does not affect the new control session', async () => {
     const { accounts, directory, presence } = setup();
     const user = account(accounts, 'presence_takeover');
-    const room = await directory.create(user.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(user.session, THEATER_DEATH_13_V2, 'alive_only');
     await presence.connect(room, user.session, 'old-socket');
     const newer = accounts.createSession(user.userId).session;
     await directory.enter(room, newer, true);

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { CONTRACT_VERSION } from '../../contracts/v2.ts';
+import { CONTRACT_VERSION, PUBLIC_CHAT_MODES, type PublicChatMode } from '../../contracts/v2.ts';
 import type { Clock } from '../clock.ts';
 import type { LogStore } from '../log-store.ts';
 import { RoomRegistry } from '../rooms.ts';
@@ -76,7 +76,7 @@ export function createV2App(deps: V2Deps) {
   const presence = new MemberPresence(directory);
   const rounds = new RoomRounds(directory, governance);
   const grants = new ScreenGrants(directory);
-  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id), voice: { deliveryFor: (gameId) => media.deliveryFor(gameId) } });
+  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id), voice: { deliveryFor: (gameId) => media.deliveryFor(gameId), uidMap: (gameId) => media.uidMap(gameId) } });
   hub = createRoomRealtime({ directory, snapshots, presence, origin: deps.origin, cookieName: deps.cookieName });
   // D 组对账：只对有对局且已进入对局的房间跑；REST 在媒体自己的串行队列里执行，不阻塞游戏队列
   const maintenance = createMaintenance(directory, empty, deps.avatars ? () => deps.avatars!.collect() : undefined, {
@@ -224,13 +224,25 @@ export function createV2App(deps: V2Deps) {
   router.post('/rooms', async (req, res) => {
     const s = limited(req, 'create', 5, 60_000); intent(req);
     if (req.body?.presetId !== undefined && req.body.presetId !== 'default-13') throw new ApiError(400, 'invalid_preset');
-    const ruleset: RulesetConfig = req.body?.roles === undefined ? structuredClone(THEATER_DEATH_13_V2) : { ...structuredClone(THEATER_DEATH_13_V2), mode: 'experimental', roles: req.body.roles };
+    // 公屏写权限必须显式选择，没有默认档位（房主在建房时决定，创建后不可改）。
+    const publicChat = req.body?.publicChat;
+    if (typeof publicChat !== 'string' || !(PUBLIC_CHAT_MODES as readonly string[]).includes(publicChat)) throw new ApiError(400, 'invalid_public_chat');
+    // 白天「自由发言」阶段同样必须显式选择（true/false 都可，但不能缺省）。
+    const freeSpeech = req.body?.freeSpeech;
+    if (typeof freeSpeech !== 'boolean') throw new ApiError(400, 'invalid_free_speech');
+    const preset = structuredClone(THEATER_DEATH_13_V2);
+    // 关闭时把该时限从冻结规则里移除：引擎据此判定本局没有这个阶段（1.1 板本来就不带）。
+    const timers = { ...preset.timersSeconds };
+    if (!freeSpeech) delete timers.freeSpeech;
+    const ruleset: RulesetConfig = req.body?.roles === undefined
+      ? { ...preset, timersSeconds: timers }
+      : { ...preset, timersSeconds: timers, mode: 'experimental', roles: req.body.roles };
     const validation = validateRuleset(ruleset);
     if (!validation.ok) throw new ApiError(400, 'invalid_ruleset', validation.issues.map((v) => v.code).join(','));
     const count = Object.values(ruleset.roles).reduce((a, b) => a + b, 0);
     if (count > 64) throw new ApiError(400, 'player_limit');
     if (req.body?.playerCount !== undefined && req.body.playerCount !== count) throw new ApiError(400, 'player_count_mismatch');
-    const room = await directory.create(s, ruleset);
+    const room = await directory.create(s, ruleset, publicChat as PublicChatMode);
     res.status(201).json(entry(room, room.members.get(s.userId)!));
   });
   router.get('/me/rooms', async (req, res) => {
@@ -329,7 +341,7 @@ export function createV2App(deps: V2Deps) {
       const clientMessageId = textField(req.body?.clientMessageId, 'client_message_id', 1, 80);
       return room.chatReceipts.execute(gameId, id, clientMessageId, req.body, () => {
         limited(req, 'chat', 5, 2500);
-        const snapshot = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now());
+        const snapshot = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now(), room.publicChat);
         const channel = req.body?.channel;
         if (channel !== 'public' && channel !== 'faction') throw new ApiError(400, 'invalid_channel');
         if (!(channel === 'public' ? snapshot.capabilities?.canPostPublic : snapshot.capabilities?.canPostFaction)) throw new ApiError(403, 'chat_forbidden');

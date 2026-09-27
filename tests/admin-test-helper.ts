@@ -90,7 +90,7 @@ export async function loginAdmin(harness: AdminHarness): Promise<string> {
 }
 
 export async function createStartedRoom(harness: AdminHarness, users = harness.users.slice(0, 13)): Promise<{ roomCode: string; gameId: string }> {
-  const created = await request(harness, '/api/v2/rooms', jsonPost({ requestId: `admin-room-${crypto.randomUUID()}` }, users[0]!.cookie));
+  const created = await request(harness, '/api/v2/rooms', jsonPost({ requestId: `admin-room-${crypto.randomUUID()}`, publicChat: 'alive_only', freeSpeech: false }, users[0]!.cookie));
   if (created.status !== 201) throw new Error(`room create status ${created.status}`);
   const room = await json(created);
   for (let index = 1; index < users.length; index += 1) {

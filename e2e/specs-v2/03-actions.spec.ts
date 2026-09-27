@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { alivePlayers, loadGameFixture, pushFixture, resizeSeats, taskFixture, type CommandAction, type GameHarnessFixture, type RoomSnapshot, type TaskDTO } from '../helpers-v2/game.ts';
 
 const COMMAND_ACTIONS: CommandAction[] = ['SUBMIT_GUARD', 'SUBMIT_LAIKE', 'EDIT_PROPOSAL', 'CONFIRM_PROPOSAL', 'SUBMIT_CHECK', 'SUBMIT_RESCUE', 'SUBMIT_REVIVE', 'REGISTER_CANDIDACY', 'WITHDRAW_CANDIDACY', 'START_SPEECH', 'END_ELECTION_SPEECH', 'SUBMIT_ELECTION_VOTE', 'DESIGNATE_SPEECH', 'END_SPEECH', 'SUBMIT_DAY_VOTE', 'END_TIE_SPEECH', 'END_LAST_WORDS', 'SUBMIT_HANDOVER'];
@@ -116,9 +117,23 @@ test('夹具 UI 保持选择/任务/草稿边界并覆盖席位布局与公开�
 
   const repeated = taskFixture(base.view, 'SUBMIT_LAIKE', targetSelection(base.view, { maxTargets: 3, allowRepeated: true }));
   await mounted.setFixture(repeated);
-  await page.locator('.seat-main[aria-label*="可选目标"]').first().click();
-  await page.getByRole('button', { name: /增加.*目标次数/ }).first().click();
+  await page.locator('.seat-main[aria-label*="可选目标"]').nth(0).click();
+  await page.locator('.seat-main[aria-label*="可选目标"]').nth(1).click();
   await expect(page.locator('.selection-summary')).toContainText('2 / 3');
+  // 夜间与白天同一套色：selected-only 也必须是深蓝实线（此前夜间被覆盖成淡蓝 #9bbfff，与图例不符）
+  const nightSelected = page.locator('.stage-seat--selected:not(.stage-seat--draft) .seat-main').first();
+  await expect(nightSelected).toHaveCSS('border-top-style', 'solid');
+  await expect(nightSelected).toHaveCSS('border-top-color', 'rgb(69, 89, 116)');
+  await expect(nightSelected).toHaveCSS('background-color', 'rgb(234, 240, 248)');
+  // 选择提示改为加粗正文（各目标类行动共用），文案说明"点击＝选中/取消"
+  const hint = page.locator('.stage-action-card .action-hint');
+  await expect(hint).toHaveText(/点击舞台上的可选玩家进行选中 \/ 取消选中/);
+  await expect(hint).toHaveCSS('font-weight', '700');
+  // 重复目标已废止：不再有加减按钮，再点同一座位即取消选中
+  await expect(page.getByRole('button', { name: /增加.*目标次数/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /减少.*目标次数/ })).toHaveCount(0);
+  await page.locator('.seat-main[aria-label*="可选目标"]').nth(1).click();
+  await expect(page.locator('.selection-summary')).toContainText('1 / 3');
 
   const multi = structuredClone(base.view);
   multi.room.phase = 'playing';
@@ -155,7 +170,7 @@ test('夹具 UI 保持选择/任务/草稿边界并覆盖席位布局与公开�
   const privateView = structuredClone(privateFixture.view); privateView.viewer.kind = 'private_spectator'; privateView.viewer.readOnly = true;
   await mounted.setFixture({ ...privateFixture, view: privateView });
   await expect(page.getByText(/正在观战 · 私人第二屏/)).toBeVisible();
-  await expect(page.getByRole('button', { name: '当前观察身份' })).toBeVisible();
+  await revealHudActions(page); await expect(page.getByRole('button', { name: '当前观察身份' })).toBeVisible();
   await page.screenshot({ path: '/results/actions-layout-' + testInfo.project.name + '.png' });
   await expectNoOverflow(page);
 });
@@ -235,7 +250,18 @@ test('团队方案支持一次发布并本人确认，同时保留队友逐版�
   await expect(region.getByRole('group', { name: '可用任务' }).getByRole('button', { name: '团队攻击', exact: true })).toHaveCount(1);
   await expect(region.getByRole('button', { name: '确认团队方案', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('同意方案 v2');
-  await expect(page.getByTestId('stage-skip')).toHaveAccessibleName('发布并确认空刀');
+  await expect(page.getByTestId('stage-skip')).toHaveCount(0); // 单按钮：空刀不再与方案并列
+  // 草稿目标（队友/已发布版本）用青色虚线 +「草稿」角标区分于「我的选择」，并在方案面板给出图例
+  const draftSeat = page.locator(`.stage-seat[data-player-id="${firstTarget}"]`);
+  await expect(draftSeat).toHaveClass(/stage-seat--draft/);
+  await expect(draftSeat).toHaveClass(/stage-seat--selected/);
+  await expect(draftSeat.locator('.seat-draft')).toHaveText('草稿');
+  await expect(draftSeat.locator('.seat-main')).toHaveAttribute('aria-label', /在队伍草稿中/);
+  await expect(region.getByRole('region', { name: '团队方案' })).toContainText('当前草稿目标');
+  // 重合座位：保持我的深蓝实线，外圈补青色环（草稿身份由角标与环体现）
+  await expect(draftSeat.locator('.seat-main')).toHaveCSS('border-top-style', 'solid');
+  await expect(draftSeat.locator('.seat-main')).toHaveCSS('border-top-color', 'rgb(69, 89, 116)');
+  await expect(draftSeat.locator('.seat-main')).toHaveCSS('box-shadow', /47, 125, 140/);
   await page.getByTestId('stage-submit').click();
   await expect.poll(() => mounted.commands.length).toBe(1);
   expect(mounted.commands[0]).toMatchObject({ action: 'CONFIRM_PROPOSAL', revision: 2 });
@@ -251,6 +277,10 @@ test('团队方案支持一次发布并本人确认，同时保留队友逐版�
   await expect(page.getByTestId('stage-submit')).toBeDisabled();
 
   await page.locator('.seat-main[aria-label*="可选目标"]').nth(1).click();
+  // 新选中的座位是我的选择（不是草稿目标）；草稿目标仍只有一个，重合座位同时具备两种类
+  await expect(page.locator('.stage-seat--selected')).toHaveCount(2);
+  await expect(page.locator('.stage-seat--draft')).toHaveCount(1);
+  await expect(page.locator('.stage-seat--selected.stage-seat--draft')).toHaveCount(1);
   await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认方案');
   await page.getByTestId('stage-submit').click();
   await expect.poll(() => mounted.commands.length).toBe(2);
@@ -271,7 +301,71 @@ test('团队方案支持一次发布并本人确认，同时保留队友逐版�
   await expect(page.getByRole('button', { name: '确认团队方案', exact: true })).toBeVisible();
 });
 
-test('团队当前方案非空时可一次发布并确认空刀，而不是误确认当前目标', async ({ page }) => {
+test('团队方案生效文案：全票 / 最后合法草稿 / 空刀草稿 / 无草稿四种状态各自说清', async ({ page }) => {
+  const base = loadGameFixture('night-spirit-full.json');
+  const view = structuredClone(base.view);
+  const windowInstanceId = 'fixture:effective-copy';
+  const selection = targetSelection(view, { maxTargets: 2, allowRepeated: true });
+  view.tasks = [
+    { action: 'EDIT_PROPOSAL', windowInstanceId, closesAt: view.serverTime + 60_000, targets: selection },
+    { action: 'CONFIRM_PROPOSAL', windowInstanceId, closesAt: view.serverTime + 60_000, targets: null },
+  ];
+  view.windows = [{ id: 'faction', type: 'faction', instanceId: windowInstanceId, closesAt: view.serverTime + 60_000 }];
+  view.capabilities.allowedCommands = ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL'];
+  view.capabilities.supportsProposalEditConfirmation = true;
+  view.private!.proposal = {
+    pool: 'spirit', activeMemberIds: [view.private!.self.playerId, 'fixture-teammate'], revision: 3,
+    targetPlayerIds: [selection.playerIds[1]!], confirmedBy: [], locked: true,
+    effective: { revision: 2, targetPlayerIds: [selection.playerIds[0]!], basis: 'unanimous' },
+  };
+  const mounted = await mount(page, { ...base, view });
+  const effective = page.locator('.effective-proposal');
+  // ① 全票版本优先于之后更新的未确认草稿：标题不再写"此刻…会执行"，依据说清是"全队已确认"
+  await expect(effective).toContainText('窗口截止将采用');
+  await expect(effective).toContainText('v2 ·');
+  await expect(effective).toContainText('全队已确认这一版');
+  await expect(effective).toHaveAttribute('title', /以服务端结算为准/);
+
+  // ② 没有全票版本 → 采用最后一份由在场成员提交的草稿
+  const latest = structuredClone(view);
+  latest.viewVersion += 1;
+  latest.private!.proposal = {
+    ...view.private!.proposal, revision: 3, targetPlayerIds: [selection.playerIds[1]!], confirmedBy: [], locked: false,
+    effective: { revision: 3, targetPlayerIds: [selection.playerIds[1]!], basis: 'latest_legal' },
+  };
+  await mounted.setFixture({ ...base, view: latest });
+  await expect(effective).toContainText('v3 ·');
+  await expect(effective).toContainText('没有全票版本，采用最后一份由在场成员提交的草稿');
+
+  // ③ 最后合法草稿本身是空刀 → 必须说"空刀"，不能显示成"空选择"（引擎允许空目标草稿）
+  const emptyDraft = structuredClone(view);
+  emptyDraft.viewVersion += 3;
+  emptyDraft.private!.proposal = {
+    ...view.private!.proposal, revision: 3, targetPlayerIds: [], confirmedBy: [], locked: false,
+    effective: { revision: 3, targetPlayerIds: [], basis: 'latest_legal' },
+  };
+  await mounted.setFixture({ ...base, view: emptyDraft });
+  await expect(effective).toContainText('v3 · 空刀（今晚不出刀）');
+  await expect(effective).not.toContainText('空选择');
+  // 草稿行同口径：最新草稿 v3：空刀（不是"空选择"，也不是"尚无草稿"）
+  const draftLine = page.getByRole('region', { name: '团队方案' }).locator('p').first();
+  await expect(draftLine).toHaveText('最新草稿 v3：空刀');
+
+  // ④ 没有任何可采用的草稿 → 空刀
+  const empty = structuredClone(view);
+  empty.viewVersion += 5;
+  empty.private!.proposal = {
+    ...view.private!.proposal, revision: 0, targetPlayerIds: [], confirmedBy: [], locked: false,
+    effective: { revision: null, targetPlayerIds: [], basis: 'empty' },
+  };
+  await mounted.setFixture({ ...base, view: empty });
+  await expect(effective).toContainText('当前无草稿（空刀）');
+  await expect(effective).toContainText('没有可采用的草稿，按空刀处理（今晚不出刀）');
+  // v0 是"尚无草稿"，与"空刀草稿"仍是两件事
+  await expect(draftLine).toHaveText('最新草稿 v0：尚无草稿');
+});
+
+test('团队方案非空时改为先清空选择、再由同一个按钮发布空刀（单按钮，不误确认当前目标）', async ({ page }) => {
   const base = loadGameFixture('night-spirit-full.json');
   const view = structuredClone(base.view);
   const windowInstanceId = 'fixture:combined-empty';
@@ -287,11 +381,37 @@ test('团队当前方案非空时可一次发布并确认空刀，而不是误�
     revision: 4, targetPlayerIds: [selection.playerIds[0]!], confirmedBy: [], locked: false,
     effective: { revision: 4, targetPlayerIds: [selection.playerIds[0]!], basis: 'latest_legal' } };
   const mounted = await mount(page, { ...base, view });
-  await expect(page.getByTestId('stage-skip')).toHaveAccessibleName('发布并确认空刀');
-  await page.getByTestId('stage-skip').click();
+
+  // 草稿未改：只剩一个「同意方案 v4」，空刀不再是并列按钮
+  await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('同意方案 v4');
+  await expect(page.getByTestId('stage-skip')).toHaveCount(0);
+
+  // 清空本地选择后，同一个按钮改为发布空刀（而不是误确认队友的方案）
+  await page.getByRole('button', { name: '清空选择' }).click();
+  await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认空刀');
+  await expect(page.locator('.stage-seat--selected')).toHaveCount(0);
+  // 只剩草稿目标时用青色虚线区分
+  await expect(page.locator('.stage-seat--draft .seat-main')).toHaveCSS('border-top-style', 'dashed');
+  await expect(page.locator('.stage-seat--draft .seat-main')).toHaveCSS('border-top-color', 'rgb(47, 125, 140)');
+  await page.getByTestId('stage-submit').click();
   await expect.poll(() => mounted.commands.length).toBe(1);
   expect(mounted.commands[0]).toMatchObject({ action: 'EDIT_PROPOSAL', targets: [], confirmSelf: true, expectedRevision: 4 });
   expect(mounted.commands[0]).not.toHaveProperty('revision');
+
+  // v0 无草稿：单按钮即空刀（原先两个按钮载荷相同）
+  const freshWindow = 'fixture:combined-empty-fresh';
+  const fresh = structuredClone(view);
+  fresh.viewVersion += 5;
+  fresh.tasks = [
+    { action: 'EDIT_PROPOSAL', windowInstanceId: freshWindow, closesAt: view.serverTime + 60_000, targets: selection },
+    { action: 'CONFIRM_PROPOSAL', windowInstanceId: freshWindow, closesAt: view.serverTime + 60_000, targets: null },
+  ];
+  fresh.windows = [{ id: 'faction', type: 'faction', instanceId: freshWindow, closesAt: view.serverTime + 60_000 }];
+  fresh.submissionState = [];
+  fresh.private!.proposal = { ...view.private!.proposal, revision: 0, targetPlayerIds: [], confirmedBy: [], effective: { revision: null, targetPlayerIds: [], basis: 'empty' } };
+  await mounted.setFixture({ ...base, view: fresh });
+  await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认空刀');
+  await expect(page.getByTestId('stage-skip')).toHaveCount(0);
 });
 
 test('旧快照A与accepted B只采用一份提交依据，A可显式重提且更高版本C覆盖旧B回执', async ({ page }) => {

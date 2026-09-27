@@ -60,6 +60,44 @@ function mockVoice(options: { issue?: (input: { roomName: string; uid: number })
 }
 
 describe('V2Media 授权与媒体副作用（声网）', () => {
+  it('自由发言阶段：多名发布者同时有效，送达聚合按窗口计数且任何发布者自己的回执都不算', async () => {
+    const f = fixture();
+    // 切换到自由发言窗口（全体存活都有发布权）
+    f.room.state = { ...f.room.state!, day: { ...f.room.state!.day!, step: 'free_speech', freeSpeechDone: true } };
+    f.room.driver = { windows: () => [{ id: 'free_speech', instanceId: 'win-free', closesAt: f.clock.now() + 120_000 }], proposalState: () => null } as unknown as NonNullable<Room['driver']>;
+    // 再绑定两名正式玩家：自由发言阶段应当同时拥有发布权
+    for (const [playerId, nickname] of [['p_2', 'mediaplayerb'], ['p_3', 'mediaplayerc']] as const) {
+      const account = f.store.register(`media-${playerId}`, nickname, 'dummy-hash').account;
+      f.access.bind(playerId, f.store.createSession(account.id).session);
+    }
+    const permissions = f.media.permissions(f.access);
+    const publishIds = [...permissions].filter(([, canPublish]) => canPublish).map(([identity]) => identity);
+    expect(publishIds.length).toBeGreaterThan(1);
+    expect(publishIds).toContain(f.mediaId);
+
+    // 发布者自己的回执不计入聚合
+    const own = f.media.recordReceipt(f.access, f.mediaId, 'win-free', 'playing');
+    expect(own.recorded).toBe(false);
+
+    // 观众（非发布者）的回执计入；窗口实例变化即作废
+    const observer = f.store.register('media-free-observer', 'mediafreeobserver', 'dummy-hash').account;
+    const watcher = f.store.createSession(observer.id).session;
+    f.access.watch(watcher);
+    const watcherIdentity = [...f.access.watchers.values()][0]!;
+    const watcherMediaId = f.access.mediaId(watcherIdentity.id, watcherIdentity.epoch);
+    const recorded = f.media.recordReceipt(f.access, watcherMediaId, 'win-free', 'playing');
+    expect(recorded.recorded).toBe(true);
+    expect(recorded.delivery).toMatchObject({ windowInstanceId: 'win-free', delivered: 1, listeners: 1 });
+    expect(f.media.recordReceipt(f.access, watcherMediaId, 'win-old', 'playing').recorded).toBe(false);
+
+    // 频道 uid 映射只暴露正式玩家席位，供客户端把远端电平归属到座位（签发凭证时登记 uid）
+    f.media = new V2Media(mockVoice().voice, () => f.clock.now());
+    await f.media.issue(f.access, f.first);
+    const uids = f.media.uidMap('g_media');
+    expect(Object.values(uids)).toContain('p_1');
+    expect(Object.values(uids).every((playerId) => playerId.startsWith('p_'))).toBe(true);
+  });
+
   it('permissions 由 gameView 当前发言者权限计算，observer 永远不可发布', () => {
     const f = fixture();
     const observer = f.store.register('media-observer', 'mediaobserver', 'dummy-hash').account;

@@ -4,7 +4,7 @@ import { closeHarnesses, enter, json, makeHarness, post, request, type HttpHarne
 afterEach(closeHarnesses);
 
 async function fullStart(h: HttpHarness) {
-  const created = await request(h, '/api/v2/rooms', post({ requestId: 'release-create' }), h.users[0]);
+  const created = await request(h, '/api/v2/rooms', post({ requestId: 'release-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
   expect(created.status).toBe(201);
   const room = await json(created) as { roomId: string; roomCode: string };
   for (let index = 1; index < 13; index += 1) expect((await enter(h, room.roomCode, h.users[index]!, `release-enter-${index}`)).response.status).toBe(200);

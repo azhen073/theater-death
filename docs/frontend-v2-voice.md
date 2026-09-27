@@ -55,7 +55,7 @@
 
 实现要点与已知限制：
 
-- **纯本机信号与偏好**：电平与音量都不上报服务端、不入日志与复盘；偏好与显示设置同源存于 `localStorage`（`voiceLevels` / `voiceOutput` / `voiceInput` / `voiceMuted`，默认 `true` / `100` / `100` / `false`），非法值钳制到 0–100。
+- **纯本机信号与偏好**：电平与音量都不上报服务端、不入日志与复盘；偏好与显示设置同源存于 `localStorage`（键 `theater-death-display-v1`）——语音类字段 `voiceLevels` / `voiceOutput` / `voiceInput` / `voiceMuted`（默认 `true` / `100` / `100` / `false`；输出钳制 0–100、增益钳制 0–150）以及 `autoMic`（默认 `true`，v2.0.4-alpha 起）、`attentionSound`（默认 `false`，v2.0.7-alpha 起；开关在账户「显示与动画」，局内仅保留未解锁兜底提示）。
 - **电平来源**：`enableAudioVolumeIndicator(200ms)` 的 `volume-indicator` 事件（含本机 uid）。新版服务端的媒体 uid 是不透明递增编号、不在快照里，因此不做 uid↔座位映射；由于开麦时段内**只有当前发言者持有发布权**，远端电平可归属为当前发言者。
 - **减少动画**：电平是离散段且不带动画/过渡，因此 `[data-reduced-motion='true']` 下无需额外分支，天然不闪动。
 - **「音量指示」关闭时**：只隐藏电平（自己的电平条与发言者的百分比），**"谁在发言"照旧显示**（保留座位号；静音时仍是「N号 已静音」）；输出音量与麦克风增益不受影响。

@@ -5,6 +5,14 @@ export const CONTRACT_VERSION = '2.2' as const;
 export const COMMAND_ACTIONS = ['SUBMIT_GUARD', 'SUBMIT_LAIKE', 'EDIT_PROPOSAL', 'CONFIRM_PROPOSAL', 'SUBMIT_CHECK', 'SUBMIT_RESCUE', 'SUBMIT_REVIVE', 'REGISTER_CANDIDACY', 'WITHDRAW_CANDIDACY', 'START_SPEECH', 'END_ELECTION_SPEECH', 'SUBMIT_ELECTION_VOTE', 'DESIGNATE_SPEECH', 'END_SPEECH', 'SUBMIT_DAY_VOTE', 'END_TIE_SPEECH', 'END_LAST_WORDS', 'SUBMIT_HANDOVER'] as const;
 export type CommandAction = typeof COMMAND_ACTIONS[number];
 export type RoomPhase = 'lobby' | 'playing' | 'review';
+/**
+ * 公屏写权限档位（建房时由房主显式选择，无默认值）：
+ * - `alive_only`：对局内所有阶段仅存活正式玩家可写；死者只读（本人遗言窗口除外，R-45）。
+ * - `everyone`：对局内所有阶段存活与死者均可写。
+ * 观众与第二屏在任何档位下都只读。对局外（大厅/复盘）不适用，复盘按 R-53 只读归档。
+ */
+export const PUBLIC_CHAT_MODES = ['alive_only', 'everyone'] as const;
+export type PublicChatMode = typeof PUBLIC_CHAT_MODES[number];
 export type MemberKind = 'formal' | 'public_spectator' | 'private_spectator';
 export type Presence = 'online' | 'reconnecting' | 'offline';
 export interface Profile { userId: string; uid: string; nickname: string; avatarUrl: string | null; profileVersion: number }
@@ -49,7 +57,7 @@ export interface SelfDTO {
   guardHistory: readonly { nightNumber: number; targetPlayerIds: readonly string[] }[];
 }
 export interface DayDTO {
-  step: 'morning_announcement' | 'first_night_last_words' | 'election' | 'speech_round' | 'vote' | 'elimination_last_words' | 'handover' | 'settle';
+  step: 'morning_announcement' | 'first_night_last_words' | 'election' | 'speech_round' | 'free_speech' | 'vote' | 'elimination_last_words' | 'handover' | 'settle';
   speechPreparing: boolean;
   currentSpeakerId: string | null;
   election: { phase: 'signup' | 'speech' | 'vote' | 'revote' | 'done'; candidates: readonly string[]; withdrawn: readonly string[]; speechOrder: readonly string[]; round: 1 | 2; votedCount: number; eligibleCount: number; tiedIds: readonly string[]; winnerId: string | null } | null;
@@ -64,6 +72,8 @@ export interface PublicGameDTO {
   seats: SeatDTO[]; events: EventDTO[]; day: DayDTO | null;
   night: { closesAt: number } | null;
   result: { winner: 'human' | 'death_faction'; dayNumber: number; reason: string } | null;
+  /** 语音身份映射（uid → playerId），仅用于按远端电平显示「谁在说话」；不含任何隐藏信息。无语音或非对局为 null。 */
+  voice?: { uids: Record<string, string> } | null;
   startedAt: number; endedAt: number | null;
 }
 export interface PrivateGameDTO {
@@ -91,7 +101,7 @@ export interface RoomSnapshot {
   contractVersion: typeof CONTRACT_VERSION; rulesVersion: string;
   roomId: string; gameId: string | null; serverTime: number; viewVersion: number;
   viewer: { userId: string; memberId: string; kind: MemberKind; subjectPlayerId: string | null; readOnly: boolean; isHost: boolean };
-  room: { code: string; phase: RoomPhase; config: RulesetConfig; requiredPlayers: number; hostMemberId: string | null; formalMembers: RoomMemberDTO[]; spectators: RoomMemberDTO[]; emptyDeadline: number | null };
+  room: { code: string; phase: RoomPhase; config: RulesetConfig; publicChat: PublicChatMode; freeSpeech: boolean; requiredPlayers: number; hostMemberId: string | null; formalMembers: RoomMemberDTO[]; spectators: RoomMemberDTO[]; emptyDeadline: number | null };
   public: PublicGameDTO | null; private: PrivateGameDTO | null;
   capabilities: SnapshotCapabilities; windows: WindowDTO[]; tasks: TaskDTO[]; submissionState: SubmissionDTO[];
   chat: { public: ChatMessageDTO[]; faction: ChatMessageDTO[] };

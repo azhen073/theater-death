@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page, type WebSocketRoute } from '@playwright/test';
 import { advanceAcceptanceClock } from '../helpers-v2/full-game.ts';
 import { browserContextForApi, enterAndReady, loginApi, roomView as apiRoomView, type ApiSession } from '../helpers-v2/recovery.ts';
-import { dismissIdentityEntryReveal, enterRoom, leaveRoom, loadRoomAccounts, loginRoomAccount, roomView } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, enterRoom, leaveRoom, loadRoomAccounts, loginRoomAccount, roomView, selectPublicChat, revealHudActions } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
 const CLOCK_SOCKET = process.env.ACCEPTANCE_CLOCK_SOCKET ?? '/clock-control/clock.sock';
@@ -43,14 +43,14 @@ async function installSocketGate(context: BrowserContext): Promise<SocketGate> {
 }
 
 async function createExperimentalRoom(page: Page): Promise<string> {
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
   await page.getByRole('button', { name: '自定义角色组成' }).click();
   await page.getByLabel('玩家人数').fill('5');
   for (const [label, value] of [['莱莱可人数', '0'], ['门先生人数', '1'], ['水妖人数', '0'], ['降临者人数', '0'], ['科研员人数', '1'], ['平民人数', '1'], ['死神人数', '1'], ['魂灵人数', '1'], ['丧亲者人数', '0']] as const) {
     await page.getByLabel(label).fill(value);
   }
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(page.getByRole('heading', { name: '房间大厅' })).toBeVisible();
   return (await page.locator('.room-code strong').innerText()).trim();
 }
@@ -156,7 +156,7 @@ test('AC07 房主断线超过宽限后自动继任，旧房主管理菜单清空
     for (const account of accounts.slice(2, 5)) apiSessions.push(await createApiSession(account));
     await startFivePlayerGame(host.page, code, apiSessions, [onlinePlayer.page]);
 
-    await host.page.getByRole('button', { name: '房间管理', exact: true }).click();
+    await revealHudActions(host.page); await host.page.getByRole('button', { name: '房间管理', exact: true }).click();
     await expect(host.page.getByRole('button', { name: '转移房主' }).first()).toBeVisible();
     await host.page.getByRole('button', { name: '转移房主' }).first().click();
     await expect(host.page.getByRole('dialog', { name: '转移房主？' })).toBeVisible();

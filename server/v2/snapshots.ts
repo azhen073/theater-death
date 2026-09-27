@@ -23,6 +23,11 @@ const actionWindows: Record<CommandAction, readonly string[]> = {
 const personalWindows = new Set(['guard', 'laike', 'faction', 'check', 'rescue', 'revive']);
 const noGameCapabilities = () => ({ canPostPublic: false, canPostFaction: false, canPublishVoice: false, canVote: false, allowedCommands: [] as CommandAction[] });
 const permission = (reason: string | null): Permission => ({ allowed: reason === null, reason });
+/** 房主是否开启「白天自由发言」：冻结在规则集里（1.1 板不带该键）。 */
+const freeSpeechEnabled = (room: StableRoom): boolean => {
+  const seconds = room.ruleset.timersSeconds.freeSpeech;
+  return typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0;
+};
 const events = (items: readonly ClientEvent[]): EventDTO[] => items.map((e) => ({ ...e, payload: e.payload as JsonValue }));
 
 function dayView(state: GameState): DayDTO | null {
@@ -45,7 +50,7 @@ export interface SnapshotDeps {
   profile: (userId: string) => Profile;
   submissions?: (room: StableRoom, subjectPlayerId: string) => SubmissionDTO[];
   /** C 组：当前发言窗口的送达聚合（只为「此刻持有发布权」的人读取） */
-  voice?: { deliveryFor: (gameId: string) => DeliveryView | null };
+  voice?: { deliveryFor: (gameId: string) => DeliveryView | null; uidMap: (gameId: string) => Record<string, string> };
 }
 
 /** Viewer-specific fingerprints never use global engine/audit sequence counters. */
@@ -86,7 +91,7 @@ export class RoomSnapshots {
     const viewer = room.access?.resolve(session);
     const subject = viewer?.identity.subjectPlayerId ?? null;
     const runtime = room.runtime;
-    const projected = runtime ? gameView(runtime, { subjectPlayerId: subject, readOnly: false }, now) : null;
+    const projected = runtime ? gameView(runtime, { subjectPlayerId: subject, readOnly: false }, now, room.publicChat) : null;
     const known = runtime?.state ? publishedState(runtime.state, runtime.events) : null;
     const subjectCaps = projected?.capabilities ?? noGameCapabilities();
     const gameCaps = readOnly ? noGameCapabilities() : subjectCaps;
@@ -119,7 +124,7 @@ export class RoomSnapshots {
     const result: Omit<RoomSnapshot, 'serverTime' | 'viewVersion'> = {
       contractVersion: CONTRACT_VERSION, rulesVersion: room.ruleset.version, roomId: room.roomId, gameId: room.gameId,
       viewer: { userId: member.userId, memberId: member.memberId, kind: member.kind, subjectPlayerId: subject, readOnly, isHost: room.hostMemberId === member.memberId },
-      room: { code: room.code, phase: room.phase, config: room.ruleset, requiredPlayers: room.requiredPlayers(), hostMemberId: room.hostMemberId, formalMembers: members.filter((m) => m.kind === 'formal').map((m) => this.member(room, m)), spectators: members.filter((m) => m.kind !== 'formal').map((m) => this.member(room, m)), emptyDeadline: room.emptyDeadline },
+      room: { code: room.code, phase: room.phase, config: room.ruleset, publicChat: room.publicChat, freeSpeech: freeSpeechEnabled(room), requiredPlayers: room.requiredPlayers(), hostMemberId: room.hostMemberId, formalMembers: members.filter((m) => m.kind === 'formal').map((m) => this.member(room, m)), spectators: members.filter((m) => m.kind !== 'formal').map((m) => this.member(room, m)), emptyDeadline: room.emptyDeadline },
       public: known && projected ? {
         phase: known.phase, dayNumber: known.dayNumber, stage: known.stage, sheriff: known.sheriff,
         seats: known.players.map<SeatDTO>((p) => {
@@ -130,6 +135,7 @@ export class RoomSnapshots {
         }).sort((a, b) => a.seat - b.seat),
         events: events(projected.public.events ?? []), day: dayView(known), result: known.win,
         night: known.phase === 'night' && projected.public.nightDeadline !== null ? { closesAt: projected.public.nightDeadline } : null,
+        ...(gameId !== null ? { voice: { uids: this.deps.voice?.uidMap(gameId) ?? {} } } : {}),
         startedAt: room.matchStartedAt!, endedAt: room.matchEndedAt,
       } : null,
       private: privateView ? {

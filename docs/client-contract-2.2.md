@@ -20,6 +20,14 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 
 快照能力 `capabilities.supportsProposalEditConfirmation=true` 表示支持此扩展，不代表当前玩家具有编辑或确认权限。缺省或 false 时，客户端继续使用独立的 `EDIT_PROPOSAL` 与 `CONFIRM_PROPOSAL`。组合参数错误返回 `invalid_proposal_options`；依据版本已变化返回 `proposal_changed`，状态不产生部分写入。旧的、不带扩展字段的编辑语义保持不变。
 
+## 公屏写权限档位（2026-09-23 新增，用户裁定 Q-10）
+
+`POST /api/v2/rooms` 新增**必填**字段 `publicChat`，取值 `alive_only` 或 `everyone`（无默认值，缺失或非法返回 400 `invalid_public_chat`；创建后不可修改，`RoomSnapshot.room.publicChat` 原样回传）。公屏文字因此改为**对局内所有阶段可写**（夜间不再禁发）：`alive_only` 下仅存活正式玩家可写、死者只读（本人获准遗言期间仍可写）；`everyone` 下存活与死者都可写。`POST /rooms/{code}/chat`（`channel=public`）的 403 `chat_forbidden` 判定改由该档位与 `capabilities.canPostPublic` 决定；观众与第二屏在任何档位下都只读。夜间语音不受影响，仍按 R-43 全体静音。旧的、不带该字段的调用方会收到 400，属于本次契约收紧。
+
+## 白天自由发言阶段（2026-09-23 新增，用户裁定 Q-11）
+
+`POST /api/v2/rooms` 新增**必填**布尔字段 `freeSpeech`（缺失或非布尔返回 400 `invalid_free_speech`；`true`/`false` 都可，没有默认值）。选择「开启」时，冻结规则 `room.config.timersSeconds.freeSpeech = 120`，`RoomSnapshot.room.freeSpeech === true`；选择「不开启」时该键从冻结规则里移除、`room.freeSpeech === false`（1.1 板本来就不带该键）。开启后**每个白天**在**发言轮结束、放逐投票开始之前**插入固定 **120 秒**的阶段：`DayDTO.step === 'free_speech'`，公开窗口 `windows[].id === 'free_speech'`（给全桌倒计时），该阶段**不提前结束**。语音上**全体存活玩家**的 `capabilities.canPublishVoice` 为 `true`（可同时开麦；死者仍为 `false`），`private.voice.delivery` 照常下发（无唯一发言者：聚合按窗口计数，任何发布者自己的回执都不计，见 `docs/frontend-v2-voice.md`）。新增可选 `PublicGameDTO.voice.uids`：频道 `uid → playerId` 映射，仅供客户端把本机远端电平归属到座位显示「谁在说话」，不含隐藏信息；对局中才出现。
+
 ## 公开夜幕时钟与私人身份知识
 
 `RoomSnapshot.public.night` 为 `{closesAt}` 或 `null`：夜间阶段给出**当前夜间段**的截止时间，供全桌（含无夜间任务者与观战者）显示剩余时间；不包含段名与段数，白天与大厅为 `null`。该字段与角色私有窗口（`windows`/`tasks`）相互独立，不随提前提交缩短。

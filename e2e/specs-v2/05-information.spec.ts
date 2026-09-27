@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { loadGameFixture, pushFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
 
 async function mount(page: Page, fixture: GameHarnessFixture) {
@@ -48,7 +49,7 @@ test('聊天 composer：精确 payload、纯文本、Enter/IME/ShiftEnter 与 UT
   await publicInput.fill('😀'.repeat(250));
   await expect(page.getByText('500 / 500')).toBeVisible();
   await expect(page.getByRole('button', { name: '发送公屏消息' })).toBeEnabled();
-  await page.getByRole('tab', { name: '情报' }).click();
+  await page.getByRole('tab', { name: '公屏' }).click();
   await expect(page.getByRole('textbox', { name: '阵营消息' })).toBeVisible();
   await page.getByRole('textbox', { name: '阵营消息' }).fill('阵营原文');
   await page.getByRole('button', { name: '发送阵营消息' }).click();
@@ -146,7 +147,6 @@ test('聊天/事件历史：分段早历史、滚动未读、cursor 独立与公
   await expect(page.getByText('do-not-render-json')).toHaveCount(0);
   await expect(page.getByText('投票票型')).toHaveCount(0);
   await page.getByRole('tab', { name: '公屏' }).click();
-  await page.getByRole('tab', { name: '情报' }).click();
   await expect(page.getByText('阵营独立游标')).toBeVisible();
   const voteView = structuredClone(unknown);
   voteView.view.public!.events = [...unknown.view.public!.events, { cursor: 2000, type: 'election_result', dayNumber: 1, stage: 1, payload: { votes: [{ voterSeat: 1, targetSeat: 2, units: 3 }], tally: [{ seat: 2, units: 3 }], winnerSeat: 2, tiedSeats: [] } }];
@@ -192,7 +192,7 @@ test('死神/魂灵知识：已知魂灵在座位卡与身份弹窗中可见，�
     const playerId = deathFixture.view.public!.seats.find(item => item.seat === seat)!.playerId;
     await expect(page.locator(`[data-player-id="${playerId}"] .seat-known`)).toHaveText('魂灵');
   }
-  await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
   await expect(page.getByRole('dialog')).toContainText(`已知身份 · 魂灵：${spiritSeats.map(seat => `${seat}号`).join('、')}`);
   await page.getByRole('button', { name: '关闭' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -211,7 +211,7 @@ test('死神/魂灵知识：已知魂灵在座位卡与身份弹窗中可见，�
   const doorFixture = loadGameFixture('night-door-full.json');
   const mounted = await mount(page, doorFixture);
   await expect(page.locator('.seat-known')).toHaveCount(0);
-  await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
   await expect(page.getByRole('dialog')).not.toContainText('已知身份');
   void mounted;
 });
@@ -227,7 +227,7 @@ test('房间管理视图保持聊天非零滚动位置与草稿', async ({ page 
   await history.evaluate(element => { element.scrollTop = 200; element.dispatchEvent(new Event('scroll', { bubbles: true })); });
   const before = await history.evaluate(element => element.scrollTop);
   expect(before).toBeGreaterThan(0);
-  await page.getByRole('button', { name: '房间管理', exact: true }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '房间管理', exact: true }).click();
   await expect(page.getByRole('button', { name: '返回舞台', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '返回舞台', exact: true }).click();
   await expect(input).toHaveValue('管理视图草稿');

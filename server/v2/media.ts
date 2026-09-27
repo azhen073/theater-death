@@ -11,10 +11,13 @@ export const DELIVERY_STATES: readonly DeliveryState[] = ['playing', 'blocked', 
 export interface DeliveryView {
   windowInstanceId: string; delivered: number; blocked: number; silentOutput: number; failed: number; listeners: number; updatedAt: number;
 }
-interface DeliveryWindow { windowInstanceId: string; speakerMediaId: string; startedAt: number; receipts: Map<string, DeliveryState>; lastPushAt: number }
+interface DeliveryWindow { windowInstanceId: string; speakerMediaIds: readonly string[]; startedAt: number; receipts: Map<string, DeliveryState>; lastPushAt: number }
 
-/** 拥有发布权的窗口（与客户端 `bar.tsx` 的判据保持一致） */
-const SPEAKING_WINDOWS = new Set(['election_speech', 'speech_round', 'last_words', 'tie_speech']);
+/**
+ * 拥有发布权的窗口（与客户端 `bar.tsx` 的判据保持一致）。
+ * `free_speech` 是「全体存活可同时开麦」的阶段：发布者可能有多人。
+ */
+const SPEAKING_WINDOWS = new Set(['election_speech', 'speech_round', 'last_words', 'tie_speech', 'free_speech']);
 /** D 组对账：每轮最多踢的人数，避免一次异常把频道清空 */
 const RECONCILE_KICK_LIMIT = 3;
 /**
@@ -59,6 +62,23 @@ export class V2Media {
     this.identities.set(gameId, known);
     return uid;
   }
+  /**
+   * 频道 uid → playerId 的公开映射，供客户端把远端音量归属到座位（显示「谁在说话」）。
+   * 身份形如 `v2:<gameId>:<subject>:<epoch>`；只暴露正式玩家席位（`p_` 前缀），不含观众与第二屏。
+   * 该映射不含任何隐藏信息：uid 本就是频道内可见的编号。
+   */
+  uidMap(gameId: string): Record<string, string> {
+    const known = this.identities.get(gameId);
+    if (!known) return {};
+    const map: Record<string, string> = {};
+    for (const [identity, uid] of known) {
+      const parts = identity.split(':');
+      const subject = parts.length >= 4 ? parts[2] : '';
+      if (subject === undefined || !subject.startsWith('p_')) continue;
+      map[String(uid)] = subject;
+    }
+    return map;
+  }
   revoke(gameId: string, identity: string) {
     return this.enqueue(gameId, async () => {
       const known = this.identities.get(gameId);
@@ -70,23 +90,28 @@ export class V2Media {
     });
   }
   /**
-   * 当前"有人有发布权"的窗口（窗口实例 + 该身份的媒体 id）。没有正在发言的人时返回 null。
-   * 只用来给送达聚合定 key：窗口实例变化即视为新一轮，旧计数作废。
+   * 当前"有人有发布权"的窗口（窗口实例 + **所有**有发布权的媒体身份）。没有正在发言的人时返回 null。
+   * 常规时段只有当前发言者一人有发布权；「自由发言」阶段全体存活都有，因此这里按集合处理：
+   * 送达聚合只以窗口实例为 key，且任何发布者自己的回执都不算（那是自证）。
    */
-  private currentWindow(meta: RoomAccess): { windowInstanceId: string; speakerMediaId: string } | null {
+  private currentWindow(meta: RoomAccess): { windowInstanceId: string; speakerMediaIds: readonly string[] } | null {
     const state = meta.room.state;
     if (!state || state.win) return null;
     const view = gameView(meta.room, { subjectPlayerId: null, readOnly: true }, this.now());
     const window = view.windows.find((w) => SPEAKING_WINDOWS.has(w.id) && typeof w.instanceId === 'string' && w.instanceId !== '');
     if (!window || typeof window.instanceId !== 'string') return null;
-    for (const [identity, canPublish] of this.permissions(meta)) if (canPublish) return { windowInstanceId: window.instanceId, speakerMediaId: identity };
-    return null;
+    const speakers = [...this.permissions(meta)].filter(([, canPublish]) => canPublish).map(([identity]) => identity).sort();
+    if (!speakers.length) return null;
+    return { windowInstanceId: window.instanceId, speakerMediaIds: speakers };
+  }
+  private sameSpeakers(left: readonly string[], right: readonly string[]): boolean {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
   }
   private windowFor(gameId: string, meta: RoomAccess): DeliveryWindow | null {
     const current = this.currentWindow(meta);
     if (current === null) { this.deliveries.delete(gameId); return null; }
     const existing = this.deliveries.get(gameId);
-    if (existing && existing.windowInstanceId === current.windowInstanceId && existing.speakerMediaId === current.speakerMediaId) return existing;
+    if (existing && existing.windowInstanceId === current.windowInstanceId && this.sameSpeakers(existing.speakerMediaIds, current.speakerMediaIds)) return existing;
     const next: DeliveryWindow = { ...current, startedAt: this.now(), receipts: new Map(), lastPushAt: 0 };
     this.deliveries.set(gameId, next);
     return next;
@@ -110,7 +135,7 @@ export class V2Media {
     const gameId = meta.room.gameId;
     const window = this.windowFor(gameId, meta);
     if (window === null || window.windowInstanceId !== windowInstanceId) return { recorded: false, push: false, delivery: null };
-    if (receiverIdentity === window.speakerMediaId) return { recorded: false, push: false, delivery: this.deliveryView(window) };
+    if (window.speakerMediaIds.includes(receiverIdentity)) return { recorded: false, push: false, delivery: this.deliveryView(window) };
     if (!this.permissions(meta).has(receiverIdentity)) return { recorded: false, push: false, delivery: this.deliveryView(window) };
     const previous = window.receipts.get(receiverIdentity);
     window.receipts.set(receiverIdentity, state);

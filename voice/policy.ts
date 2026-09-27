@@ -113,6 +113,13 @@ export function voicePermission(state: GameState, playerId: string): VoicePermis
       }
       return denied(player.life === 'dead' ? 'dead_listener' : 'not_your_turn');
     }
+    // 白天「自由发言」（房主开启）：全体存活玩家可同时开麦；死者仍只能旁听。
+    case 'free_speech': {
+      if (player.life === 'dead') {
+        return denied('dead_listener');
+      }
+      return granted();
+    }
     case 'vote': {
       const ballot = day.ballot;
       if (ballot !== null && ballot.phase === 'tie_speech') {

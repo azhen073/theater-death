@@ -91,3 +91,31 @@ export function voiceLevelDisplay(input: VoiceLevelInput): VoiceLevelDisplay {
 export function ownLevelVisible(microphoneEnabled: boolean, showLevels: boolean): boolean {
   return microphoneEnabled && showLevels;
 }
+
+/* ------------------------------------------------------------------ *
+ * 「谁在说话」座位光环（自由发言阶段用远端音量判定）
+ * ------------------------------------------------------------------ */
+
+/** 达到该电平即认为在说话（0–100，Agora 的音量指示）。 */
+export const SPEAKING_LEVEL_THRESHOLD = 5;
+/** 光环保持时长：音量指示是离散采样，留一段保持期避免说话间隙闪烁。 */
+export const SPEAKING_HOLD_MS = 1200;
+
+/**
+ * 纯函数：把「频道 uid → 电平」映射成本刻该亮光环的 playerId，带保持期。
+ * `held` 是上一次的结果（playerId → 到期时间），本函数会就地更新后返回新的列表。
+ */
+export function activeSpeakingSeats(
+  held: Map<string, number>,
+  levels: ReadonlyMap<number, number>,
+  uids: Readonly<Record<string, string>>,
+  now: number,
+): string[] {
+  for (const [uid, level] of levels) {
+    const playerId = uids[String(uid)];
+    if (playerId === undefined) continue;
+    if (level >= SPEAKING_LEVEL_THRESHOLD) held.set(playerId, now + SPEAKING_HOLD_MS);
+  }
+  for (const [playerId, until] of held) if (until <= now) held.delete(playerId);
+  return [...held.keys()].sort();
+}

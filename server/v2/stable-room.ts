@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { MemberKind, Presence, RoomPhase, SubmissionDTO } from '../../contracts/v2.ts';
+import type { MemberKind, Presence, PublicChatMode, RoomPhase, SubmissionDTO } from '../../contracts/v2.ts';
 import type { RulesetConfig } from '../../rulesets/types.ts';
 import { ROLE_IDS } from '../../rulesets/types.ts';
 import type { Clock } from '../clock.ts';
@@ -49,6 +49,8 @@ export class StableRoom {
   readonly code: string;
   readonly createdAt: number;
   readonly ruleset: RulesetConfig;
+  /** 建房时房主显式选择的公屏写权限档位；房间生命周期内不可改（与角色组成同规则）。 */
+  readonly publicChat: PublicChatMode;
   readonly members = new Map<string, ActiveMember>(); // account -> current membership
   readonly participants = new Map<string, Participant>(); // account -> frozen current-match seat
   hostMemberId: string | null = null;
@@ -67,8 +69,8 @@ export class StableRoom {
   readonly deps: StableRoomDeps;
   #queue: Promise<unknown> = Promise.resolve();
 
-  constructor(code: string, ruleset: RulesetConfig, deps: StableRoomDeps) {
-    this.code = code; this.ruleset = freeze(structuredClone(ruleset)); this.deps = deps;
+  constructor(code: string, ruleset: RulesetConfig, publicChat: PublicChatMode, deps: StableRoomDeps) {
+    this.code = code; this.ruleset = freeze(structuredClone(ruleset)); this.publicChat = publicChat; this.deps = deps;
     this.createdAt = deps.clock.now();
     deps.logStore.recordPersistentRoom({ roomId: this.roomId, code, createdAt: this.createdAt, ruleset: this.ruleset });
   }
