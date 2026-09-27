@@ -120,11 +120,11 @@ test('夹具 UI 保持选择/任务/草稿边界并覆盖席位布局与公开�
   await page.locator('.seat-main[aria-label*="可选目标"]').nth(0).click();
   await page.locator('.seat-main[aria-label*="可选目标"]').nth(1).click();
   await expect(page.locator('.selection-summary')).toContainText('2 / 3');
-  // 夜间与白天同一套色：selected-only 也必须是深蓝实线（此前夜间被覆盖成淡蓝 #9bbfff，与图例不符）
+  // 夜间与白天同一套色：selected-only 也必须是浅蓝实线（2026-09-27 按用户裁定整体调浅，此前夜间被覆盖成淡蓝 #9bbfff，与图例不符）
   const nightSelected = page.locator('.stage-seat--selected:not(.stage-seat--draft) .seat-main').first();
   await expect(nightSelected).toHaveCSS('border-top-style', 'solid');
-  await expect(nightSelected).toHaveCSS('border-top-color', 'rgb(69, 89, 116)');
-  await expect(nightSelected).toHaveCSS('background-color', 'rgb(234, 240, 248)');
+  await expect(nightSelected).toHaveCSS('border-top-color', 'rgb(125, 144, 171)');
+  await expect(nightSelected).toHaveCSS('background-color', 'rgb(243, 247, 252)');
   // 选择提示改为加粗正文（各目标类行动共用），文案说明"点击＝选中/取消"
   const hint = page.locator('.stage-action-card .action-hint');
   await expect(hint).toHaveText(/点击舞台上的可选玩家进行选中 \/ 取消选中/);
@@ -258,10 +258,10 @@ test('团队方案支持一次发布并本人确认，同时保留队友逐版�
   await expect(draftSeat.locator('.seat-draft')).toHaveText('草稿');
   await expect(draftSeat.locator('.seat-main')).toHaveAttribute('aria-label', /在队伍草稿中/);
   await expect(region.getByRole('region', { name: '团队方案' })).toContainText('当前草稿目标');
-  // 重合座位：保持我的深蓝实线，外圈补青色环（草稿身份由角标与环体现）
+  // 重合座位：保持我的浅蓝实线，外圈补青色环（草稿身份由角标与环体现）
   await expect(draftSeat.locator('.seat-main')).toHaveCSS('border-top-style', 'solid');
-  await expect(draftSeat.locator('.seat-main')).toHaveCSS('border-top-color', 'rgb(69, 89, 116)');
-  await expect(draftSeat.locator('.seat-main')).toHaveCSS('box-shadow', /47, 125, 140/);
+  await expect(draftSeat.locator('.seat-main')).toHaveCSS('border-top-color', 'rgb(125, 144, 171)');
+  await expect(draftSeat.locator('.seat-main')).toHaveCSS('box-shadow', /106, 172, 184/);
   await page.getByTestId('stage-submit').click();
   await expect.poll(() => mounted.commands.length).toBe(1);
   expect(mounted.commands[0]).toMatchObject({ action: 'CONFIRM_PROPOSAL', revision: 2 });
@@ -392,7 +392,7 @@ test('团队方案非空时改为先清空选择、再由同一个按钮发布�
   await expect(page.locator('.stage-seat--selected')).toHaveCount(0);
   // 只剩草稿目标时用青色虚线区分
   await expect(page.locator('.stage-seat--draft .seat-main')).toHaveCSS('border-top-style', 'dashed');
-  await expect(page.locator('.stage-seat--draft .seat-main')).toHaveCSS('border-top-color', 'rgb(47, 125, 140)');
+  await expect(page.locator('.stage-seat--draft .seat-main')).toHaveCSS('border-top-color', 'rgb(106, 172, 184)');
   await page.getByTestId('stage-submit').click();
   await expect.poll(() => mounted.commands.length).toBe(1);
   expect(mounted.commands[0]).toMatchObject({ action: 'EDIT_PROPOSAL', targets: [], confirmSelf: true, expectedRevision: 4 });

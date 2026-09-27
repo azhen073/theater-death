@@ -33,7 +33,7 @@ async function expectActionClearOfSeatsAndTools(page: Page) {
   await expect.poll(async () => page.evaluate(() => {
       const card = document.querySelector('.stage-action-slot')?.getBoundingClientRect();
       if (!card || card.width <= 0 || card.height <= 0) return 'action card is not measurable';
-      for (const element of document.querySelectorAll('.seat-main, .seat-tools, .seat-count, .seat-sheriff')) {
+      for (const element of document.querySelectorAll('.seat-main, .seat-tools, .seat-count, .badge-strip')) {
         const rect = element.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) continue;
         if (card.left - 1 < rect.right && card.right + 1 > rect.left && card.top - 1 < rect.bottom && card.bottom + 1 > rect.top) {

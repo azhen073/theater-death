@@ -16,7 +16,8 @@
 .theater-stage--night .seat-main { background: #f5f8fd; }
 /* 「我的选择 / 当前草稿目标」的颜色只在 main.css 的 --seat-* 变量里定义，昼夜同一套；
    main.css 里的三条座位态规则带 .theater-stage 前缀，特异度高于上面的 .theater-stage--night .seat-main，故无需夜间覆盖。 */
-.theater-stage--night .stage-seat--unavailable .seat-main { background: #d7e0ee; color: #58677c; }
+/* 不可选目标（夜）：底色比正常座位（#f5f8fd）略深以区分，但仍要保证小字对比度 ≥4.5 */
+.theater-stage--night .stage-seat--unavailable .seat-main { background: #eaeff7; color: #5a6a80; }
 .theater-stage--night .stage-action-card { background: #fcfdfe; }
 @keyframes night-fog { from { opacity: 0; translate: -6% 0; } 35% { opacity: .65; } to { opacity: 0; translate: 6% 0; } }
 @keyframes night-dust { from { opacity: 0; translate: 0 12px; } 30% { opacity: .5; } to { opacity: 0; translate: 12px -24px; } }

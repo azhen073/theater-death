@@ -80,7 +80,13 @@ export interface PrivateGameDTO {
   self: SelfDTO; events: EventDTO[];
   factionRoom: { roomId: string; readOnly: boolean; canWrite: boolean; members: readonly { playerId: string; seat: number; readOnly: boolean }[] } | null;
   targets: Partial<Record<CommandAction, TargetSelection>>;
-  knowledge: { spiritSeats: number[] };
+  /**
+   * 私人身份知识（按角色/阶段/技能状态授权，服务端先裁剪）：
+   * - `spiritSeats`：死神/丧亲者→全部魂灵，魂灵→其他魂灵，其余空；
+   * - `dyingSeats`（可选）：本夜濒死名单，仅一阶段、夜间、已产生名单时下发给
+   *   未死亡的降临者与未死亡且未使用还魂曲的水妖；其余情况**不含该字段**（不得下发空数组冒充"无名单"）。
+   */
+  knowledge: { spiritSeats: number[]; dyingSeats?: number[] };
   proposal: { pool: 'death' | 'spirit' | 'joint'; activeMemberIds: readonly string[]; revision: number; targetPlayerIds: readonly string[]; confirmedBy: readonly string[]; locked: boolean; effective: { revision: number | null; targetPlayerIds: readonly string[]; basis: 'unanimous' | 'latest_legal' | 'empty' } } | null;
   /** 当前发言窗口的送达回执聚合；仅对「此刻持有发布权」的人下发，其他人不含该字段（可选，向后兼容）。 */
   voice?: { delivery: VoiceDeliveryDTO } | null;
