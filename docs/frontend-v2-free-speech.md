@@ -32,7 +32,7 @@
 
 **语音层**
 
-- `voice/policy.ts`：`case 'free_speech'` → 死者 `dead_listener`，其余 `granted()`（即全体存活可发布）。
+- `voice/policy.ts`：`case 'free_speech'` → 死者 `dead_listener`，其余 `granted()`（即存活玩家可发布）。
 - `server/v2/media.ts`：`SPEAKING_WINDOWS` 加 `'free_speech'`；`DeliveryWindow.speakerMediaIds: readonly string[]` + `sameSpeakers()`——送达聚合从「单一发言者」改成「发布者集合」，窗口内集合不变即同一聚合；`currentWindow()` 返回**全部**发布者；`recordReceipt` 拒绝**任何**发布者自己的回执；新增 `uidMap(gameId)`（解析 `v2:<gameId>:<subject>:<epoch>`，只收 `p_` 主体）供前端把频道 uid 映射回玩家。
 
 **快照与 HTTP**
@@ -48,11 +48,12 @@
 - `presentation/voice-levels.ts`：`SPEAKING_LEVEL_THRESHOLD = 5`、`SPEAKING_HOLD_MS = 1200`、`activeSpeakingSeats(held, levels, uids, now)`——按电平阈值 + 保持期算出「正在说话」的玩家集合，未知 uid 忽略。
 - `features/voice/speaking-seats.ts`（新增）：模块级存储 + `subscribeSpeakingSeats` / `updateSpeakingSeats` / `clearSpeakingSeats` / `useSpeakingSeats`，带 `schedulePrune()` 定时器（采样停止后仍要在保持期结束时清光环）。
 - `features/voice/session.ts`：`#levels` 采样 + `onLevels()` 订阅，teardown 时清空。
-- `features/voice/bar.tsx`：`SPEAKING_WINDOW_IDS` 加 `'free_speech'`（可手动开麦），`TURN_WINDOW_IDS` **不含**它（`autoMic` 早退：自由发言没有「轮到我」，且没有当前发言者时也不自动开麦）；状态行「自由发言进行中 · 全体存活可开麦」；把远端电平写进座位光环存储。
+- `features/voice/bar.tsx`：`SPEAKING_WINDOW_IDS` 加 `'free_speech'`（可手动开麦），`TURN_WINDOW_IDS` **不含**它（`autoMic` 早退：自由发言没有「轮到我」，且没有当前发言者时也不自动开麦）；状态行「自由发言进行中 · 存活玩家可开麦」；把远端电平写进座位光环存储。
 - `features/game/stage.tsx` + `scene.tsx`：座位带 `data-player-id`，`liveSpeakingPlayerIds` → `stage-seat--speaking` + `.seat-speaking`（「正在发言」标签）。
-- `features/game/speech-attention.tsx`：自由发言阶段显示「自由发言进行中 · 全体存活可同时开麦」，并挂 `role="timer"` 的剩余时间（名称「自由发言剩余时间」）。
+- `features/game/speech-attention.tsx`：自由发言阶段显示「自由发言进行中 · 存活玩家可开麦」，并挂 `role="timer"` 的剩余时间（名称「自由发言剩余时间」）。
+- `features/game/free-speech-note.ts`（新增，2026-09-27）：阶段行动卡文案（见 §5），在 `features/actions/presentation.ts` 的 idle 分支优先于通用「本阶段无需操作」。
 - `features/room/create.tsx`：新增必选「自由发言：开启 / 不开启」单选（`role="radiogroup"`；未选时提交按钮禁用并提示「请先选择是否开启白天自由发言」），请求体带 `freeSpeech`。
-- `features/room/lobby.tsx`：「本局规则」显示「白天自由发言：开启（发言轮后 2 分钟 · 全体存活可开麦）/ 不开启」。
+- `features/room/lobby.tsx`：「本局规则」显示「白天自由发言：开启（发言轮后 2 分钟 · 存活玩家可开麦）/ 不开启」。
 
 ## 3. 验证（2026-09-23，容器内）
 
@@ -75,7 +76,7 @@
 
 | spec | 结果 | 覆盖 |
 | --- | --- | --- |
-| `specs-v2/30-free-speech.spec.ts`（新增，2 例） | **4 passed**（chromium 2 + webkit 2） | ① HUD 阶段名「自由发言」、提醒条文案、`role="timer"` 倒计时；语音条「自由发言进行中 · 全体存活可开麦」、**不自动开麦**、手动开麦后「已送达 1/1」；电平 42 → 对应座位亮光环「正在发言」、归零后保持期内仍在、之后消失（4 秒内清掉）。② 建房表单：未选时提交禁用 + 两个单选 `aria-checked=false` + 提示；选中后请求体 `{ publicChat: 'alive_only', freeSpeech: true }`；大厅显示「白天自由发言：开启（发言轮后 2 分钟 · 全体存活可开麦）」 |
+| `specs-v2/30-free-speech.spec.ts`（新增，2 例；2026-09-27 追加第 3 例，见 §5） | **4 passed**（chromium 2 + webkit 2） | ① HUD 阶段名「自由发言」、提醒条文案、`role="timer"` 倒计时；语音条「自由发言进行中 · 存活玩家可开麦」、**不自动开麦**、手动开麦后「已送达 1/1」；电平 42 → 对应座位亮光环「正在发言」、归零后保持期内仍在、之后消失（4 秒内清掉）。② 建房表单：未选时提交禁用 + 两个单选 `aria-checked=false` + 提示；选中后请求体 `{ publicChat: 'alive_only', freeSpeech: true }`；大厅显示「白天自由发言：开启（发言轮后 2 分钟 · 存活玩家可开麦）」 |
 | 回归 `specs-v2/18-voice-levels` + `22-speech-attention` + `05-information` | **26 passed** | 既有发言者电平、发言聚焦条、情报页签未被光环/阶段变更破坏 |
 | 回归 `specs-v2/02-rooms` | **6 passed**（跳过既有 presence 失败用例） | 建房表单新增必选字段后其余必填项校验不变 |
 | 回归 `specs-v2/06-chat-screen-real` | **2 passed**（跳过依赖手动时钟的用例） | 真实服务端聊天与阵营房边界不变 |
@@ -88,3 +89,41 @@
 - **没有「自由发言提前结束」**：这是刻意设计（与夜间窗口同一防泄露口径），不作为缺失项；如将来要加需重新开裁定号。
 - **v1 入口没有该阶段**（1.1 预设），因此 v1 E2E 未跑；本次未改 `server/legacy-*` 与 `web/`。
 - 未跑全量 Vitest / 全量 E2E，未重建发布镜像，未部署；分支 `2.0.7-alpha` 本地未推送。
+
+## 5. 追加（2026-09-27）：自由发言阶段行动卡文案修正
+
+**检查发现**：该阶段舞台中心的行动卡显示通用兜底文案「本阶段无需操作 / 等待其他玩家或服务端推进阶段。」，与本阶段语义相反（本阶段的主动方是玩家自己）。
+
+- 触发路径唯一：`web-v2/src/features/actions/presentation.ts` 的 idle 分支（正式玩家没有有效任务）。自由发言阶段**必然**命中——`server/capabilities.ts` 的白天分支没有任何 `allow()` 命中 `free_speech` 窗口 → `allowedCommands` 为空；`server/v2/snapshots.ts` 的 `tasks` 只由 `allowedCommands` 派生 → `tasks = []`；`server/day-driver.ts` 只排窗口、不下发任务。该分支**不看生死**，存活与出局玩家看到同一句话。
+- 本阶段唯一的动作是开麦（`voice/policy.ts`：存活 `granted()`、死者 `dead_listener`），而卡片标题是「YOUR NEXT MOVE」，却一字未提开麦，还说「等待其他玩家…推进阶段」。
+- 与既有口径不一致：`docs/frontend-v2-election-vote-notes.md` 已把「无资格者只看到『本阶段无需操作』」判为真实缺口并修掉，本阶段属同类缺口。
+
+**改法（用户裁定 = 方案 A，纯客户端）**：新增 `web-v2/src/features/game/free-speech-note.ts`，在 idle 分支优先于通用文案：
+
+| 视角 | 标题 | 副文 |
+| --- | --- | --- |
+| 存活正式玩家 | 自由发言时间 | 点击上方语音条开麦发言；倒计时结束自动进入放逐投票。 |
+| 出局正式玩家 | 你已出局 | 自由发言阶段只能旁听，倒计时结束进入放逐投票。 |
+| 观众 / 第二屏 | 不改（仍是「你正在只读观战」） | — |
+| 其它阶段 | 不改（仍是「本阶段无需操作」） | — |
+
+判定只读 `public.day.step === 'free_speech'` + 本人私有 `private.self.life`；缺少本人私有视图时返回 `null` 退回通用文案（**不猜生死**——猜错会把出局者写成可开麦）。服务端、契约、引擎、1.1 预设与 v1 入口均未改。
+
+**验证（2026-09-27，容器内）**
+
+- 新增 `tests/frontend-v2-free-speech-note.test.ts` **10 例**（推导 6：存活 / 出局 / 非本阶段 / 只读两视角 / 无席位 / 无私有视图；接入行动卡 4：存活、出局、其它阶段逐字不变、只读不被覆盖），连同 `frontend-v2-election-vote-notes`(20) + `frontend-v2-actions`(8) = **3 文件 38 例全过**。
+- **回归有效性**：把 `presentation.ts` 的 `idleText` 临时还原为只用竞选文案 → `frontend-v2-free-speech-note` **2 failed**（`expected '本阶段无需操作' to be '自由发言时间'` / `'你已出局'`）；恢复接线后 10/10 全绿。
+- `typecheck` / `typecheck:web:v2` / `typecheck:web:v2-tests` exit 0。
+- E2E `specs-v2/30-free-speech.spec.ts` 扩为 **3 例**（新增「出局者看到旁听说明，只读观战仍走只读文案」）：**chromium 3/3 + webkit 3/3**；回归 `specs-v2/28-election-vote-notes.spec.ts` 双浏览器 **10/10**。
+- 截图（全屏 `fullPage`）：`test-results-frontend-v2/free-speech-speaking-{chromium,webkit}.png`（存活：卡片「自由发言时间」）、`free-speech-dead-{chromium,webkit}.png`（出局：卡片「你已出局」，语音条「当前未获得发言权限」）。
+
+**文案统一（2026-09-27，用户裁定）**：「全体存活可同时开麦」表述有误，统一改为 **「存活玩家可开麦」**。四段用户可见文案同步：
+
+| 位置 | 改后 |
+| --- | --- |
+| 发言与提醒条（`speech-attention.tsx`） | 自由发言进行中 · 存活玩家可开麦 |
+| 语音条（`bar.tsx`） | 自由发言进行中 · 存活玩家可开麦 |
+| 大厅「本局规则」（`lobby.tsx`） | 白天自由发言：开启（发言轮后 2 分钟 · 存活玩家可开麦） |
+| 建房表单（`create.tsx`） | 说明段「存活玩家可开麦」＋单选副文「发言轮后 2 分钟 · 存活玩家可开麦」 |
+
+同步更新：`docs/openapi-v2.2.json` 的 `freeSpeech` 字段说明、代码注释（`server/day-driver.ts`、`engine/day.ts`、`server/v2/media.ts`、`voice/policy.ts`）与两份测试注释、`AGENTS.md` / `PROGRESS.md` 记录，以及 E2E `30-free-speech.spec.ts` 的三处断言。**实测（2026-09-27）**：`typecheck:web:v2` / `typecheck:web:v2-tests` exit 0；`tests/v2-media`(17) + `tests/v2-free-speech`(4) + `tests/frontend-v2-free-speech-note`(10) = **3 文件 31 例全过**；E2E `specs-v2/30-free-speech.spec.ts` **chromium 3/3 + webkit 3/3**（断言已改为新文案，旧文案会失败）；截图同上（新文案已入图）。**未改**：规则正文三处仍写「全体存活玩家可同时开麦」（`theater_death_rulebook_v1.1.md` R-43 与第 09 章 Q-11 记录、`docs/rules-v2-full.md` R-43、`docs/rules-v2.md` V2-06）——保留「同时」这一规则性质（与轮流发言相对）；如需一并统一请示下。

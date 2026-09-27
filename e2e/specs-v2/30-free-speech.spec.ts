@@ -51,10 +51,14 @@ test('自由发言阶段：阶段文案、全员可开麦、送达回执与「�
 
   // 阶段文案与倒计时
   await expect(page.locator('.game-hud h1')).toHaveText('自由发言');
-  await expect(page.getByLabel('发言与提醒')).toContainText('自由发言进行中 · 全体存活可同时开麦');
+  await expect(page.getByLabel('发言与提醒')).toContainText('自由发言进行中 · 存活玩家可开麦');
   await expect(page.getByRole('timer', { name: '自由发言剩余时间' })).toBeVisible();
+  // 行动卡：本阶段没有行动任务，但唯一的动作是开麦，不能只显示通用「本阶段无需操作」
+  const card = page.getByRole('region', { name: /舞台行动|观察玩家当前行动/ });
+  await expect(card.locator('h2')).toHaveText('自由发言时间');
+  await expect(card).toContainText('点击上方语音条开麦发言；倒计时结束自动进入放逐投票。');
   // 语音条：该阶段不是「轮到我」，不自动开麦，但可以手动开麦；开麦后显示送达回执
-  await expect(page.locator('.voice-bar')).toContainText('自由发言进行中 · 全体存活可开麦');
+  await expect(page.locator('.voice-bar')).toContainText('自由发言进行中 · 存活玩家可开麦');
   expect(await page.evaluate(() => (window as unknown as { __voiceCalls?: string[] }).__voiceCalls ?? [])).not.toContain('mic');
   await page.getByRole('button', { name: '开启麦克风' }).click();
   await expect(page.getByRole('button', { name: '关闭麦克风' })).toBeVisible();
@@ -73,6 +77,30 @@ test('自由发言阶段：阶段文案、全员可开麦、送达回执与「�
   await page.evaluate(() => (window as unknown as { __emitVoiceLevels?: (levels: Record<number, number>) => void }).__emitVoiceLevels?.({}));
   await expect(seatSpeaking.locator('.seat-speaking')).toHaveText('正在发言');
   await expect(seatSpeaking.locator('.seat-speaking')).toHaveCount(0, { timeout: 4_000 });
+});
+
+test('自由发言阶段：出局者看到旁听说明，只读观战仍走只读文案', async ({ page }, testInfo) => {
+  const { set } = await mount(page, freeSpeechFixture());
+  const card = page.getByRole('region', { name: /舞台行动|观察玩家当前行动/ });
+
+  const dead = freeSpeechFixture();
+  const deadId = dead.view.private!.self.playerId;
+  dead.view.private!.self.life = 'dead';
+  dead.view.capabilities.canPublishVoice = false;
+  const deadSeat = dead.view.public!.seats.find(seat => seat.playerId === deadId);
+  if (deadSeat) deadSeat.alive = false;
+  await set(dead);
+  await expect(card.locator('h2')).toHaveText('你已出局');
+  await expect(card).toContainText('自由发言阶段只能旁听，倒计时结束进入放逐投票。');
+  await expect(page.locator('.voice-bar__hint')).toContainText('当前未获得发言权限');
+  await page.screenshot({ path: `/results/free-speech-dead-${testInfo.project.name}.png`, fullPage: true });
+
+  // 只读视角（公开观众 / 第二屏）不受本阶段提示影响，仍走只读文案
+  const spectator = freeSpeechFixture();
+  spectator.view.viewer = { ...spectator.view.viewer, kind: 'public_spectator', readOnly: true, subjectPlayerId: null };
+  spectator.view.private = null;
+  await set(spectator);
+  await expect(card.locator('h2')).toHaveText('你正在只读观战');
 });
 
 test('建房必须显式选择自由发言开关，并在大厅按选择显示', async ({ browser }, testInfo) => {
@@ -94,7 +122,7 @@ test('建房必须显式选择自由发言开关，并在大厅按选择显示',
     await page.getByRole('button', { name: '创建房间', exact: true }).click();
     expect((await create).postDataJSON()).toMatchObject({ publicChat: 'alive_only', freeSpeech: true });
     await waitRoom(page);
-    await expect(page.getByText('白天自由发言：开启（发言轮后 2 分钟 · 全体存活可开麦）')).toBeVisible();
+    await expect(page.getByText('白天自由发言：开启（发言轮后 2 分钟 · 存活玩家可开麦）')).toBeVisible();
     await page.screenshot({ path: `/results/free-speech-lobby-${testInfo.project.name}.png`, fullPage: true });
     await page.getByRole('button', { name: '解散房间' }).click();
     await confirmModal(page, '解散房间？');
