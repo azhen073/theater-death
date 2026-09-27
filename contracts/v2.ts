@@ -72,8 +72,6 @@ export interface PublicGameDTO {
   seats: SeatDTO[]; events: EventDTO[]; day: DayDTO | null;
   night: { closesAt: number } | null;
   result: { winner: 'human' | 'death_faction'; dayNumber: number; reason: string } | null;
-  /** 语音身份映射（uid → playerId），仅用于按远端电平显示「谁在说话」；不含任何隐藏信息。无语音或非对局为 null。 */
-  voice?: { uids: Record<string, string> } | null;
   startedAt: number; endedAt: number | null;
 }
 export interface PrivateGameDTO {
@@ -109,6 +107,21 @@ export interface RoomSnapshot {
   viewer: { userId: string; memberId: string; kind: MemberKind; subjectPlayerId: string | null; readOnly: boolean; isHost: boolean };
   room: { code: string; phase: RoomPhase; config: RulesetConfig; publicChat: PublicChatMode; freeSpeech: boolean; requiredPlayers: number; hostMemberId: string | null; formalMembers: RoomMemberDTO[]; spectators: RoomMemberDTO[]; emptyDeadline: number | null };
   public: PublicGameDTO | null; private: PrivateGameDTO | null;
+  /** 当前语音范围（Q-12）：对局内是对局频道（`gameId`），大厅与复盘是房间频道；无语音时为 null。 */
+  voice: RoomVoiceDTO | null;
   capabilities: SnapshotCapabilities; windows: WindowDTO[]; tasks: TaskDTO[]; submissionState: SubmissionDTO[];
   chat: { public: ChatMessageDTO[]; faction: ChatMessageDTO[] };
+}
+/**
+ * 语音范围与「谁在说话」的 uid 归属（Q-12）：仅用于按远端电平给座位 / 成员卡亮光环，
+ * 不含任何隐藏信息（uid 本就是频道内可见的编号）。
+ */
+export interface RoomVoiceDTO {
+  /** 频道名：对局频道 = `gameId`；大厅 / 复盘 = 房间频道（独立于任何一局）。 */
+  channel: string;
+  /**
+   * 频道 uid → **语音主体**：对局频道里是 `playerId`（座位卡比对），
+   * 房间频道里是 `memberId`（大厅 / 复盘成员卡比对，因为那时还没有 playerId）。
+   */
+  uids: Record<string, string>;
 }

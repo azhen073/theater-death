@@ -65,37 +65,45 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
   const [draftOutput, setDraftOutput] = useState<number | null>(null);
   const [draftInput, setDraftInput] = useState<number | null>(null);
   const { preferences, update } = usePreferences();
+  // 对局频道：只有对局内才有 gameId 与发言窗口（送达回执、自动开麦都只在这里）。
   const playing = view?.room.phase === 'playing' && !!view.gameId;
+  /**
+   * 房间相位（Q-12）：大厅与复盘走房间频道，正式成员自由开麦；对局内走对局频道。
+   * 房间页（大厅 / 对局 / 复盘）都有语音，因此条本身在三种相位都渲染。
+   */
+  const roomPhase = view?.room.phase ?? null;
+  const voiceScope = view === null || roomPhase === null ? null : playing ? view.gameId! : roomPhase;
+  const freeTalk = roomPhase === 'lobby' || roomPhase === 'review';
   const joined = state.connection === 'connected' || state.connection === 'reconnecting';
   const outputVolume = preferences.voiceMuted ? 0 : preferences.voiceOutput;
   const optedOutRef = useRef(false);
   const autoMicKeyRef = useRef<string | null>(null);
   const deliveryWindow = enabled && playing ? speakingWindowId(view) : null;
   const freeSpeech = view?.public?.day?.step === 'free_speech';
-  const uids = view?.public?.voice?.uids ?? {};
+  const uids = view?.voice?.uids ?? {};
   const uidsRef = useRef(uids);
   uidsRef.current = uids;
   useEffect(() => session.subscribe(setState), [session]);
-  // 「谁在说话」：只在本机的自由发言阶段用远端电平判定；离开该阶段立刻清空，不顺延。
+  // 「谁在说话」：只在本机的自由开麦场景（自由发言阶段 / 大厅 / 复盘）用远端电平判定；离开即清空。
   useEffect(() => {
     const subscribeLevels = session.onLevels?.bind(session);
     if (subscribeLevels === undefined) return;
     const unsubscribe = subscribeLevels(levels => updateSpeakingSeats(levels, uidsRef.current, Date.now()));
     return () => { unsubscribe(); clearSpeakingSeats(); };
   }, [session]);
-  useEffect(() => { if (!freeSpeech) clearSpeakingSeats(); }, [freeSpeech]);
+  useEffect(() => { if (!freeSpeech && !freeTalk) clearSpeakingSeats(); }, [freeSpeech, freeTalk]);
   useEffect(() => {
-    session.setContext(enabled && playing ? { roomCode: view.room.code, gameId: view.gameId!, canPublish: view.capabilities.canPublishVoice, readOnly: view.viewer.readOnly, online, activePage, deliveryWindow } : null);
-  }, [session, enabled, playing, view?.room.code, view?.gameId, view?.capabilities.canPublishVoice, view?.viewer.readOnly, online, activePage, deliveryWindow]);
+    session.setContext(enabled && view && voiceScope !== null ? { roomCode: view.room.code, scope: voiceScope, gameId: playing ? view.gameId! : null, canPublish: view.capabilities.canPublishVoice, readOnly: view.viewer.readOnly, online, activePage, deliveryWindow } : null);
+  }, [session, enabled, view?.room.code, voiceScope, playing, view?.capabilities.canPublishVoice, view?.viewer.readOnly, online, activePage, deliveryWindow]);
   useEffect(() => { if (joined) session.setOutputVolume(outputVolume); }, [session, joined, outputVolume]);
   useEffect(() => { if (state.microphoneEnabled) session.setInputVolume(preferences.voiceInput); }, [session, state.microphoneEnabled, preferences.voiceInput]);
-  useEffect(() => { optedOutRef.current = false; autoMicKeyRef.current = null; }, [view?.gameId]);
-  // 进对局自动加入语音（订阅即可听）；本人手动离开后本局不再自动重连。
+  useEffect(() => { optedOutRef.current = false; autoMicKeyRef.current = null; }, [view?.gameId, voiceScope]);
+  // 进房间即自动加入语音（订阅即可听）：大厅、复盘与对局一致；本人手动离开后本次停留不再自动重连。
   useEffect(() => {
-    if (!enabled || !playing || !activePage || !online || !view || view.viewer.readOnly) return;
+    if (!enabled || voiceScope === null || !activePage || !online || !view || view.viewer.readOnly) return;
     if (optedOutRef.current || state.connection !== 'idle') return;
     void session.join();
-  }, [session, enabled, playing, activePage, online, view, state.connection]);
+  }, [session, enabled, voiceScope, activePage, online, view, state.connection]);
   // 轮到自己发言（服务端授予发布权）时自动开麦；每个发言窗口只自动开一次，手动关麦后不重开。
   useEffect(() => {
     if (!enabled || !playing || !activePage || !online || !view || view.viewer.readOnly) return;
@@ -116,7 +124,7 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
     void session.requestMicrophone();
   }, [session, enabled, playing, activePage, online, view, preferences.autoMic, state.microphoneEnabled, state.requested, state.connection]);
   useEffect(() => () => { void session.leave(); }, [session]);
-  if (!enabled || !playing || (!activePage && state.connection === 'idle')) return null;
+  if (!enabled || view === null || voiceScope === null || (!activePage && state.connection === 'idle')) return null;
   const canOpen = state.connection === 'connected' && activePage && online && view.capabilities.canPublishVoice && !view.viewer.readOnly;
   const display = voiceLevelDisplay({ view, remoteLevel: state.remoteLevel, outputVolume: preferences.voiceOutput, muted: preferences.voiceMuted, showLevels: preferences.voiceLevels });
   const speakerSeat = display.speakingPlayerId === null ? null : view.public?.seats.find(seat => seat.playerId === display.speakingPlayerId)?.seat ?? null;
@@ -138,6 +146,8 @@ export function VoiceBar({ enabled, view, online, activePage, session: injected 
       {ownLevelVisible(state.microphoneEnabled, preferences.voiceLevels) && <span className="voice-bar__own"><LevelMeter label="麦克风音量" level={state.level}/></span>}
       {display.speakingPlayerId !== null && <span className="voice-bar__speaker">{speakerSeat === null ? '' : `${speakerSeat}号 `}{display.muted ? '已静音' : display.showLevel ? `正在发言 · ${display.speakerLevel}%` : '正在发言'}</span>}
       {freeSpeech && <span className="voice-bar__speaker">自由发言进行中 · 存活玩家可开麦</span>}
+      {!freeSpeech && roomPhase === 'lobby' && <span className="voice-bar__speaker">进入对局前 · 正式玩家可自由开麦</span>}
+      {!freeSpeech && roomPhase === 'review' && <span className="voice-bar__speaker">复盘讨论 · 正式玩家可自由开麦</span>}
       {delivery && <span className="voice-bar__delivery" title={delivery.title}>{delivery.text}</span>}
       <label className="voice-bar__volume">输出音量<input type="range" min={0} max={100} step={5} aria-label="输出音量" value={draftOutput ?? preferences.voiceOutput}
         onChange={event => { const next = Number(event.target.value); setDraftOutput(next); session.setOutputVolume(preferences.voiceMuted ? 0 : next); }}

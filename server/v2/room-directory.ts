@@ -4,6 +4,7 @@ import type { RulesetConfig } from '../../rulesets/types.ts';
 import type { AccountSession } from './account-store.ts';
 import { ApiError } from './errors.ts';
 import { StableRoom, newId, type ActiveMember, type StableRoomDeps } from './stable-room.ts';
+import { roomVoiceChannel, roomVoiceIdentity } from './room-voice.ts';
 
 export interface DirectoryDeps extends StableRoomDeps {
   changed: (room: StableRoom, event?: { disconnectedMemberId: string }) => void;
@@ -135,6 +136,9 @@ export class RoomDirectory {
   releaseControl(room: StableRoom, member: ActiveMember, reason: ControlReason): void {
     const oldSession = member.sessionId;
     const seat = room.participants.get(member.userId);
+    // 房间频道（大厅/复盘语音，Q-12）：成员离线/被接管/被踢即撤回其房间身份
+    const roomChannel = roomVoiceChannel(room.roomId);
+    this.deps.revokeMedia(roomChannel, roomVoiceIdentity(roomChannel, member));
     if (room.access && seat) {
       const lease = room.access.seats.get(seat.playerId);
       if (lease) {

@@ -352,6 +352,10 @@
     }
   },
   "windows": [],
+  "voice": {
+    "channel": "l_r_2de7242086b43743f1cd0db304109be1",
+    "uids": {}
+  },
   "tasks": [],
   "submissionState": [],
   "chat": {

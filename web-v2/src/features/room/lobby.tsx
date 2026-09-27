@@ -6,6 +6,7 @@ import { ApiFailure } from '../../transport/http.ts';
 import { useIntent } from '../../transport/intent.ts';
 import { actionLabels, formatCountdown, presenceLabels, publicChatLabel, publicPhaseLabel, roomPermissionReasons } from '../../presentation/labels.ts';
 import { RulesBook } from '../rules/book.tsx';
+import { useSpeakingSeats } from '../voice/speaking-seats.ts';
 import { canManageMember, hostExitDissolves, memberLabel, roomExitMessage, roomExitPresentation } from './policy.ts';
 
 type Confirmation = { action: 'kick' | 'transfer-host'; memberId: string; name: string } | { action: 'leave' | 'dissolve' };
@@ -37,8 +38,10 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
   const mine = view.room.formalMembers.find(member => member.memberId === view.viewer.memberId);
   const readyCount = view.room.formalMembers.filter(member => member.ready).length;
   const isLobby = view.room.phase === 'lobby';
-  const target = (member: RoomMemberDTO) => <div className="member-card" key={member.memberId} data-member-id={member.memberId}>
-    <Avatar url={member.avatarUrl} name={member.nickname}/><div className="member-card__info"><strong title={`${member.nickname} · UID ${member.uid}`}>{memberLabel(member, view.viewer.userId)}</strong><div className="member-status"><span className={`presence presence--${member.presence}`}>{presenceLabels[member.presence]}</span>{member.kind === 'formal' && isLobby && <span className={member.ready ? 'badge badge--ready' : 'badge'}>{member.ready ? '已准备' : '未准备'}</span>}{member.kind !== 'formal' && <span className="badge">{member.kind === 'private_spectator' ? '私人第二屏' : '公开观众'}</span>}</div></div>
+  // 「谁在说话」光环（Q-12）：大厅/复盘走房间频道，服务端下发的 uid 主体就是 memberId
+  const speakingSubjects = useSpeakingSeats();
+  const target = (member: RoomMemberDTO) => <div className={`member-card${speakingSubjects.includes(member.memberId) ? ' member-card--speaking' : ''}`} key={member.memberId} data-member-id={member.memberId} data-speaking={speakingSubjects.includes(member.memberId) ? 'true' : undefined}>
+    <Avatar url={member.avatarUrl} name={member.nickname}/><div className="member-card__info"><strong title={`${member.nickname} · UID ${member.uid}`}>{memberLabel(member, view.viewer.userId)}</strong><div className="member-status"><span className={`presence presence--${member.presence}`}>{presenceLabels[member.presence]}</span>{speakingSubjects.includes(member.memberId) && <span className="badge badge--speaking">正在说话</span>}{member.kind === 'formal' && isLobby && <span className={member.ready ? 'badge badge--ready' : 'badge'}>{member.ready ? '已准备' : '未准备'}</span>}{member.kind !== 'formal' && <span className="badge">{member.kind === 'private_spectator' ? '私人第二屏' : '公开观众'}</span>}</div></div>
     {(canManageMember(view, 'kick', member.memberId) || canManageMember(view, 'transfer-host', member.memberId)) && <div className="member-tools">
       {canManageMember(view, 'transfer-host', member.memberId) && <button className="text-button" disabled={locked} onClick={() => setConfirmation({ action: 'transfer-host', memberId: member.memberId, name: member.nickname })}>转移房主</button>}
       {canManageMember(view, 'kick', member.memberId) && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'kick', memberId: member.memberId, name: member.nickname })}>移出</button>}

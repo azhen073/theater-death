@@ -102,8 +102,9 @@ export const SPEAKING_LEVEL_THRESHOLD = 5;
 export const SPEAKING_HOLD_MS = 1200;
 
 /**
- * 纯函数：把「频道 uid → 电平」映射成本刻该亮光环的 playerId，带保持期。
- * `held` 是上一次的结果（playerId → 到期时间），本函数会就地更新后返回新的列表。
+ * 纯函数：把「频道 uid → 电平」映射成本刻该亮光环的**语音主体**，带保持期。
+ * 主体含义由服务端 `voice.uids` 决定：对局频道里是 playerId，房间频道（大厅/复盘）里是 memberId。
+ * `held` 是上一次的结果（主体 → 到期时间），本函数会就地更新后返回新的列表。
  */
 export function activeSpeakingSeats(
   held: Map<string, number>,
@@ -112,10 +113,10 @@ export function activeSpeakingSeats(
   now: number,
 ): string[] {
   for (const [uid, level] of levels) {
-    const playerId = uids[String(uid)];
-    if (playerId === undefined) continue;
-    if (level >= SPEAKING_LEVEL_THRESHOLD) held.set(playerId, now + SPEAKING_HOLD_MS);
+    const subject = uids[String(uid)];
+    if (subject === undefined) continue;
+    if (level >= SPEAKING_LEVEL_THRESHOLD) held.set(subject, now + SPEAKING_HOLD_MS);
   }
-  for (const [playerId, until] of held) if (until <= now) held.delete(playerId);
+  for (const [subject, until] of held) if (until <= now) held.delete(subject);
   return [...held.keys()].sort();
 }

@@ -4,6 +4,7 @@ import {
   enter,
   json,
   makeHarness,
+  MockVoice,
   post,
   request,
   type HttpHarness,
@@ -107,5 +108,90 @@ describe('v2 voice HTTP contract', () => {
     const oldToken = await request(h, `/api/v2/rooms/${game.roomCode}/voice/token`, post({ requestId: 'voice-old-token', gameId: game.gameId }), h.users[0]);
     expect(oldToken.status).toBe(403);
     expect(errorCode(await json(oldToken))).toBe('room_access_required');
+  });
+});
+
+describe('v2 房间频道语音（Q-12：大厅与复盘自由开麦）', () => {
+  /** 建房并让前 5 名用户成为正式玩家（第 6 名加入即公开观众）。 */
+  async function lobbyRoom(h: HttpHarness) {
+    const created = await request(h, '/api/v2/rooms', post({ requestId: 'q12-create', publicChat: 'alive_only', freeSpeech: false, playerCount: 5, roles: EXPERIMENTAL_ROLES }), h.users[0]);
+    expect(created.status).toBe(201);
+    const room = await json(created) as { roomCode: string; roomId: string };
+    for (let index = 1; index < 5; index += 1) {
+      expect((await enter(h, room.roomCode, h.users[index]!, `q12-enter-${index}`)).response.status).toBe(200);
+    }
+    return room;
+  }
+
+  it('大厅：正式成员拿发布凭证、观众只拿订阅凭证，且请求不带 gameId；频道名独立于任何一局', async () => {
+    const voice = new MockVoice();
+    const h = await makeHarness(20, voice);
+    const room = await lobbyRoom(h);
+    const spectatorJoin = await enter(h, room.roomCode, h.users[5]!, 'q12-enter-observer');
+    expect(spectatorJoin.response.status).toBe(200);
+
+    const channel = `l_${room.roomId}`;
+    const formal = await request(h, `/api/v2/rooms/${room.roomCode}/voice/token`, post({ requestId: 'q12-token-formal' }), h.users[0]);
+    expect(formal.status).toBe(200);
+    expect(await json(formal)).toMatchObject({ channel });
+    expect((await json(await request(h, `/api/v2/rooms/${room.roomCode}/voice/token`, post({ requestId: 'q12-token-formal-2' }), h.users[0]))).token).toMatch(/^pub:/);
+
+    const spectator = await request(h, `/api/v2/rooms/${room.roomCode}/voice/token`, post({ requestId: 'q12-token-observer' }), h.users[5]);
+    expect(spectator.status).toBe(200);
+    expect((await json(spectator)).token).toMatch(/^sub:/);
+
+    // 快照：大厅也有语音范围与发布权（观众为 false），uid 主体等签发后才出现
+    const view = await json(await request(h, `/api/v2/rooms/${room.roomCode}/view`, undefined, h.users[0]));
+    expect(view.room.phase).toBe('lobby');
+    expect(view.voice).toMatchObject({ channel });
+    expect(view.capabilities.canPublishVoice).toBe(true);
+    const observerView = await json(await request(h, `/api/v2/rooms/${room.roomCode}/view`, undefined, h.users[5]));
+    expect(observerView.voice).toMatchObject({ channel });
+    expect(observerView.capabilities.canPublishVoice).toBe(false);
+  });
+
+  it('开局即关闭大厅频道，并把身份换成对局频道（成员 → playerId）', async () => {
+    const voice = new MockVoice();
+    const h = await makeHarness(20, voice);
+    const room = await lobbyRoom(h);
+    const before = await request(h, `/api/v2/rooms/${room.roomCode}/voice/token`, post({ requestId: 'q12-lobby-token' }), h.users[0]);
+    expect((await json(before)).channel).toBe(`l_${room.roomId}`);
+
+    for (let index = 0; index < 5; index += 1) {
+      expect((await request(h, `/api/v2/rooms/${room.roomCode}/ready`, post({ requestId: `q12-ready-${index}`, ready: true }), h.users[index])).status).toBe(200);
+    }
+    const started = await request(h, `/api/v2/rooms/${room.roomCode}/start`, post({ requestId: 'q12-start' }), h.users[0]);
+    expect(started.status).toBe(200);
+    const gameId = (await json(started)).gameId as string;
+    expect(voice.closed).toContain(`l_${room.roomId}`);
+
+    const match = await json(await request(h, `/api/v2/rooms/${room.roomCode}/voice/token`, post({ requestId: 'q12-match-token', gameId }), h.users[0]));
+    expect(match.channel).toBe(gameId);
+    const view = await json(await request(h, `/api/v2/rooms/${room.roomCode}/view`, undefined, h.users[0]));
+    expect(view.voice).toMatchObject({ channel: gameId });
+  });
+
+  it('复盘：回到房间频道，正式成员仍可自由开麦（终局不给对局频道发凭证）', async () => {
+    const voice = new MockVoice();
+    const h = await makeHarness(20, voice);
+    const game = await startFivePlayerGame(h);
+    // 让本局直接进入终局（review 相位的判定依据就是 runtime.state.win）
+    const runtime = h.app.directory.byId.get([...h.app.directory.byId.keys()][0]!)!.runtime!;
+    runtime.state = { ...runtime.state!, win: { winner: 'human', dayNumber: 2, reason: 'q12-test' } };
+
+    const view = await json(await request(h, `/api/v2/rooms/${game.roomCode}/view`, undefined, h.users[0]));
+    expect(view.room.phase).toBe('review');
+    expect(view.voice.channel).toMatch(/^l_/);
+    expect(view.capabilities.canPublishVoice).toBe(true);
+
+    const review = await request(h, `/api/v2/rooms/${game.roomCode}/voice/token`, post({ requestId: 'q12-review-token' }), h.users[0]);
+    expect(review.status).toBe(200);
+    const credentials = await json(review);
+    expect(credentials.channel).toMatch(/^l_/);
+    expect(credentials.token).toMatch(/^pub:/);
+    // 相位以服务端为准：复盘时即使请求里带着旧 gameId，也只会拿到房间频道凭证（绝不进对局频道）
+    const stale = await json(await request(h, `/api/v2/rooms/${game.roomCode}/voice/token`, post({ requestId: 'q12-review-match-token', gameId: game.gameId }), h.users[0]));
+    expect(stale.channel).toBe(credentials.channel);
+    expect(stale.token).toMatch(/^pub:/);
   });
 });

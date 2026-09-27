@@ -4,9 +4,13 @@ import { activeSpeakingSeats } from '../../presentation/voice-levels.ts';
 /**
  * 「谁在说话」的本机临时状态。
  *
- * 数据来源只有本机的 Agora 音量指示（不上报服务端、不入日志与复盘），仅用于在座位上亮光环：
- * 常规发言时段由服务端的 `currentSpeakerId` 决定，本模块只在「自由发言」这类
- * 没有唯一发言者的阶段生效。放在模块级是因为语音条与舞台是同层兄弟节点。
+ * 数据来源只有本机的 Agora 音量指示（不上报服务端、不入日志与复盘），用于亮光环：
+ * 舞台座位（对局内的自由发言阶段，服务端 `currentSpeakerId` 之外的情况）与
+ * 大厅 / 复盘的成员卡（房间频道，Q-12）。
+ *
+ * 存的是**语音主体**：对局频道里是 `playerId`（座位比对），房间频道里是 `memberId`
+ * （成员卡比对）——两种相位互斥，消费方按自己所处相位比对即可。放在模块级是因为
+ * 语音条与舞台/大厅是同层兄弟节点。
  */
 let current: readonly string[] = [];
 const listeners = new Set<() => void>();

@@ -14,7 +14,7 @@ import {
 import { resolveMorning } from '../engine/morning.ts';
 import type { AttackPhaseInput } from '../engine/night.ts';
 import type { DayContext, GameState } from '../engine/types.ts';
-import { voicePermission } from '../voice/policy.ts';
+import { roomVoicePermission, voicePermission } from '../voice/policy.ts';
 import { runNight, scenario } from './helpers.ts';
 
 function morningState(
@@ -185,5 +185,30 @@ describe('语音许可策略（R-43；平票者开麦为 2026-09-16 追加裁定
       canPublish: false,
       reason: 'preparing_speech',
     });
+  });
+});
+
+describe('房间级语音许可（Q-12：大厅与复盘自由开麦）', () => {
+  it('大厅 / 复盘：正式成员可自由开麦，观众与第二屏只听', () => {
+    for (const phase of ['lobby', 'review'] as const) {
+      expect(roomVoicePermission({ phase, formal: true, state: null, playerId: null })).toEqual({ canPublish: true, reason: 'lobby_speaker' });
+      expect(roomVoicePermission({ phase, formal: false, state: null, playerId: null })).toEqual({ canPublish: false, reason: 'spectator' });
+    }
+  });
+
+  it('大厅 / 复盘不看对局生死与时段：复盘（已终局）的正式成员仍可开麦', () => {
+    const ended: GameState = { ...begun(), win: { winner: 'human', dayNumber: 3, reason: 'test' } };
+    expect(roomVoicePermission({ phase: 'review', formal: true, state: ended, playerId: 'p_1' })).toEqual({ canPublish: true, reason: 'lobby_speaker' });
+  });
+
+  it('对局内逐字沿用 R-43 口径（含夜间静音与发言轮）', () => {
+    const night = morningState();
+    expect(roomVoicePermission({ phase: 'playing', formal: true, state: night, playerId: 'p_1' }).canPublish).toBe(false);
+    const speech = startDefaultSpeechRound(toSpeech(begun())).state;
+    const speaker = currentSpeechRoundSpeaker(speech);
+    expect(roomVoicePermission({ phase: 'playing', formal: true, state: speech, playerId: speaker! })).toEqual(voicePermission(speech, speaker!));
+    // 对局内缺状态或缺身份一律不发许可（不应回落到大厅口径）
+    expect(roomVoicePermission({ phase: 'playing', formal: true, state: null, playerId: 'p_1' })).toEqual({ canPublish: false, reason: 'game_not_started' });
+    expect(roomVoicePermission({ phase: 'playing', formal: true, state: speech, playerId: null })).toEqual({ canPublish: false, reason: 'game_not_started' });
   });
 });

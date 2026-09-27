@@ -7,7 +7,13 @@ import { newRequestId } from '../../transport/ids.ts';
 export type VoiceConnection = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 export interface VoiceContext {
   roomCode: string;
-  gameId: string;
+  /**
+   * 语音范围键（Q-12）：对局内是 `gameId`，大厅 / 复盘是相位名（`lobby` / `review`）。
+   * 键变化 = 换频道（大厅房间频道 ↔ 对局频道），会话必须先离开再重新加入。
+   */
+  scope: string;
+  /** 只有对局频道才有 `gameId`；大厅 / 复盘为 null（此时不校验本局）。 */
+  gameId: string | null;
   canPublish: boolean;
   readOnly: boolean;
   online: boolean;
@@ -126,12 +132,12 @@ export class VoiceSession {
   #set(patch: Partial<VoiceState>) { this.#state = { ...this.#state, ...patch }; for (const listener of this.#listeners) listener(this.#state); }
 
   setContext(context: VoiceContext | null) {
-    const changedGame = this.#context !== null && (context === null || context.gameId !== this.#context.gameId || context.roomCode !== this.#context.roomCode);
+    const changedScope = this.#context !== null && (context === null || context.scope !== this.#context.scope || context.roomCode !== this.#context.roomCode);
     const lostPermission = this.#context?.canPublish === true && context?.canPublish !== true;
     // 换了发言窗口 → 上一轮的回执节流作废（新窗口的第一条要立即上报）
     if (context?.deliveryWindow !== this.#context?.deliveryWindow) { this.#deliveryKey = ''; this.#deliveryAt = 0; }
     this.#context = context;
-    if (changedGame) { void this.leave(); return; }
+    if (changedScope) { void this.leave(); return; }
     if (!context?.online || !context.activePage || !context.canPublish || context.readOnly || lostPermission) this.#clearIntent();
     if (lostPermission && this.#client !== null) void this.#renewForContext().catch(() => undefined);
   }
@@ -143,7 +149,7 @@ export class VoiceSession {
     this.#set({ connection: 'connecting', error: '', microphoneError: '' });
     let client: IAgoraRTCClient | null = null;
     try {
-      const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), gameId: context.gameId });
+      const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), ...(context.gameId === null ? {} : { gameId: context.gameId }) });
       if (generation !== this.#generation) return;
       AgoraRTC.onAutoplayFailed = () => { this.#set({ audioBlocked: true }); this.#reportDelivery('blocked'); };
       client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -289,7 +295,7 @@ export class VoiceSession {
   async #renewForContext(): Promise<void> {
     const client = this.#client, context = this.#context;
     if (!client || !context) return;
-    const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), gameId: context.gameId });
+    const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), ...(context.gameId === null ? {} : { gameId: context.gameId }) });
     await client.renewToken(credentials.token);
   }
   async #afterReconnect() {

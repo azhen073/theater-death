@@ -687,6 +687,10 @@
       "closesAt": 31000
     }
   ],
+  "voice": {
+    "channel": "g_01bf3cb65d327c0a54c649e06de41000",
+    "uids": {}
+  },
   "tasks": [
     {
       "action": "SUBMIT_GUARD",

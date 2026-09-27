@@ -93,7 +93,7 @@ export function GameHarness() {
       : <Lobby key={sceneKey(view)} {...props}/>;
   return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation" aria-hidden="true"/><section className="home-main" ref={roomRoot}>
     <DeathNotice view={view} online={online} active={fixture.active ?? true} rootRef={roomRoot}/>
-    {fixture.voice && <VoiceBar enabled view={view} online={online} activePage={view.room.phase === 'playing'} session={voiceStub}/>}
+    {fixture.voice && <VoiceBar enabled view={view} online={online} activePage session={voiceStub}/>}
     {content}
   </section></main>;
 }

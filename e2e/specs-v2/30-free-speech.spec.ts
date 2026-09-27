@@ -28,7 +28,8 @@ function freeSpeechFixture(): GameHarnessFixture {
   view.capabilities.canPostPublic = true;
   view.capabilities.canPublishVoice = true;
   view.capabilities.canVote = false;
-  view.public!.voice = { uids: { '11': self, '12': other.playerId, '13': third.playerId } };
+  // 语音范围与「谁在说话」映射现在挂在顶层（Q-12：对局频道用 playerId，房间频道用 memberId）
+  view.voice = { channel: view.gameId ?? 'g_free', uids: { '11': self, '12': other.playerId, '13': third.playerId } };
   view.private!.voice = { delivery: { windowInstanceId: 'free-1', delivered: 1, blocked: 0, silentOutput: 0, failed: 0, listeners: 1, updatedAt: view.serverTime } };
   return { ...base, view, voice: { connection: 'connected', devices: [], activeDeviceId: '' } };
 }
@@ -47,7 +48,7 @@ test('自由发言阶段：阶段文案、全员可开麦、送达回执与「�
   const fixture = freeSpeechFixture();
   await mount(page, fixture);
   const self = fixture.view.private!.self.playerId;
-  const speaking = fixture.view.public!.voice!.uids['12']!;
+  const speaking = fixture.view.voice!.uids['12']!;
 
   // 阶段文案与倒计时
   await expect(page.locator('.game-hud h1')).toHaveText('自由发言');

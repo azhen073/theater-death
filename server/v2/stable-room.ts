@@ -8,6 +8,7 @@ import type { Room, RoomRegistry } from '../rooms.ts';
 import { ReceiptStore } from '../receipts.ts';
 import type { AccountStore } from './account-store.ts';
 import { RoomAccess } from './access.ts';
+import { roomVoiceChannel } from './room-voice.ts';
 import { ApiError } from './errors.ts';
 import { ChatReceipts } from './chat-receipts.ts';
 
@@ -33,7 +34,9 @@ export interface StableRoomDeps {
   accounts: AccountStore;
   logStore: LogStore;
   registry: RoomRegistry;
-  revokeMedia: (gameId: string, identity: string) => void;
+  revokeMedia: (channel: string, identity: string) => void;
+  /** 关闭某个语音频道（开局时用于关掉大厅/复盘的房间频道，Q-12）。 */
+  closeRoomVoice?: (channel: string) => void;
 }
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object') {
@@ -89,6 +92,8 @@ export class StableRoom {
     if (members.length !== this.requiredPlayers()) throw new ApiError(409, 'room_not_full');
     if (members.some((m) => !m.ready)) throw new ApiError(409, 'not_ready');
     const runtime = this.deps.registry.createMatch(this.code, members.map((m) => ({ nickname: m.nickname })), this.ruleset, this);
+    // 开局即关掉房间频道（大厅/复盘语音）：避免带着大厅发布凭证进入对局频道之外。
+    this.deps.closeRoomVoice?.(roomVoiceChannel(this.roomId));
     this.runtime = runtime;
     this.matchStartedAt = this.deps.clock.now(); this.matchEndedAt = null;
     this.receipts = new ReceiptStore();
