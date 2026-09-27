@@ -229,7 +229,11 @@ describe('private.knowledge.dyingSeats 授权（R-20 / R-24）', () => {
     expect(knowledge(room, 'p_3')?.dyingSeats).toEqual([6, 7]); // 水妖
     expect(knowledge(room, 'p_1')).not.toHaveProperty('dyingSeats'); // 平民
     expect(knowledge(room, 'p_2')).not.toHaveProperty('dyingSeats'); // 门先生
-    expect(knowledge(room, 'p_10')).not.toHaveProperty('dyingSeats'); // 死神阵营也不给
+    expect(knowledge(room, 'p_10')).not.toHaveProperty('dyingSeats'); // 死神
+    // 死神阵营同样不给：魂灵（互知的是"谁是魂灵"，不是"谁濒死"）与丧亲者都不含该字段
+    expect(knowledge(room, 'p_11')).not.toHaveProperty('dyingSeats'); // 魂灵
+    expect(knowledge(room, 'p_12')).not.toHaveProperty('dyingSeats'); // 魂灵
+    expect(knowledge(room, 'p_13')).not.toHaveProperty('dyingSeats'); // 丧亲者
   });
 
   it('水妖用过还魂曲后当场失去名单视野（不以下发空数组代替）', () => {
