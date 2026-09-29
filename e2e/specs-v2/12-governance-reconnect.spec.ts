@@ -332,6 +332,7 @@ test('AC19 真实Socket断线重连保持玩家与窗口，禁止自动重发；
       if (request.url().endsWith('/command')) reconnectCommandRequests.push(request.url());
       if (request.url().endsWith('/chat')) reconnectChatRequests.push(request.url());
     });
+    await reconnectPage.getByRole('tab', { name: '公屏' }).click();
     await expect(reconnectPage.getByLabel('公屏消息')).toBeVisible();
     const firstText = `断线前文字-${testInfo.project.name}`;
     await reconnectPage.getByLabel('公屏消息').fill(firstText);

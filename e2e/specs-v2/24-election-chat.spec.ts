@@ -78,6 +78,7 @@ test('公屏底部跟随、阅读历史未读回最新、分页锚点和跨页�
     senderId: sender.playerId, text: index === 159 ? '<img src=x onerror=alert(1)>' + '长文本'.repeat(100) : '公开记录 ' + index, at: index,
   }));
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏', exact: true }).click();
   const history = page.getByLabel('公屏历史');
   await expect(history.getByText('公开记录 80')).toBeVisible();
   await expect(history.getByText('<img src=x onerror=alert(1)>', { exact: false })).toBeVisible();
@@ -123,6 +124,7 @@ test('选举名单和长公屏内容在320至1440宽度均无横向溢出', asyn
   sender.nickname = '长昵称'.repeat(20);
   fixture.view.chat.public = [{ messageId: 'long', clientMessageId: 'long-client', cursor: 1, senderId: sender.playerId, text: '不含空格的超长消息'.repeat(80), at: 1 }];
   await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏', exact: true }).click();
   for (const size of [{ width: 320, height: 720 }, { width: 390, height: 844 }, { width: 844, height: 700 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(size);
     await expect(page.getByRole('region', { name: '公开上警名单' })).toBeVisible();

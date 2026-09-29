@@ -24,7 +24,7 @@ export function phaseTransitionTitle(previous: PublicPhaseStamp | null, next: Pu
   if (!previous || !next || previous.scope !== next.scope || next.day < previous.day) return null;
   if (previous.stage === 1 && next.stage === 2) return '第二阶段开启';
   if (previous.light === next.light) return null;
-  return next.light === 'night' ? '夜幕降临' : '天光初现';
+  return next.light === 'night' ? '夜幕降临' : '天亮了';
 }
 
 /** Consume both shown and suppressed phases; never persist any private identity data. */

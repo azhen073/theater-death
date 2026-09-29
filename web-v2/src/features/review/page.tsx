@@ -9,6 +9,12 @@ import { roomExitMessage, roomExitPresentation } from '../room/policy.ts';
 import { reviewEventText, reviewScope } from './model.ts';
 import type { ReviewDTO } from './model.ts';
 import { navigateTabs } from '../../components/tab-navigation.ts';
+import { playerMarkKey, playerMarkTooltip, readPlayerMark, type PlayerMark } from '../../state/player-marks.ts';
+
+/** 复盘只读展示本机标记；localStorage 不可用时静默缺省。 */
+function readPlayerMarkSafe(roomId: string, gameId: string, playerId: string): PlayerMark | null {
+  try { return readPlayerMark(window.localStorage, playerMarkKey(roomId, gameId, playerId)); } catch { return null; }
+}
 
 export function ReviewPage({ view, catalog, online, active = true, refresh, remaining, onExit, onExpired }: {
   view: RoomSnapshot; catalog: CatalogDTO; online: boolean; refresh: () => Promise<void>;
@@ -57,7 +63,10 @@ export function ReviewPage({ view, catalog, online, active = true, refresh, rema
     {error && <Notice error>{error}<button className="button" onClick={() => setRetry(value => value + 1)}>重新读取复盘</button><button className="text-button" onClick={() => void refresh()}>同步当前房间</button></Notice>}
     {!review && !error && <p role="status">正在读取完整复盘，结局概览已保留。</p>}
     {review && <><div className="button-row" role="tablist" aria-label="复盘内容">{([['players', '全部身份'], ['timeline', '完整时间线'], ['public', '全部公屏'], ['faction', '全部阵营交流']] as const).map(([key, label]) => <button className="button" key={key} role="tab" id={`review-tab-${key}`} aria-controls="review-panel" aria-selected={tab === key} tabIndex={tab === key ? 0 : -1} onKeyDown={navigateTabs} onClick={() => { setTab(key); setLimit(100); }}>{label}</button>)}</div><div role="tabpanel" id="review-panel" aria-labelledby={`review-tab-${tab}`}>
-      {tab === 'players' && <div className="members-list">{[...review.players].sort((a, b) => a.seat - b.seat).map(player => <article className="member-card" key={player.playerId}><Avatar name={player.nickname} url={player.avatarUrl}/><div className="member-card__info"><strong>{player.seat}号 {player.nickname}</strong><p className="muted">UID {player.uid}</p><p>{catalog.roles.find(role => role.roleId === player.roleId)?.name ?? '未提供身份'} · {player.life === 'alive' ? '最终存活' : '最终死亡'}</p></div></article>)}</div>}
+      {tab === 'players' && <div className="members-list">{[...review.players].sort((a, b) => a.seat - b.seat).map(player => {
+        const mark = view.gameId ? readPlayerMarkSafe(view.roomId, view.gameId, player.playerId) : null;
+        return <article className="member-card" key={player.playerId}><Avatar name={player.nickname} url={player.avatarUrl}/><div className="member-card__info"><strong>{player.seat}号 {player.nickname}{mark && <span className={`seat-mark seat-mark--${mark.color ?? 'gold'}`} role="img" aria-label={playerMarkTooltip(mark)} title={playerMarkTooltip(mark)} />}</strong><p className="muted">UID {player.uid}</p><p>{catalog.roles.find(role => role.roleId === player.roleId)?.name ?? '未提供身份'} · {player.life === 'alive' ? '最终存活' : '最终死亡'}</p>{mark && <p className="muted">我的标记：{[mark.label, mark.note].filter(Boolean).join(' · ') || '仅色点'}（仅保存在本机）</p>}</div></article>;
+      })}</div>}
       {tab === 'timeline' && <div className="event-list">{review.timeline.slice(0, limit).map((event, index) => {
         const text = reviewEventText(event, review, view, catalog);
         return <article className="event-row" key={index}><small>第 {event.dayNumber} 轮 · 阶段 {event.stage}</small><strong>{text.title}</strong>{text.details.map((line, lineIndex) => <p key={lineIndex}>{line}</p>)}</article>;

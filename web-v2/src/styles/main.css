@@ -222,7 +222,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .seat-main:disabled { cursor: default; opacity: 1; }
 .seat-number { display: flex; gap: 7px; align-items: center; font-size: 12px; font-family: ui-monospace,monospace; color: #60718d; }
 .seat-number small { font-family: inherit; font-size: 9px; }
-.seat-main > strong { width: 100%; display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: 10px; font-weight: 500; line-height: 1.5; }
+.seat-main > strong { width: 100%; display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 10px; font-weight: 500; line-height: 1.5; }
+.seat-name-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .seat-status { font-size: 9px; color: var(--muted); min-height: 14px; }
 .seat-tools { display: flex; justify-content: center; gap: 1px; margin-top: 3px; }
 .seat-tools button { padding: 5px 9px; min-height: 28px; border: 0; border-radius: 4px; background: #eef2f8d9; color: #596d8b; font-size: 10px; }
@@ -271,7 +272,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .info-tabs { display: grid; grid-template-columns: repeat(4,1fr); border-bottom: 1px solid var(--line); }
 .info-tabs button { position: relative; min-height: 47px; border: 0; background: none; color: var(--muted); font-size: 12px; border-bottom: 2px solid transparent; }
 .info-tabs button[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--accent); background: #e8eef5; }
-.unread-dot { position: absolute; top: 10px; right: 10px; width: 5px; height: 5px; border-radius: 50%; background: #9d565e; }
+.unread-badge { position: absolute; top: 6px; right: 6px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: #9d565e; color: #fff; font-size: 9px; line-height: 15px; text-align: center; }
+.unread-badge b { font-weight: 600; }
 .info-panel { padding: 20px 17px; max-height: calc(100svh - 190px); overflow-y: auto; scrollbar-width: thin; }
 .info-panel[hidden] { display: none; }
 .info-panel h2 { font-size: 20px; margin-bottom: 18px; }
@@ -301,7 +303,33 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .speech-preview { font-size: 12px; color: var(--muted); }
 .effective-proposal { border-top: 1px solid #c8d2df; padding-top: 12px; font-size: 12px; }
 .effective-proposal small { font-size: 10px; color: var(--muted); }
-.speaker-banner { color: #786849; font-size: 12px; padding: 9px 0; margin: 0 0 10px; }
+.seat-mark { flex: none; display: inline-block; width: 9px; height: 9px; border-radius: 50%; vertical-align: middle; }
+.seat-mark--red { background: #b0524f; }
+.seat-mark--gold { background: #b98f3e; }
+.seat-mark--green { background: #4d7d5d; }
+.seat-mark--blue { background: #4a6b9d; }
+.seat-mark--active { outline: 2px solid #29374c; outline-offset: 1px; }
+.seat-role, .seat-candidacy { position: absolute; top: -5px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; line-height: 1; border: 1px solid #fff; z-index: 2; }
+.seat-role { left: -5px; background: #455974; color: #fff; }
+.seat-role--revealed { background: #81704c; }
+.seat-candidacy { right: -5px; background: #a6894f; color: #fff; }
+.seat-candidacy--withdrawn { background: #98a1ae; text-decoration: line-through; }
+.player-marks { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.player-marks h3 { font-size: 13px; margin: 0 0 10px; }
+.player-marks__labels { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.player-marks__labels button { padding: 6px 12px; border: 1px solid #bac7d8; border-radius: 5px; background: #fff; font-size: 12px; }
+.player-marks__labels button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.player-marks__colors { display: flex; gap: 10px; margin-bottom: 10px; }
+.player-marks__colors .seat-mark { width: 16px; height: 16px; border: 1px solid #ffffffc0; box-shadow: 0 0 0 1px #29374c22; }
+.player-marks__note { display: grid; gap: 6px; font-size: 12px; margin-bottom: 6px; }
+.player-marks__note input { min-height: 38px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 6px; background: #fbfcfdd9; color: var(--ink); }
+.player-marks__foot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.player-marks__foot p { margin: 0; }
+.event-item { display: grid; gap: 3px; }
+.event-item .event-row { width: 100%; }
+.event-item__tally { justify-self: end; padding: 2px 3px; font-size: 11px; }
+.stage-action-card .task-switch .task-switch__withdraw { margin-inline-start: auto; background: transparent; border-style: dashed; color: var(--muted); }
+.stage-action-card .task-switch .task-switch__withdraw[aria-pressed="true"] { background: transparent; color: var(--danger); border-color: #944b5655; }
 .voice-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; padding: 10px 13px; margin: 0 0 12px; border: 1px solid #c9d1d8; border-radius: 10px; background: #f8fafbd9; box-shadow: 0 5px 18px #3446570b; }
 .voice-bar--background { position: sticky; top: 10px; z-index: 8; }
 .voice-bar__status { display: grid; gap: 2px; min-width: 118px; }
@@ -323,6 +351,40 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .private-label { color: #79624f; font-size: 12px; text-align: center; }
 .identity-state > div { display: flex; justify-content: space-between; gap: 15px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .identity-state dd { margin: 0; color: var(--muted); }
+/* 夜间全局暗色：只覆盖颜色，不动布局；舞台自身的夜景仍在 night-atmosphere.css。 */
+.game-scene--night .game-hud { background: #151e2df2; border-bottom-color: #33415a; }
+.game-scene--night .game-hud h1 { color: #e9effa; }
+.game-scene--night .game-hud .eyebrow { color: #8fa2c0; }
+.game-scene--night .hud-meta strong { color: #e6edf8; }
+.game-scene--night .hud-meta span { color: #93a4bd; }
+.game-scene--night .hud-room-code { color: #93a4bd; border-color: #3a4a66; }
+.game-scene--night .hud-tools .button { background: #1f2b41d9; color: #d5dfee; border-color: #3a4a66; }
+.game-scene--night .hud-tools .button:hover:not(:disabled) { background: #263550; box-shadow: none; }
+.game-scene--night .notice { background: #1c2740; border-color: #3a4a66; color: #c3d0e4; }
+.game-scene--night .notice--error { background: #2c1e24; border-color: #5d3a44; color: #d9a7b1; }
+.game-scene--night .vote-progress { color: #cbb98a; }
+.game-scene--night .vote-progress__hint { color: #8fa2c0; }
+.game-scene--night .vote-progress__track { background: #33405a; }
+.game-scene--night .speech-attention { background: #1c2740; color: #d5dfee; }
+.game-scene--night .speech-attention__speaker [role="timer"] { color: #d8b36a; }
+.game-scene--night .speech-attention--own { background: #2c2417; border-color: #a88949; }
+.game-scene--night .game-sidebar { background: #151e2deb; border-color: #33415a; color: #cfd9e8; }
+.game-scene--night .info-tabs { border-bottom-color: #33415a; background: #151e2d; }
+.game-scene--night .info-tabs button { color: #8fa2c0; }
+.game-scene--night .info-tabs button[aria-selected='true'] { color: #e6edf8; background: #1f2b41; border-bottom-color: #8fa9d6; }
+.game-scene--night .info-panel h2, .game-scene--night .info-panel h3 { color: #e6edf8; }
+.game-scene--night .info-panel .muted, .game-scene--night .event-row span { color: #93a4bd; }
+.game-scene--night .event-row { background: #1a2438; border-color: #33415a; color: #cfd9e8; }
+.game-scene--night .event-row small { color: #7488a6; }
+.game-scene--night .chat-message { border-bottom-color: #2b3a55; }
+.game-scene--night .chat-composer textarea { background: #101828; color: #d5dfee; border-color: #3a4a66; }
+.game-scene--night .chat-composer .button, .game-scene--night .info-panel .button { background: #1f2b41d9; color: #d5dfee; border-color: #3a4a66; }
+.game-scene--night .info-panel .button--primary { background: #3a5878; border-color: #3a5878; color: #fff; }
+.game-scene--night .text-button { color: #9db4d8; }
+.game-scene--night .chat-outgoing { border-color: #3a4a66; color: #93a4bd; }
+.game-scene--night .election-roster { background: #1d2333; border-color: #4a4436; }
+.game-scene--night .election-roster h2 > span, .game-scene--night .election-roster li > small { color: #bfa26a; }
+.game-scene--night .election-roster p { color: #93a4bd; }
 @media (min-width: 1181px) {
   .stage-seats--ring .seat-main { min-height: 92px; padding: 5px; gap: 3px; }
   .stage-seats--ring .avatar { width: 32px; height: 32px; }

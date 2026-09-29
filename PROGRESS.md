@@ -1,8 +1,10 @@
 # theater_death 进度与交接
 
-更新时间：2026-09-22 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-09-30 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
+
+2026-09-30 UI 清晰度 P0 批次：`feat/ui-p0-clarity`（基线 `816f904`；仅本地提交，**未合并 main**）纯 web-v2 前端与 presentation 层，不改引擎/服务端/规则/契约/语音/构建，无新依赖与新位图素材。①**票型中央化**：`presentation/vote-tally.ts` 严格解析公开票型事件（座位正整数、units 非负、弃票 targetSeat=null；展示票数=units/2）；`features/game/vote-tally.tsx` 中央开票卡——首次快照只建游标基线防重播、`sessionStorage`（`theater-death:vote-tally:v1:`）按用户/房间/局/类型/目标去重、离线/隐藏页/弹窗占用/有任务/减少动画时延后 10 秒重看否则丢弃、展示中一旦不占可立即取消、7 秒自动收纳可手动关闭；记录面板票型事件加「查看票型」弹层复用 VoteTallyCard；两条投票 banner 换成聚合进度条（只有已投/可投计数，文案注明「结算后公开票型」，无 per-seat 标记防泄露）。②**阶段转场全屏化**：3 秒昼夜差异化（夜=深靛、dawn=暖金、阶段=深色）、双幕布开合、天亮副行给公开死亡名单（「N号、M号 死亡」/无死「平安夜」）、「天光初现」改「天亮了」、降级契约不变（减少动画/隐藏/紧急行动/弹窗占用降级为文字）。③**夜间全局暗色**：`game-scene--night`（playing 且公开 night）整块暗色变体（HUD/侧栏/公屏/记录/行动卡/上警名单等，只改颜色不动布局）。④**座位角标**：已揭示身份（`revealedRoleId` 全员可见）与本人私有身份角标（首字圆徽 + role=img 语义），参选「选」/退选「退」角标（只用公开 election 字段、仅白天对局且竞选未结束显示）。⑤**本地玩家标记**：可疑/可信/跳死神/跳魂灵/跳天理 5 标签 + 4 色 + 20 字备注，`localStorage`（`theater-death-marks-v1:{room}:{game}:{player}`）按房间/局/玩家隔离、CustomEvent 跨组件同步、异常 fail-closed；座位详情弹层编辑（复盘只读）、昵称旁色点（title/aria 含完整内容）、复盘 players 页只读展示，**不上报服务端、其他玩家不可见**。⑥**侧栏与行动卡**：默认 tab 改情报（未授权私有视角回落公屏）、未读红点改数字胶囊（99+ 封顶、aria-label 不污染 tab 可访问名）、行动卡退选按钮右侧分组（虚线弱化、激活时 danger 色）。实测：`npx vitest run` 相关 6 文件 **35 例全过**（新增 vote-tally 4 + phase-transition 5 + death-effects 7 + stage-layout 3 + test-selection 12 + static 4）；`npm run typecheck` / `typecheck:web:v2` / `typecheck:web:v2-tests` 全过。**E2E 未实际运行**（本机 Docker daemon 不可用），已同步更新 7 个 spec：`20-phase-transition`（「天亮了」、时长 2.2s→3s、超时 2.6s→3.4s 共 8 处）、`05-information`/`08-display`/`24-election-chat`/`06-chat-screen-real`/`12-governance-reconnect`/`17-last-words`（默认 tab 改情报后补「公屏」tab 点击共 10 处）；e2e tsconfig 本机报 337 例既有环境性错误（缺 `@playwright/test` 本地类型，逐文件核对与本次改动无关）。已知未实测点：开票卡 defer→丢弃 逻辑使 05-information「1.5票」断言唯一性成立，但未跑 E2E 验证。未部署。
 
 2026-09-22 公开死亡粒子与头像常驻星芒：`feat/public-death-effects`（基线 `b3f5a1e`；**已合并进 main `9b94a65`**，保留贡献提交 `245609e`/`e1ab0f8`）新增公开死亡座位粒子与头像常驻星芒；纯前端、无新依赖或位图，保留私密边界/回归/重连基线，末次死亡公告可跨到复盘。贡献方相关增量单测 7 文件 59/59、两项前端类型检查及构建通过、相关 Chromium/WebKit E2E 56/56、真实 13 人整局 chromium 1/1；维护方复核：全量 **90 文件 585 例全过** + `20-death-effects`/`08-display` 双浏览器 24/24。未部署。命令和边界见 [死亡视觉验收记录](docs/frontend-v2-death-effects-verification.md)。
 

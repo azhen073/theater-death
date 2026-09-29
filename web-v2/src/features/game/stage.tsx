@@ -7,6 +7,8 @@ import { presenceLabels } from '../../presentation/labels.ts';
 import { taskKey } from '../actions/model.ts';
 import { isDegenerateRect, ringFits, type Rect, type StageLayout } from './stage-layout.ts';
 import { usePreferences } from '../../state/preferences.ts';
+import { playerMarkTooltip } from '../../state/player-marks.ts';
+import { usePlayerMarks } from './player-marks.tsx';
 import { DeathMark } from './death-effects-layer.tsx';
 
 export function Stage({
@@ -34,6 +36,12 @@ export function Stage({
   const { preferences } = usePreferences();
   const selectable = task?.targets;
   const knownSpirits = new Set(view.private?.knowledge?.spiritSeats ?? []);
+  const playerMarks = usePlayerMarks(view);
+  const selfRoleId = !view.viewer.readOnly && view.private?.self.playerId === view.viewer.subjectPlayerId
+    ? view.private.self.roleId : null;
+  // 参选角标与侧栏上警名单同一公开数据源；夜间与竞选结束后不显示。
+  const election = view.room.phase === 'playing' && view.public?.phase !== 'night' && view.public?.day?.election?.phase !== 'done'
+    ? view.public?.day?.election ?? null : null;
   // Taller task/observation content needs its own row rather than covering ring seats.
   const needsFlowLayout = view.viewer.readOnly || (!!task &&
     ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL', 'DESIGNATE_SPEECH'].includes(task.action));
@@ -199,6 +207,16 @@ export function Stage({
           const revealed = seat.revealedRoleId
             ? catalog.roles.find(role => role.roleId === seat.revealedRoleId)?.name
             : null;
+          const badgeRole = revealed
+            ? { name: revealed, revealed: true }
+            : subject && selfRoleId
+              ? { name: catalog.roles.find(role => role.roleId === selfRoleId)?.name ?? null, revealed: false }
+              : null;
+          const candidacy = election
+            ? election.withdrawn.includes(seat.playerId) ? 'withdrawn'
+              : election.candidates.includes(seat.playerId) ? 'candidate' : null
+            : null;
+          const mark = playerMarks.get(seat.playerId) ?? null;
           return (
             <div
               key={seat.playerId}
@@ -240,10 +258,29 @@ export function Stage({
                   <span className="seat-avatar" data-death-seat={seat.seat} data-death-alive={String(seat.alive)}>
                     <Avatar url={seat.avatarUrl} name={seat.nickname} />
                     {!seat.alive && preferences.deathEffects && <DeathMark />}
+                    {badgeRole?.name && (
+                      <span
+                        className={`seat-role ${badgeRole.revealed ? 'seat-role--revealed' : 'seat-role--self'}`}
+                        role="img"
+                        title={badgeRole.revealed ? `公开身份：${badgeRole.name}` : `我的身份：${badgeRole.name}（仅自己可见）`}
+                        aria-label={badgeRole.revealed ? `公开身份：${badgeRole.name}` : `我的身份：${badgeRole.name}（仅自己可见）`}
+                      >{badgeRole.name.slice(0, 1)}</span>
+                    )}
+                    {candidacy && (
+                      <span
+                        className={`seat-candidacy ${candidacy === 'withdrawn' ? 'seat-candidacy--withdrawn' : ''}`}
+                        role="img"
+                        title={candidacy === 'withdrawn' ? '已退选' : '参选天理'}
+                        aria-label={candidacy === 'withdrawn' ? '已退选' : '参选天理'}
+                      >{candidacy === 'withdrawn' ? '退' : '选'}</span>
+                    )}
                   </span>
                 </span>
                 {view.public?.day?.currentSpeakerId === seat.playerId && <span className="seat-speaking">{view.public.day.speechPreparing ? '准备发言' : '正在发言'}</span>}
-                <strong title={`${seat.nickname} · UID ${seat.uid}`}>{seat.nickname}</strong>
+                <strong title={`${seat.nickname} · UID ${seat.uid}`}>
+                  <span className="seat-name-text">{seat.nickname}</span>
+                  {mark && <span className={`seat-mark seat-mark--${mark.color ?? 'gold'}`} role="img" aria-label={playerMarkTooltip(mark)} title={playerMarkTooltip(mark)} />}
+                </strong>
                 <span className="seat-status">
                   {!seat.alive ? '已死亡' : revealed ?? '存活'}
                   {seat.presence !== 'online' ? ` · ${presenceLabels[seat.presence]}` : ''}

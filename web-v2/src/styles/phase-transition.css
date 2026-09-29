@@ -1,26 +1,33 @@
 .phase-transition {
-  position: fixed; inset: 18% 12% auto; height: min(52vh, 420px); z-index: 35;
+  position: fixed; inset: 0; z-index: 35;
   display: grid; place-items: center; overflow: hidden; pointer-events: none;
-  isolation: isolate; border-radius: 24px;
-  background: radial-gradient(ellipse, #120d20e8 12%, #090c1680 60%, transparent 75%);
-  animation: phase-reveal 2.2s ease both;
+  isolation: isolate;
+  animation: phase-reveal 3s ease both;
 }
+.phase-transition--night { background: radial-gradient(ellipse, #171332e8 12%, #0a0d1ed8 60%, #070a18d0 100%); }
+.phase-transition--dawn { background: radial-gradient(ellipse, #3d2f17cc 8%, #191310e0 58%, #100d0cd0 100%); }
+.phase-transition--stage { background: radial-gradient(ellipse, #120d20e8 12%, #090c16d8 60%, #090c16c8 100%); }
 .phase-transition__art { position: absolute; inset: 0; z-index: -1; }
 .phase-transition__curtain {
-  position: absolute; width: 65%; height: 90%; top: 0; left: -10%; opacity: .65;
-  mask-image: radial-gradient(ellipse, #000 20%, transparent 70%);
-  animation: phase-curtain 2.2s ease both;
+  position: absolute; width: 62%; height: 100%; top: 0; left: -14%; opacity: .8;
+  mask-image: linear-gradient(to right, #000 55%, transparent 96%);
+  animation: phase-curtain 3s ease both;
 }
-.phase-transition__curtain--right { left: auto; right: -10%; scale: -1 1; }
+.phase-transition--dawn .phase-transition__curtain { opacity: .55; }
+.phase-transition__curtain--right { left: auto; right: -14%; scale: -1 1; }
 .phase-transition__clock {
-  position: absolute; inset: 8% 0; margin: auto; width: 70%; height: 84%; opacity: .28;
+  position: absolute; inset: 6% 0; margin: auto; width: min(70%, 560px); height: 88%; opacity: .28;
   mask-image: radial-gradient(ellipse, #000 35%, transparent 70%);
 }
 .phase-transition p { display: grid; gap: 12px; margin: 0; text-align: center; padding: 24px; text-shadow: 0 2px 12px #000; }
 .phase-transition p span { color: #dfcfae; font-size: 14px; letter-spacing: .15em; }
 .phase-transition strong { color: #fff2d7; font-size: clamp(26px, 4vw, 48px); letter-spacing: .12em; }
-@keyframes phase-reveal { 0%, 100% { opacity: 0; } 15%, 76% { opacity: 1; } }
-@keyframes phase-curtain { from { translate: -8% 0; } to { translate: 10% 0; } }
-@media (max-width: 680px) { .phase-transition { inset: 20% 0 auto; height: 260px; } }
+.phase-transition em { font-style: normal; font-size: clamp(15px, 2vw, 22px); letter-spacing: .2em; color: #dfcfae; }
+.phase-transition--night strong { color: #d9e2ff; }
+.phase-transition--night p span { color: #9aa7d6; }
+.phase-transition--dawn strong { color: #ffdca6; }
+.phase-transition--dawn p span, .phase-transition--dawn em { color: #d8b988; }
+@keyframes phase-reveal { 0%, 100% { opacity: 0; } 12%, 78% { opacity: 1; } }
+@keyframes phase-curtain { 0% { translate: -26% 0; } 30%, 64% { translate: 10% 0; } 100% { translate: -26% 0; } }
 @media (prefers-reduced-motion: reduce) { :root:not([data-reduced-motion="false"]) .phase-transition { display: none; } }
 :root[data-reduced-motion="true"] .phase-transition { display: none; }

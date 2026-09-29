@@ -65,6 +65,7 @@ export function StageActionCard({
             <button
               type="button"
               key={taskKey(item)}
+              className={item.action === 'WITHDRAW_CANDIDACY' ? 'task-switch__withdraw' : undefined}
               aria-pressed={!!task && taskKey(task) === taskKey(item)}
               onClick={() => onSelectTask(taskKey(item))}
             >

@@ -77,6 +77,7 @@ test('首夜遗言：遗言者看到并点击「结束遗言」，同时可发�
   await expect(submit).toBeEnabled();
 
   const publicInput = page.getByLabel('公屏消息');
+  await page.getByRole('tab', { name: '公屏' }).click();
   await expect(publicInput).toBeVisible();
   await expect(publicInput).toBeEnabled();
   await publicInput.fill('首夜遗言：请关注 3 号');
@@ -104,6 +105,7 @@ test('首夜遗言：其他玩家没有「结束遗言」，也不会替他发�
   // 活人旁观者：白天仍可发公屏（R-35），但没有遗言类行动。
   await expect(page.getByRole('button', { name: '结束遗言', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('stage-submit')).toHaveCount(0);
+  await page.getByRole('tab', { name: '公屏' }).click();
   const aliveInput = page.getByLabel('公屏消息');
   await expect(aliveInput).toBeVisible();
   await expect(aliveInput).toBeEnabled();

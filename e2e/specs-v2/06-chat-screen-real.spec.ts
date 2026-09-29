@@ -55,6 +55,7 @@ test('真实阵营交流与第二屏授权撤销：只读公开/私人视角边�
     expect((await factionRequest).postDataJSON()).toMatchObject({ channel: 'faction', text: '夜间阵营消息', gameId: views[spiritIndexes[0]!]!.gameId });
     await expect.poll(async () => (await roomView(otherSpirit, code)).chat.faction.some((message: Record<string, any>) => message.text === '夜间阵营消息')).toBe(true);
     for (const index of [0, 1, 2, 3, 4, 5, 6]) if (!spiritIndexes.includes(index)) expect((await roomView(contexts[index]!.page, code)).chat.faction.some((message: Record<string, any>) => message.text === '夜间阵营消息')).toBe(false);
+    await door.getByRole('tab', { name: '公屏' }).click();
     await expect(door.getByLabel('公屏消息')).toBeDisabled();
 
     await spirit.getByRole('button', { name: '第二屏', exact: true }).click();
@@ -97,6 +98,8 @@ test('真实转日公屏：授权后两玩家交换一次消息并验证 Socket 
     expect(writers.length).toBeGreaterThanOrEqual(2);
     const sender = contexts[writers[0]!]!.page;
     const receiver = contexts[writers[1]!]!.page;
+    await sender.getByRole('tab', { name: '公屏' }).click();
+    await receiver.getByRole('tab', { name: '公屏' }).click();
     const text = '<strong>真实公屏原文</strong>';
     let aborted = false;
     const senderBodies: string[] = [];

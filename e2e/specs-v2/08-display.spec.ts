@@ -256,6 +256,7 @@ test('模拟软键盘缩小视口时聊天输入可见且焦点不被抢走，�
   const fixture = loadGameFixture('night-door-full.json');
   fixture.view.capabilities.canPostPublic = true;
   const mounted = await mountPlaying(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   const input = page.getByLabel('公屏消息');
   await input.focus();

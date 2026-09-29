@@ -27,6 +27,7 @@ test('聊天 composer：精确 payload、纯文本、Enter/IME/ShiftEnter 与 UT
   fixture.view.capabilities.canPostFaction = true;
   fixture.view.private!.factionRoom = { roomId: 'faction-room', readOnly: false, canWrite: true, members: [] };
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   const publicInput = page.getByLabel('公屏消息');
   await publicInput.fill('<b>纯文本</b>');
   await publicInput.press('Shift+Enter');
@@ -71,6 +72,7 @@ test('readonly、能力禁写与 scope 变化：草稿保持后跨局清空', as
   const fixture = loadGameFixture();
   fixture.view.capabilities.canPostPublic = true;
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   const input = page.getByLabel('公屏消息');
   await input.fill('待发送草稿');
   const noWrite = structuredClone(fixture.view);
@@ -102,6 +104,7 @@ test('聊天/事件历史：分段早历史、滚动未读、cursor 独立与公
   fixture.view.public!.events = Array.from({ length: 120 }, (_, index) => ({ cursor: index + 1, type: index === 0 ? 'game_started' : 'night_started', dayNumber: 1, stage: 1 as const, payload: index === 0 ? {} : { nightNumber: index + 1 } })) as any;
   fixture.view.chat.faction = [{ messageId: 'faction-1', clientMessageId: 'faction-client-1', cursor: 1, senderId: fixture.view.viewer.subjectPlayerId!, text: '阵营独立游标', at: 1 }];
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   const history = page.getByRole('tabpanel', { name: '公屏' }).getByLabel('公屏历史');
   await expect(page.getByRole('button', { name: /条新消息/ })).toHaveCount(0);
   await expect(history.getByText('聊天记录 159')).toBeVisible();
