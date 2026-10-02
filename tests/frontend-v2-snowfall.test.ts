@@ -75,7 +75,7 @@ describe('stage 2 snowfall flakes', () => {
       expect(flake.size).toBeGreaterThanOrEqual(SNOW_MIN_SIZE);
       expect(flake.size).toBeLessThanOrEqual(SNOW_MAX_SIZE);
       expect(flake.opacity).toBeGreaterThan(0);
-      expect(flake.opacity).toBeLessThanOrEqual(.45);
+      expect(flake.opacity).toBeLessThanOrEqual(.34);
       expect(flake.duration).toBeGreaterThanOrEqual(11_000);
       expect(flake.duration).toBeLessThanOrEqual(20_000);
       expect(flake.delay).toBeLessThanOrEqual(0);

@@ -65,7 +65,7 @@ export function makeSnowflakes(seed: number, count: number): Snowflake[] {
       delay: -random() * duration,
       drift: (random() - .5) * 26,
       sway: (random() - .5) * 18,
-      opacity: .18 + random() * .27,
+      opacity: .12 + random() * .22,
     };
   });
 }

@@ -98,7 +98,7 @@ test('一阶段不飘雪，二阶段整页飘雪且为极简小颗粒、低密�
   expect(shape.size).toBeGreaterThanOrEqual(3);
   expect(shape.size).toBeLessThanOrEqual(6);
   expect(shape.opacity).toBeGreaterThan(0);
-  expect(shape.opacity).toBeLessThanOrEqual(0.45);
+  expect(shape.opacity).toBeLessThanOrEqual(0.34);
 
   await expectSnowDoesNotIntercept(page);
   const stage = page.getByRole('region', { name: '玩家舞台' });

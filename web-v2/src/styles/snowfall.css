@@ -8,9 +8,9 @@
   opacity: var(--snow-opacity);
   animation: snow-fall var(--snow-duration) linear var(--snow-delay) infinite;
 }
-/* 白天浅底：雪粒整体带透明度，白色/浅色点在浅底上几乎看不见，故用偏冷的蓝灰芯 + 白色外缘，
-   让 2px 小点仍可辨认，同时保持极简（不靠加大尺寸或密度） */
-.snowfall--day i { background: #93a9c9; box-shadow: 0 0 2px #ffffffcc; }
+/* 白天浅底：雪粒本体改近白冷调（用户 2026-10-02 追加裁定：白天颜色改白一些），
+   靠白色外缘给出轮廓；亮度不足处由夜/深色舞台底色提供对比 */
+.snowfall--day i { background: #eef4fc; box-shadow: 0 0 2px #ffffffe6; }
 /* 夜晚深底：冷白 + 淡蓝光晕 */
 .snowfall--night i { background: #eaf3ff; box-shadow: 0 0 3px #9fc4ff8c; }
 @keyframes snow-fall {
