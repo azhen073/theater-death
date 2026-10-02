@@ -23,6 +23,7 @@ import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
 import { PhaseTransition } from './phase-transition.tsx';
+import { SnowfallLayer } from './snowfall-layer.tsx';
 import { IdentityEntryReveal } from './identity-entry-reveal.tsx';
 import { claimIdentityReveal, identityRevealHasUrgentAction, identityRevealKey } from './identity-reveal-model.ts';
 import { reconcileDraft } from '../actions/draft-reconciliation.ts';
@@ -509,6 +510,7 @@ export function GameScene({
         </div>
       )}
       <div className="game-scene" hidden={!active || manage}>
+        <SnowfallLayer view={view} active={active && online} />
         <PhaseTransition view={view} enabled={online && active} urgent={revealUrgent} occupied={identityEntryReveal || overlay !== null || manage} />
         {active && identityEntryReveal && (
           <IdentityEntryReveal view={view} catalog={catalog} onEnter={() => setIdentityEntryReveal(false)} />
