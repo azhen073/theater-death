@@ -17,12 +17,12 @@ export interface Snowflake {
   opacity: number;
 }
 
-/** 极简形态、小颗粒、低密度（用户裁定 2026-10-02；同日追加「可适当增大尺寸和密度」后按此取值）。 */
-export const SNOW_MIN_FLAKES = 30;
-export const SNOW_MAX_FLAKES = 90;
-export const SNOW_MIN_SIZE = 2;
-export const SNOW_MAX_SIZE = 4;
-const AREA_PER_FLAKE = 20_000;
+/** 极简形态、小颗粒、低密度（用户裁定 2026-10-02；同日两次追加增大尺寸与密度后按此取值）。 */
+export const SNOW_MIN_FLAKES = 45;
+export const SNOW_MAX_FLAKES = 150;
+export const SNOW_MIN_SIZE = 3;
+export const SNOW_MAX_SIZE = 6;
+const AREA_PER_FLAKE = 13_000;
 const NARROW_WIDTH = 680;
 const NARROW_RATIO = 0.6;
 

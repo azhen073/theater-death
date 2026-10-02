@@ -26,14 +26,14 @@ view.room.phase === 'playing' && view.gameId && view.public
 
 | 项目 | 取值 | 说明 |
 | --- | --- | --- |
-| 直径 | 2–4px | 圆点，无贴图、无旋转动画 |
+| 直径 | 3–6px | 圆点，无贴图、无旋转动画 |
 | 不透明度 | .18–.45 | 只做氛围，不承载信息 |
 | 下落时长 | 11–20s | linear 循环，每片独立 |
 | 横向 | 摆动 ±9px、偏移 ±13px | 缓速左右飘，不做闪烁 |
-| 数量 | `clamp(round(area/20000), 30, 90)`，≤680px 再 ×0.6 | 1440×900 约 65 粒；320×720 取 30 粒下限 |
+| 数量 | `clamp(round(area/13000), 45, 150)`，≤680px 再 ×0.6 | 1440×900 约 100 粒；320×720 取 45 粒下限 |
 
-尺寸与密度按用户 2026-10-02 追加裁定「可适当增大尺寸和密度」相对首版（1.4–2.6px / 18–48 粒）放大约 1.5–2 倍，
-仍属极简：不贴图、不旋转、数量上限 90。
+尺寸与密度按用户 2026-10-02 两次追加裁定（「可适当增大尺寸和密度」→「增加雪粒的密度和大小」）相对首版
+（1.4–2.6px / 18–48 粒）逐级放大，仍属极简：不贴图、不旋转、不闪烁。
 
 随机值来自固定种子的线性同余发生器（`makeSnowflakes(seed, count)`），种子由
 `snowSeed(view)`＝`gameId|roomId|dayNumber` 派生：同一局同一天的推送、刷新、重连不会重排既有画面，
@@ -77,7 +77,7 @@ view.room.phase === 'playing' && view.gameId && view.public
 
 `tests/frontend-v2-snowfall.test.ts`（8 例）：判定真值表（一阶段 / 二阶段昼夜 / 大厅 / 复盘 / 终局 /
 缺公共视图 / 缺对局 / 观战）、数量上下界与单调性、非法尺寸归零、同种子确定性、极简形态取值域
-（尺寸 2–4px、不透明度 ≤.45、延迟 ≤0 且 ≥−duration、漂移/摆动上界、全为有限数）、零/负/非有限数量。
+（尺寸 3–6px、不透明度 ≤.45、延迟 ≤0 且 ≥−duration、漂移/摆动上界、全为有限数）、零/负/非有限数量。
 
 结果：`docker compose -p snow-1002 -f deploy/compose.frontend.yml run --rm test node scripts/test-incremental.mjs tests/frontend-v2-snowfall.test.ts` → **1 文件 8 例全过**。
 

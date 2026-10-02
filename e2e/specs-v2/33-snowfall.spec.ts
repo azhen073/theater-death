@@ -86,8 +86,8 @@ test('一阶段不飘雪，二阶段整页飘雪且为极简小颗粒、低密�
   await expect(snow).toBeVisible();
   await expect(snow).toHaveClass(/snowfall--day/);
   const flakes = await snow.locator('i').count();
-  expect(flakes).toBeGreaterThanOrEqual(30);
-  expect(flakes).toBeLessThanOrEqual(90);
+  expect(flakes).toBeGreaterThanOrEqual(45);
+  expect(flakes).toBeLessThanOrEqual(150);
 
   const shape = await snow.locator('i').first().evaluate(element => {
     const style = getComputedStyle(element);
@@ -95,8 +95,8 @@ test('一阶段不飘雪，二阶段整页飘雪且为极简小颗粒、低密�
   });
   expect(shape.animation).toBe('snow-fall');
   expect(shape.duration).toBeGreaterThanOrEqual(11);
-  expect(shape.size).toBeGreaterThanOrEqual(2);
-  expect(shape.size).toBeLessThanOrEqual(4);
+  expect(shape.size).toBeGreaterThanOrEqual(3);
+  expect(shape.size).toBeLessThanOrEqual(6);
   expect(shape.opacity).toBeGreaterThan(0);
   expect(shape.opacity).toBeLessThanOrEqual(0.45);
 
