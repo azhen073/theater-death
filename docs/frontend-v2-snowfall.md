@@ -95,7 +95,7 @@ view.room.phase === 'playing' && view.gameId && view.public
 大厅与复盘不出现；二阶段夜间与夜景氛围共存；320 / 390 / 844 / 1440 四档无横向溢出并留截图。
 
 结果：`docker compose -p snow-1002-acc -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts specs-v2/33-snowfall.spec.ts` → **chromium + webkit 8/8 通过**（首轮 6/8：失败原因是规格自身在复盘相位仍断言「玩家舞台」——复盘页渲染的是复盘视图，已改为 `pushFixture` 切相位后断言雪花层消失，非产品缺陷）。
-截图：`test-results-frontend-v2/snowfall-chromium.png`、`snowfall-webkit.png`；另用一次性像素探针（同屏冻结动画、开关雪花层各截一张做差）确认雪粒确实绘制在预期坐标上（图层 1440×900，粒心像素差 18–65），探针文件已删除。
+截图：白天二阶段 `test-results-frontend-v2/snowfall-chromium.png`、`snowfall-webkit.png`；夜间二阶段（清空私有任务以露出环形舞台，便于同时看夜景氛围与飘雪）`test-results-frontend-v2/snowfall-night-chromium.png`、`snowfall-night-webkit.png`；另用一次性像素探针（同屏冻结动画、开关雪花层各截一张做差）确认雪粒确实绘制在预期坐标上（图层 1440×900，粒心像素差 18–65），探针文件已删除。
 
 ## 未做 / 未覆盖
 

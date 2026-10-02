@@ -125,11 +125,15 @@ test('选择减少动画会立即卸载整层，恢复标准动画后重新出�
   await expect(page.locator('.snowfall')).toBeVisible();
 });
 
-test('页面隐藏即卸载，返回后回来；离场与复盘都不出现；二阶段夜间与夜景氛围共存', async ({ page }) => {
+test('页面隐藏即卸载，返回后回来；离场与复盘都不出现；二阶段夜间与夜景氛围共存', async ({ page }, testInfo) => {
   const night = publicStage(loadGameFixture('night-spirit-full.json'), { stage: 2 });
+  // 清掉私有任务，让舞台保持环形全貌，截图能同时看到夜景氛围与飘雪。
+  night.view.tasks = [];
+  night.view.capabilities.allowedCommands = [];
   await mount(page, night);
   await expect(page.locator('.snowfall')).toHaveClass(/snowfall--night/);
   await expect(page.locator('.night-atmosphere')).toBeVisible();
+  await page.screenshot({ path: `/results/snowfall-night-${testInfo.project.name}.png` });
 
   await setDocumentVisibility(page, 'hidden');
   await expect(page.locator('.snowfall')).toHaveCount(0);
