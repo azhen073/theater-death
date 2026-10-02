@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-**版本 / 分支**：`2.0.7-alpha`（自 `816f904` = `origin/main` 拉出，**已于 2026-10-02 推送到 `origin/2.0.7-alpha`，含 `94e9d57` 断言修复与 `3033b07` 记录同步**）；UI 优化批次 #9–#16（8 个 PR）与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。本分支**全量单测已跑通（98 文件 730 例）**、**镜像已在本地重建（`ghcr.io/azhen073/theater-death:2.0.7-alpha`，未推送注册表）**、**未部署**。
+**版本 / 分支**：`2.0.7-alpha`（自 `816f904` = `origin/main` 拉出，已于 2026-10-02 推送到 `origin/2.0.7-alpha`，含 `94e9d57` 断言修复与 `3033b07` 记录同步；**已合并进 main `8560a51`，保留贡献提交 `8f255ee`**）；UI 优化批次 #9–#16（8 个 PR）与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。**全量单测 98 文件 730 例全过**（2026-10-02 镜像构建链内 + 2026-10-03 维护方复核：15.9s、4 typecheck 全过、新 spec 双浏览器 24/24、受影响 spec chromium 16/16）、**镜像已在本地重建（`ghcr.io/azhen073/theater-death:2.0.7-alpha`，未推送注册表）**、**未部署**；**未跑全量 E2E / v1 E2E**。
 
 ### 已合并特性（功能 + 实现路径）
 
@@ -24,7 +24,9 @@
 
 - **大厅视口铺满与跨屏缩放**（`feat/lobby-viewport-fit` → main `d04125d`）：仅大厅相位 `max-width:none` + `clamp` 留白（阅读页保留 1280 上限），满高用 `calc(100svh / var(--display-scale, 1))` 补偿根 zoom，不猜测屏幕/DPR。详见 `docs/frontend-v2-lobby-viewport.md`。遗留：真实 Windows 物理双屏拖动未实测（留人工验收）。至此 UI 优化批次（#9–#16，8 个 PR）全部整合进 main。
 
-### 2.0.7-alpha（进行中，贡献 kiahir；基线 `816f904`）
+### 2.0.7-alpha（已完成并合并，贡献 kiahir；基线 `816f904`；merge `8560a51`，保留贡献提交 `8f255ee`）
+
+**维护方复核（2026-10-03，合并树上实测）**：容器内 `vitest run` **98 文件 730 例全过**（15.9s）+ 4 个 typecheck 全过；新 spec `28`–`32` 双浏览器 **24/24**；受影响 spec `06`（改造用例）/`03-actions`/`27-voice-delivery`/`18-voice-levels` chromium **16/16**。**未跑全量 E2E / v1 E2E；未部署。** 合并后小修：需求文档「本地，未推送」笔误改为已推送（不涉代码）。
 
 - **竞选投票阶段本人提示**：无资格者（候选 / 重投平票者 / 死者 / 票权冻结）给出原因，投票后给「已投给 N号 昵称 / 已弃票」；判定镜像 `engine/day.ts` 的 `submitElectionVoteIssue`（已退选按 R-42 恢复投票权、不提示），回执只认当前 `election_vote` 窗口；界面「上警名单」→「竞选名单」。详见 `docs/frontend-v2-election-vote-notes.md`。
 - **提示音开关移入账户「显示与动画」**：持久偏好 `attentionSound`（默认关），局内任意手势自动解锁，未解锁时给一行可点兜底。
@@ -263,7 +265,7 @@ theater_death/
 - **最近一次全量实测**（2026-10-02，`2.0.7-alpha` 分支，含本批修复的 Q-11 / Q-12 过期断言）：镜像构建链内 `vitest run` **98 文件 730 例全过**，同批四个 typecheck 与 `build:web` / `build:web:v2` 通过；上一次（2026-09-23，含 v2.0.6-alpha 声网语音可靠性收口）：容器内 `vitest run` **93 文件 643 例全过**（14.6s）；较上一版 603 例新增 40 例（送达回执 / 频道对账 / REST 超时与重试 / 缺凭据降级 / 客户端凭证续期与重连，含维护方补的「无客户凭据不暴露频道查询」1 例）。
 - 更早一次全量实测（2026-09-22，含 v2.0.5-alpha 与 UI 优化批次）：**92 文件 603 例全过**。
 - **当前静态清点**（`it(`/`test(` 正则清点，未跑全量核对）：`tests/` **98 文件 / 721 例**（全量实跑 730 例，差额为「正则清点」口径）、`e2e/specs-v2` **33 spec / 106 例**。
-- **2.0.7-alpha 分支**：**全量单测已跑通**（2026-10-02，98 文件 730 例，镜像构建链内）并**已在本地重建镜像** `ghcr.io/azhen073/theater-death:2.0.7-alpha`（本地标签，**未推送注册表**）；**未部署**；四个 typecheck 与逐 spec E2E 双浏览器批次均通过，**未跑全量 E2E / v1 E2E**。
+- **2.0.7-alpha 已合并进 main `8560a51`**（保留贡献提交 `8f255ee`）：**全量单测 98 文件 730 例全过**（2026-10-02 镜像构建链内 + 2026-10-03 维护方合并前复核），并**已在本地重建镜像** `ghcr.io/azhen073/theater-death:2.0.7-alpha`（本地标签，**未推送注册表**）；**未部署**；四个 typecheck 全过；新 spec 双浏览器 **24/24**、受影响 spec chromium **16/16**；**未跑全量 E2E / v1 E2E**。
 
 **2.0.7-alpha 增量（容器内，2026-09-23 起；各批均以「还原对照」验证改动有效性）**
 - 竞选投票本人提示：新增 `tests/frontend-v2-election-vote-notes.test.ts`（20 例）；E2E `28-election-vote-notes`（新，双浏览器 10/10）+ `24-election-chat` + `03-actions`。详见 `docs/frontend-v2-election-vote-notes.md`。
