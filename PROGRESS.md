@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-**版本 / 分支**：`2.0.8-alpha`（自 `2.0.7-alpha` 的 tip `8f255ee` 拉出，**进行中**；本版为版本推进，暂无新增功能变更）；上一版 `2.0.7-alpha`（基线 `816f904`）已于 2026-10-02 推送到 `origin/2.0.7-alpha` 并提交 **PR #18**（待合并），本分支内容包含其全部 15 个提交；UI 优化批次 #9–#16（8 个 PR）与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。2.0.7-alpha **全量单测已跑通（98 文件 730 例）**、**镜像已在本地重建（`ghcr.io/azhen073/theater-death:2.0.7-alpha`，未推送注册表）**、**未部署**。
+**版本 / 分支**：`2.0.8-alpha`（自 `2.0.7-alpha` 的 tip `8f255ee` 拉出，**进行中**；本版性质＝版本推进 + **二阶段全局飘雪**（纯前端装饰，无规则/契约变更），**尚未推送**）；上一版 `2.0.7-alpha`（基线 `816f904`）已于 2026-10-02 推送到 `origin/2.0.7-alpha` 并提交 **PR #18**（待合并），本分支内容包含其全部 15 个提交；UI 优化批次 #9–#16（8 个 PR）与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。2.0.7-alpha **全量单测已跑通（98 文件 730 例）**、**镜像已在本地重建（`ghcr.io/azhen073/theater-death:2.0.7-alpha`，未推送注册表）**、**未部署**。
 
 ### 已合并特性（功能 + 实现路径）
 
@@ -25,7 +25,9 @@
 - **大厅视口铺满与跨屏缩放**（`feat/lobby-viewport-fit` → main `d04125d`）：仅大厅相位 `max-width:none` + `clamp` 留白（阅读页保留 1280 上限），满高用 `calc(100svh / var(--display-scale, 1))` 补偿根 zoom，不猜测屏幕/DPR。详见 `docs/frontend-v2-lobby-viewport.md`。遗留：真实 Windows 物理双屏拖动未实测（留人工验收）。至此 UI 优化批次（#9–#16，8 个 PR）全部整合进 main。
 
 ### 2.0.8-alpha（进行中，贡献 kiahir；基线 `8f255ee`）
-- **版本推进起始点**：暂无新增功能 / 规则 / 契约变更；内容继承 2.0.7-alpha（Q-10 / Q-11 / Q-12 与本批前端收口），该版已提 PR #18 待合并。
+
+- **版本推进起始点**：内容继承 2.0.7-alpha（Q-10 / Q-11 / Q-12 与本批前端收口），该版已提 PR #18 待合并。
+- **二阶段全局飘雪（纯前端装饰，2026-10-02）**：对局内 `public.stage === 2` 时整页飘雪——判定 `web-v2/src/presentation/snowfall.ts` 的 `snowActive`（`room.phase==='playing'` + `gameId` + `public` + `phase!=='ended'` + `stage===2`，白天与夜晚都飘；大厅/复盘/一阶段不出现；观战与第二屏同显）。**DOM + CSS 动画**：`presentation/snowfall.ts`（`snowActive`/`snowflakeCount`/`snowSeed`/`makeSnowflakes`）+ `features/game/snowfall-layer.tsx` + `styles/snowfall.css`，挂在 `features/game/scene.tsx` 的 `.game-scene` 内；固定层 `z-index: 4`（在 sticky HUD(5)/语音条(8)/死亡公告(20) 之下，`<dialog>` 弹窗在顶层不受影响）且 `pointer-events: none`，只走 `transform`、无 rAF 常驻循环，落点距离用图层本地 `clientHeight` 写入 `--snow-fall`/`--snow-mid`（缩放与环形/网格布局下自洽）。**极简形态（用户裁定 2026-10-02，同日追加「可适当增大尺寸和密度」）**：直径 2–4px、不透明度 .18–.45、时长 11–20s、数量 `clamp(round(area/20000), 30, 90)` 且 ≤680px ×0.6，昼夜两套配色（夜间冷白 + 淡蓝光晕；白天冷灰蓝芯 `#93a9c9` + 白边，避免白点淹没在浅底）。种子＝`gameId|roomId|dayNumber`，刷新/重连/推送不重排；每片 `delay = -random × duration` 使首帧即铺满。**不加独立开关**，跟随「动画偏好」：**减少动画整层卸载**（不留静态雪），隐藏/离线/离场同样卸载，恢复可见后回来（环境动效，与夜景氛围一次性雾效刻意不同）。与夜景氛围叠加无冲突，不受 `--stage-brightness` 影响；不改规则 2.0 / 契约 2.2 / 服务端 / 引擎，偏好键集合不变（`08-display.spec.ts` 断言未动）。详见 `docs/frontend-v2-snowfall.md`、单测 `tests/frontend-v2-snowfall.test.ts`、E2E `specs-v2/33-snowfall.spec.ts`。**验证（2026-10-02，容器内）**：增量单测 1 文件 8 例全过；两个前端 typecheck 与 `build:web:v2`（125 模块）退出码 0；E2E `33-snowfall` chromium + webkit **8/8 通过**；另用一次性像素探针（冻结动画、开关雪花层各截一张做差）确认雪粒确实绘制在预期坐标（图层 1440×900、粒心像素差 18–65），探针已删除。未跑全量 Vitest / 全量 v2 E2E / v1 E2E。
 
 ### 2.0.7-alpha（已提 PR #18，待合并；贡献 kiahir；基线 `816f904`）
 
@@ -250,7 +252,7 @@ theater_death/
 │           · fixtures/contract-2.1（29 份 JSON 快照 + full-index）
 ├─ e2e/     容器化 Playwright 验收：specs/（v1 入口 10 个：01 冒烟·02 语音·03 越权·04 全流程·05 恢复
 │           · 06 泄漏·07 观战·08 踢人·09 板子编辑器·10 终局退出）
-│           · specs-v2/（v2 入口 33 个：账号·房间·行动·夜行·情报·公屏·复盘·展示·全流程·恢复·特殊行动·治理重连·发布冒烟·账号失败·管理·语音·遗言·语音电平·身份揭示·死亡特效·阶段转场·夜景氛围·发言聚焦·身份能力·竞选名单·舞台亮度·大厅视口·送达回执·竞选投票提示·窄屏 HUD·自由发言·濒死标记·大厅语音）
+│           · specs-v2/（v2 入口 34 个：账号·房间·行动·夜行·情报·公屏·复盘·展示·全流程·恢复·特殊行动·治理重连·发布冒烟·账号失败·管理·语音·遗言·语音电平·身份揭示·死亡特效·阶段转场·夜景氛围·发言聚焦·身份能力·竞选名单·舞台亮度·大厅视口·送达回执·竞选投票提示·窄屏 HUD·自由发言·濒死标记·大厅语音·二阶段飘雪）
 │           · helpers/ 与 helpers-v2/ · capacity.mjs · timeline.mjs · playwright.config.ts / playwright.v2.config.ts
 │           · （配套镜像 deploy/Dockerfile.e2e 与 compose e2e profile）
 ├─ vite.config.ts / vite.v2.config.ts   前端构建配置（产物 web/dist 与 web-v2/dist）
@@ -265,7 +267,7 @@ theater_death/
 **头条数字**
 - **最近一次全量实测**（2026-10-02，`2.0.7-alpha` 分支，含本批修复的 Q-11 / Q-12 过期断言）：镜像构建链内 `vitest run` **98 文件 730 例全过**，同批四个 typecheck 与 `build:web` / `build:web:v2` 通过；上一次（2026-09-23，含 v2.0.6-alpha 声网语音可靠性收口）：容器内 `vitest run` **93 文件 643 例全过**（14.6s）；较上一版 603 例新增 40 例（送达回执 / 频道对账 / REST 超时与重试 / 缺凭据降级 / 客户端凭证续期与重连，含维护方补的「无客户凭据不暴露频道查询」1 例）。
 - 更早一次全量实测（2026-09-22，含 v2.0.5-alpha 与 UI 优化批次）：**92 文件 603 例全过**。
-- **当前静态清点**（`it(`/`test(` 正则清点，未跑全量核对）：`tests/` **98 文件 / 721 例**（全量实跑 730 例，差额为「正则清点」口径）、`e2e/specs-v2` **33 spec / 106 例**。
+- **当前静态清点**（`it(`/`test(` 正则清点，未跑全量核对）：`tests/` **99 文件 / 729 例**（新增 `tests/frontend-v2-snowfall.test.ts` 8 例；全量实跑 730 例为 2.0.7-alpha 口径，差额为「正则清点」口径）、`e2e/specs-v2` **34 spec / 110 例**（新增 `33-snowfall.spec.ts` 4 例）。
 - **2.0.7-alpha 分支**：**全量单测已跑通**（2026-10-02，98 文件 730 例，镜像构建链内）并**已在本地重建镜像** `ghcr.io/azhen073/theater-death:2.0.7-alpha`（本地标签，**未推送注册表**）；**未部署**；四个 typecheck 与逐 spec E2E 双浏览器批次均通过，**未跑全量 E2E / v1 E2E**。
 
 **2.0.7-alpha 增量（容器内，2026-09-23 起；各批均以「还原对照」验证改动有效性）**
