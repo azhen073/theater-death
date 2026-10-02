@@ -189,3 +189,99 @@ describe('公开面：未公告的死亡与翻牌不得对外可见', () => {
     expect(civilian.private?.targets).toEqual({});
   });
 });
+
+describe('private.knowledge.dyingSeats 授权（R-20 / R-24）', () => {
+  /** 一阶段夜间、攻击已结算：p_6 与 p_7 濒死（座位 6 / 7）。 */
+  function nightWithDying(dyingPlayerIds: string[] = ['p_6', 'p_7']): GameState {
+    const base = scenario();
+    return {
+      ...base,
+      stage: 1,
+      nightStage: 1,
+      night: {
+        nightNumber: 1,
+        guardSelections: [],
+        attacks: [],
+        rescue: null,
+        revive: null,
+        descenderCheck: null,
+        fatalRecords: [],
+        dyingSet: dyingPlayerIds,
+        deaths: [],
+        sacrificeTriggered: false,
+      },
+    };
+  }
+
+  function roomWith(state: GameState): Room {
+    const host: RoomMember = { playerId: 'p_1', nickname: '玩家1', ready: true, joinedAt: 0 };
+    const room = new Room('ROOMDY', 'g_dying_view', host, THEATER_DEATH_13);
+    room.state = state;
+    room.driver = { windows: () => [], proposalState: () => null } as unknown as NonNullable<Room['driver']>;
+    return room;
+  }
+
+  const knowledge = (room: Room, playerId: string) => gameView(room, { subjectPlayerId: playerId, readOnly: false }, 0).private?.knowledge;
+
+  it('降临者与水妖（未用还魂曲）拿到本夜名单，其余身份不含该字段', () => {
+    const room = roomWith(nightWithDying());
+    expect(knowledge(room, 'p_4')?.dyingSeats).toEqual([6, 7]); // 降临者
+    expect(knowledge(room, 'p_3')?.dyingSeats).toEqual([6, 7]); // 水妖
+    expect(knowledge(room, 'p_1')).not.toHaveProperty('dyingSeats'); // 平民
+    expect(knowledge(room, 'p_2')).not.toHaveProperty('dyingSeats'); // 门先生
+    expect(knowledge(room, 'p_10')).not.toHaveProperty('dyingSeats'); // 死神
+    // 死神阵营同样不给：魂灵（互知的是"谁是魂灵"，不是"谁濒死"）与丧亲者都不含该字段
+    expect(knowledge(room, 'p_11')).not.toHaveProperty('dyingSeats'); // 魂灵
+    expect(knowledge(room, 'p_12')).not.toHaveProperty('dyingSeats'); // 魂灵
+    expect(knowledge(room, 'p_13')).not.toHaveProperty('dyingSeats'); // 丧亲者
+  });
+
+  it('水妖用过还魂曲后当场失去名单视野（不以下发空数组代替）', () => {
+    const used = overridePlayer(nightWithDying(), 'p_3', { abilities: { laikeBladeUsed: false, waterRescueUsed: true } });
+    const room = roomWith(used);
+    expect(knowledge(room, 'p_3')).not.toHaveProperty('dyingSeats');
+    expect(knowledge(room, 'p_4')?.dyingSeats).toEqual([6, 7]); // 降临者不受影响
+  });
+
+  it('二阶段、白天、名单未产生、本人已死亡时都不下发该字段', () => {
+    const stageTwo = { ...nightWithDying(), stage: 2 as const };
+    expect(knowledge(roomWith(stageTwo), 'p_4')).not.toHaveProperty('dyingSeats');
+
+    const morning = { ...nightWithDying(), phase: 'morning' as const, night: null };
+    expect(knowledge(roomWith(morning), 'p_4')).not.toHaveProperty('dyingSeats');
+
+    const notResolved = nightWithDying([]);
+    expect(knowledge(roomWith(notResolved), 'p_4')).not.toHaveProperty('dyingSeats');
+
+    const deadDescender = overrideLife(nightWithDying(), 'p_4', 'dead');
+    expect(knowledge(roomWith(deadDescender), 'p_4')).not.toHaveProperty('dyingSeats');
+
+    // 濒死的水妖 / 降临者仍保留本夜资格（R-10）
+    const dyingWater = overrideLife(nightWithDying(), 'p_3', 'dying');
+    expect(knowledge(roomWith(dyingWater), 'p_3')?.dyingSeats).toEqual([6, 7]);
+  });
+
+  it('公开视图永远不含名单，且濒死不改变公开存活状态', () => {
+    const state = nightWithDying();
+    const room = roomWith(state);
+    const civilian = gameView(room, { subjectPlayerId: 'p_1', readOnly: false }, 0);
+    const spectator = gameView(room, { subjectPlayerId: null, readOnly: true }, 0);
+    expect(JSON.stringify(civilian.public)).not.toContain('dyingSeats');
+    expect(spectator.private).toBeNull();
+    expect(civilian.public.seats?.find((seat) => seat.seat === 6)?.alive).toBe(true);
+  });
+
+  it('与夜间事件口径一致：dying_list.seats 等于该角色的 dyingSeats', () => {
+    const state = nightWithDying(['p_6', 'p_7']);
+    const room = roomWith(state);
+    const waterId = 'p_3';
+    const listEvent = {
+      ...event('dying_list', { nightNumber: 1, seats: [6, 7] }, { kind: 'players' as const, playerIds: [waterId, 'p_4'] }, 1),
+    };
+    room.events = [listEvent];
+    const water = gameView(room, { subjectPlayerId: waterId, readOnly: false }, 0);
+    const fromEvent = (water.private?.events ?? []).find((item) => item.type === 'dying_list') as { payload?: { seats?: number[] } } | undefined;
+    expect(fromEvent?.payload?.seats).toEqual([6, 7]);
+    expect(water.private?.knowledge?.dyingSeats).toEqual(fromEvent?.payload?.seats);
+  });
+});

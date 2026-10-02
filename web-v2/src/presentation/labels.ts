@@ -1,4 +1,4 @@
-import type { CommandAction, RoomSnapshot } from '../../../contracts/v2.ts';
+import type { CommandAction, PublicChatMode, RoomSnapshot } from '../../../contracts/v2.ts';
 
 export const actionLabels: Record<CommandAction, string> = {
   SUBMIT_GUARD: '选择守护目标', SUBMIT_LAIKE: '选择刺杀目标', EDIT_PROPOSAL: '拟定攻击方案', CONFIRM_PROPOSAL: '确认团队方案',
@@ -9,6 +9,11 @@ export const actionLabels: Record<CommandAction, string> = {
 };
 export const presenceLabels = { online: '在线', reconnecting: '重连中', offline: '离线', left: '已离开' } as const;
 export const roomPhaseLabels = { lobby: '等待开场', playing: '演出进行中', review: '终场复盘' } as const;
+/** 公屏写权限档位：建房时由房主选定，创建后不可改（见 contracts/v2.ts）。 */
+export const publicChatLabel: Record<PublicChatMode, string> = {
+  alive_only: '仅存活正式玩家（死者只读）',
+  everyone: '存活与死者全体（全阶段可写）',
+};
 export const roomPermissionReasons: Record<string, string> = {
   not_host: '仅房主可操作', room_not_full: '正式玩家人数不足', not_ready: '还有玩家未准备',
   lobby_required: '请在大厅操作', review_required: '当前不在复盘阶段', spectator_read_only: '观众只读',
@@ -34,6 +39,7 @@ export function publicPhaseLabel(view: RoomSnapshot): string {
       return '天理竞选';
     case 'first_night_last_words': return '首夜遗言';
     case 'speech_round': return day.speechPreparing ? '发言准备' : '白天讨论';
+    case 'free_speech': return '自由发言';
     case 'vote': return day.ballot?.phase === 'tie_speech' ? '平票发言' : day.ballot?.phase === 'revote' ? '放逐重投' : '放逐投票';
     case 'elimination_last_words': return '放逐遗言';
     case 'handover': return '天理移交';

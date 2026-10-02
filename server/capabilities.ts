@@ -1,6 +1,6 @@
 import * as day from '../engine/day.ts';
 import type { GameState } from '../engine/types.ts';
-import { canPostPublic } from '../visibility/chat.ts';
+import { canPostPublic, type PublicChatPolicy } from '../visibility/chat.ts';
 import { roomMembership } from '../visibility/rooms.ts';
 import { voicePermission } from '../voice/policy.ts';
 import type { GameCommandType } from './commands.ts';
@@ -15,11 +15,11 @@ export interface Capabilities {
 }
 
 /** A single policy query, also consumed by the v2 command boundary. Never accepts client identity. */
-export function capabilities(state: GameState, playerId: string | null, windows: readonly LiveWindow[], now: number, readOnly = false): Capabilities {
+export function capabilities(state: GameState, playerId: string | null, windows: readonly LiveWindow[], now: number, readOnly = false, publicChat: PublicChatPolicy = 'legacy_day_only'): Capabilities {
   const result: Capabilities = { canPostPublic: false, canPostFaction: false, canPublishVoice: false, canVote: false, allowedCommands: [] };
   const me = state.players.find((p) => p.playerId === playerId);
   if (readOnly || !me || state.win !== null || state.phase === 'ended') return result;
-  result.canPostPublic = canPostPublic(state, me.playerId);
+  result.canPostPublic = canPostPublic(state, me.playerId, publicChat);
   result.canPostFaction = roomMembership(state, me.playerId)?.canWrite ?? false;
   result.canPublishVoice = voicePermission(state, me.playerId).canPublish;
   const open = new Set(windows.filter((w) => now < w.closesAt).map((w) => w.id));

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { RoomSnapshot } from '../../../../contracts/v2.ts';
+import { factionKey, factionLabel } from '../../presentation/faction.ts';
 import { authorizedPrivate } from './identity.tsx';
 
 export function IdentityEntryReveal({ view, catalog, onEnter }: {
@@ -20,7 +21,7 @@ export function IdentityEntryReveal({ view, catalog, onEnter }: {
   }, []);
 
   if (!privateView || !role) return null;
-  const faction = role.faction === 'human' ? '人类阵营' : role.faction === 'death_faction' ? '死神阵营' : '';
+  const key = factionKey(role.faction);
   return <dialog
     ref={dialogRef}
     className="modal identity-entry-reveal"
@@ -30,7 +31,7 @@ export function IdentityEntryReveal({ view, catalog, onEnter }: {
     <div className="identity-entry-reveal__heading">
       <span className="eyebrow">本局身份</span>
       <h2 id={titleId}>{role.name}</h2>
-      <p>{faction} · {privateView.self.seat}号席位</p>
+      <p>{key && <span className={`faction-tag faction-tag--${key}`}>{factionLabel(role.faction)}</span>} · {privateView.self.seat}号席位</p>
     </div>
     <img className="identity-entry-reveal__card" src={`/assets/cards/${role.roleId}.png`} alt={`${role.name}身份卡`} />
     <p className="identity-entry-reveal__description">{role.description}</p>

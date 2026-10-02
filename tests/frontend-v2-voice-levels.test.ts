@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { RoomSnapshot } from '../contracts/v2.ts';
 import {
+  SPEAKING_HOLD_MS,
+  SPEAKING_LEVEL_THRESHOLD,
   VOICE_AGC_MAX_GAIN,
   VOICE_INPUT_MAX,
   VOICE_LEVEL_SEGMENTS,
+  activeSpeakingSeats,
   agcEnabledFor,
   clampInputGain,
   clampVoiceLevel,
@@ -90,5 +93,19 @@ describe('v2 voice level model（A+B：自己的电平 + 当前发言者电平�
     expect(ownLevelVisible(true, true)).toBe(true);
     expect(ownLevelVisible(false, true)).toBe(false);
     expect(ownLevelVisible(true, false)).toBe(false);
+  });
+
+  it('自由发言阶段：按远端电平判定「谁在说话」，带保持期且忽略未知 uid', () => {
+    const uids = { '11': 'p_1', '12': 'p_2' };
+    const held = new Map<string, number>();
+    // 只有 p_1 超过阈值 → 只亮 p_1；未知 uid（观众）被忽略
+    expect(activeSpeakingSeats(held, new Map([[11, 40], [99, 80]]), uids, 1000)).toEqual(['p_1']);
+    // 电平掉到阈值以下，但在保持期内仍显示
+    expect(activeSpeakingSeats(held, new Map(), uids, 1000 + SPEAKING_HOLD_MS - 1)).toEqual(['p_1']);
+    // 保持期结束即消失
+    expect(activeSpeakingSeats(held, new Map(), uids, 1000 + SPEAKING_HOLD_MS)).toEqual([]);
+    // 低电平不亮；两人同时说话按 playerId 稳定排序
+    expect(activeSpeakingSeats(held, new Map([[11, SPEAKING_LEVEL_THRESHOLD - 1]]), uids, 5000)).toEqual([]);
+    expect(activeSpeakingSeats(held, new Map([[12, 30], [11, 30]]), uids, 6000)).toEqual(['p_1', 'p_2']);
   });
 });

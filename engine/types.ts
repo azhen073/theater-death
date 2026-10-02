@@ -104,6 +104,7 @@ export type DayStep =
   | 'first_night_last_words'
   | 'election'
   | 'speech_round'
+  | 'free_speech'
   | 'vote'
   | 'elimination_last_words'
   | 'handover'
@@ -157,6 +158,8 @@ export interface PacedQueue {
 
 export interface DayContext {
   readonly speechPreparing?: boolean;
+  /** 房主开启「白天自由发言」后：当天是否已经走过该阶段（避免天理移交重走发言轮时重复一次）。 */
+  readonly freeSpeechDone?: boolean;
   readonly dayNumber: number;
   readonly step: DayStep;
   readonly lastWordsScope: 'first_night' | 'elimination' | null;

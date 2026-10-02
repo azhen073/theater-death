@@ -106,7 +106,7 @@ function account(h: Harness, username: string): User {
 
 async function fullRoom(h: Harness, prefix: string) {
   const host = account(h, `${prefix}_host`);
-  const room = await h.directory.create(host.session, THEATER_DEATH_13_V2);
+  const room = await h.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
   const players = [host];
   for (let index = 1; index < 13; index += 1) {
     const player = account(h, `${prefix}_${index}`);
@@ -142,7 +142,7 @@ describe('v2 stable room realtime lifecycle', () => {
   it('authenticates by roomId, sends a complete snapshot, and rejects gameId/cookie/origin violations', async () => {
     const h = await harness();
     const host = account(h, 'realtime_handshake_host');
-    const room = await h.directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await h.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     const socket = await connect(h, host, { roomId: room.roomId });
     const views = collectViews(socket);
     await waitFor(() => views.length > 0);
@@ -159,7 +159,7 @@ describe('v2 stable room realtime lifecycle', () => {
   it('terminates takeover and screen revocation with the correct control reason and reconnect projection', async () => {
     const h = await harness();
     const host = account(h, 'realtime_takeover_host');
-    const room = await h.directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await h.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     const oldSocket = await connect(h, host, { roomId: room.roomId });
     const oldViews = collectViews(oldSocket);
     await waitFor(() => oldViews.length > 0);

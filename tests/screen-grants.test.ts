@@ -29,7 +29,7 @@ function account(accounts: AccountStore, name: string) {
 
 async function fullMatch(directory: RoomDirectory, accounts: AccountStore, prefix: string) {
   const host = account(accounts, `${prefix}_host`);
-  const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+  const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
   const players = [host];
   for (let i = 1; i < 13; i += 1) {
     const player = account(accounts, `${prefix}_${i}`);
@@ -45,7 +45,7 @@ describe('v2 game-bound second-screen grants', () => {
   it('requires an active seat control and the current game, while lobby and cross-room attempts fail', async () => {
     const { accounts, directory, grants } = setup();
     const lobbyHost = account(accounts, 'grant_lobby_host');
-    const lobby = await directory.create(lobbyHost.session, THEATER_DEATH_13_V2);
+    const lobby = await directory.create(lobbyHost.session, THEATER_DEATH_13_V2, 'alive_only');
     await expect(grants.invite(lobby, lobbyHost.session, 'no-game')).rejects.toMatchObject({ code: 'stale_game' });
     const { room, players } = await fullMatch(directory, accounts, 'grant_auth');
     const spectator = account(accounts, 'grant_spectator');
@@ -53,7 +53,7 @@ describe('v2 game-bound second-screen grants', () => {
     await expect(grants.invite(room, spectator.session, room.gameId!)).rejects.toMatchObject({ code: 'seat_control_required' });
     const invite = await grants.invite(room, players[0]!.session, room.gameId!);
     await expect(grants.invite(room, players[0]!.session, 'old-game')).rejects.toMatchObject({ code: 'stale_game' });
-    const otherRoom = await directory.create(account(accounts, 'other_room').session, THEATER_DEATH_13_V2);
+    const otherRoom = await directory.create(account(accounts, 'other_room').session, THEATER_DEATH_13_V2, 'alive_only');
     const other = account(accounts, 'current_elsewhere');
     await directory.enter(otherRoom, other.session);
     await expect(grants.redeem(room, other.session, room.gameId!, invite.token)).rejects.toMatchObject({ code: 'already_in_room' });

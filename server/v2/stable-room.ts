@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { MemberKind, Presence, RoomPhase, SubmissionDTO } from '../../contracts/v2.ts';
+import type { MemberKind, Presence, PublicChatMode, RoomPhase, SubmissionDTO } from '../../contracts/v2.ts';
 import type { RulesetConfig } from '../../rulesets/types.ts';
 import { ROLE_IDS } from '../../rulesets/types.ts';
 import type { Clock } from '../clock.ts';
@@ -8,6 +8,7 @@ import type { Room, RoomRegistry } from '../rooms.ts';
 import { ReceiptStore } from '../receipts.ts';
 import type { AccountStore } from './account-store.ts';
 import { RoomAccess } from './access.ts';
+import { roomVoiceChannel } from './room-voice.ts';
 import { ApiError } from './errors.ts';
 import { ChatReceipts } from './chat-receipts.ts';
 
@@ -33,7 +34,9 @@ export interface StableRoomDeps {
   accounts: AccountStore;
   logStore: LogStore;
   registry: RoomRegistry;
-  revokeMedia: (gameId: string, identity: string) => void;
+  revokeMedia: (channel: string, identity: string) => void;
+  /** 关闭某个语音频道（开局时用于关掉大厅/复盘的房间频道，Q-12）。 */
+  closeRoomVoice?: (channel: string) => void;
 }
 function freeze<T>(value: T): T {
   if (value && typeof value === 'object') {
@@ -49,6 +52,8 @@ export class StableRoom {
   readonly code: string;
   readonly createdAt: number;
   readonly ruleset: RulesetConfig;
+  /** 建房时房主显式选择的公屏写权限档位；房间生命周期内不可改（与角色组成同规则）。 */
+  readonly publicChat: PublicChatMode;
   readonly members = new Map<string, ActiveMember>(); // account -> current membership
   readonly participants = new Map<string, Participant>(); // account -> frozen current-match seat
   hostMemberId: string | null = null;
@@ -67,8 +72,8 @@ export class StableRoom {
   readonly deps: StableRoomDeps;
   #queue: Promise<unknown> = Promise.resolve();
 
-  constructor(code: string, ruleset: RulesetConfig, deps: StableRoomDeps) {
-    this.code = code; this.ruleset = freeze(structuredClone(ruleset)); this.deps = deps;
+  constructor(code: string, ruleset: RulesetConfig, publicChat: PublicChatMode, deps: StableRoomDeps) {
+    this.code = code; this.ruleset = freeze(structuredClone(ruleset)); this.publicChat = publicChat; this.deps = deps;
     this.createdAt = deps.clock.now();
     deps.logStore.recordPersistentRoom({ roomId: this.roomId, code, createdAt: this.createdAt, ruleset: this.ruleset });
   }
@@ -87,6 +92,8 @@ export class StableRoom {
     if (members.length !== this.requiredPlayers()) throw new ApiError(409, 'room_not_full');
     if (members.some((m) => !m.ready)) throw new ApiError(409, 'not_ready');
     const runtime = this.deps.registry.createMatch(this.code, members.map((m) => ({ nickname: m.nickname })), this.ruleset, this);
+    // 开局即关掉房间频道（大厅/复盘语音）：避免带着大厅发布凭证进入对局频道之外。
+    this.deps.closeRoomVoice?.(roomVoiceChannel(this.roomId));
     this.runtime = runtime;
     this.matchStartedAt = this.deps.clock.now(); this.matchEndedAt = null;
     this.receipts = new ReceiptStore();

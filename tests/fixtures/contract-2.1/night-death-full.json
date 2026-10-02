@@ -69,6 +69,8 @@
       "simultaneousWinPriority": "death_faction",
       "researcherCondition": "currently_dead"
     },
+    "publicChat": "alive_only",
+    "freeSpeech": false,
     "requiredPlayers": 13,
     "hostMemberId": "m_8a2af8d62ec067dda21228d4c36838cc",
     "formalMembers": [
@@ -716,6 +718,10 @@
       "closesAt": 61000
     }
   ],
+  "voice": {
+    "channel": "g_01bf3cb65d327c0a54c649e06de41000",
+    "uids": {}
+  },
   "tasks": [
     {
       "action": "EDIT_PROPOSAL",

@@ -38,15 +38,21 @@ html[data-reduced-motion='true'] *::after {
 .modal-game-context { top: 0; }
 .chat-composer, .chat-composer textarea, input { scroll-margin-bottom: 130px; }
 .death-notice {
-  position: fixed; top: 88px; right: 24px; z-index: 20;
+  /* HUD 下沿随宽度、显示缩放与滚动变化，由 GameScene 写入 --hud-bottom（sticky HUD 的当前下沿） */
+  position: fixed; top: calc(var(--hud-bottom, 112px) + 8px); right: 24px; z-index: 20;
   display: flex; align-items: center; gap: 10px; max-width: min(340px, calc(100vw - 32px));
   padding: 10px 16px; border: 1px solid #c5a8ad; border-radius: 10px;
   background: #fff8f8ed; color: #783c49; box-shadow: 0 5px 20px #46252d18;
   pointer-events: none; user-select: none;
 }
+/* 窄屏 HUD 折成两行：横幅改为 HUD 之下的全宽条，避免压住「导航 / 第二屏 / 房间管理」 */
+@media (max-width: 680px) {
+  .death-notice { left: 12px; right: 12px; max-width: none; }
+}
 .death-announcer { pointer-events: none; }
 .death-notice strong { font-size: 12px; flex-shrink: 0; }
 .death-notice span { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
-  .death-notice { top: 90px; right: 16px; }
+  /* 曾写死 top: 90px：窄屏 HUD 折行后正好压住工具行，这里同样跟随 --hud-bottom */
+  .death-notice { right: 16px; }
 }

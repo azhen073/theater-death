@@ -1,6 +1,7 @@
 import type { GameEvent } from '../engine/events.ts';
 import {
   advanceElectionSpeech,
+  advanceFreeSpeech,
   advanceSpeech,
   advanceTieSpeech,
   beginDay,
@@ -47,6 +48,7 @@ export type DayWindowId =
   | 'election_vote'
   | 'speech_order'
   | 'speech_round'
+  | 'free_speech'
   | 'vote'
   | 'tie_speech'
   | 'handover';
@@ -191,6 +193,10 @@ export function createDayDriver(options: {
       case 'speech_round':
         openSpeechRoundWindow(context);
         return;
+      case 'free_speech':
+        // 存活玩家可同时开麦的固定时长阶段；不提前结束（固定时长是防泄露设计）。
+        scheduleWindow('free_speech', timers().freeSpeech ?? 120, timeoutFreeSpeech);
+        return;
       case 'vote':
         openVoteWindow(context);
         return;
@@ -307,6 +313,13 @@ export function createDayDriver(options: {
       return;
     }
     apply(resolveHandover(current()));
+  }
+
+  function timeoutFreeSpeech(): void {
+    if (phase !== 'free_speech') {
+      return;
+    }
+    apply(advanceFreeSpeech(current()));
   }
 
   function settleDay(): void {

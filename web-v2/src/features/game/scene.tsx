@@ -18,6 +18,7 @@ import { Stage } from './stage.tsx';
 import { Identity, authorizedPrivate } from './identity.tsx';
 import { GameSidebar } from './sidebar.tsx';
 import { SpeechAttention } from './speech-attention.tsx';
+import { useSpeakingSeats } from '../voice/speaking-seats.ts';
 import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
@@ -72,6 +73,68 @@ export function GameScene({
   const [, tick] = useState(0);
   const mountedView = useRef(view);
   mountedView.current = view;
+
+  // 自由发言阶段没有唯一发言者：用本机远端电平判定「谁在说话」并给座位亮光环（其余阶段为空）。
+  const liveSpeakingSeats = useSpeakingSeats();
+
+  // 窄屏滚动后把 HUD 收成细条（工具行收进「更多」），避免吸附的头条盖住座位。
+  const [compact, setCompact] = useState(false);
+  const [hudMenu, setHudMenu] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia('(max-width: 680px)');
+    let frame = 0;
+    const sync = () => {
+      frame = 0;
+      const narrow = query.matches;
+      const top = Math.round(window.scrollY);
+      // 滞回：下滑超过 120px 才收起，回到 24px 以内才展开，避免临界抖动。
+      setCompact(previous => (narrow ? (previous ? top > 24 : top > 120) : false));
+    };
+    const schedule = () => { if (frame === 0) frame = requestAnimationFrame(sync); };
+    sync();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    if (typeof query.addEventListener === 'function') query.addEventListener('change', schedule);
+    else query.addListener?.(schedule);
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      if (typeof query.removeEventListener === 'function') query.removeEventListener('change', schedule);
+      else query.removeListener?.(schedule);
+    };
+  }, []);
+  useEffect(() => { if (!compact) setHudMenu(false); }, [compact]);
+
+  // 死亡公告等固定横幅按 HUD 实际下沿定位（HUD 是 sticky：高度随宽度/显示缩放变化，
+  // 未滚动时还带有场景的顶部内边距，写死 top 会压住工具行）。
+  const hud = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const element = hud.current;
+    if (!element) return;
+    let frame = 0;
+    const publish = () => {
+      frame = 0;
+      const rect = element.getBoundingClientRect();
+      // 管理视图会把整个场景隐藏（高度 0）：保留上一次的真实下沿，避免横幅跳到顶部。
+      if (Math.round(rect.height) <= 0) return;
+      document.documentElement.style.setProperty('--hud-bottom', `${Math.round(rect.bottom)}px`);
+    };
+    const schedule = () => { if (frame === 0) frame = requestAnimationFrame(publish); };
+    publish();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
+    observer?.observe(element);
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      document.documentElement.style.removeProperty('--hud-bottom');
+    };
+  }, [active, manage]);
 
   useEffect(() => {
     const timer = setInterval(() => tick(value => value + 1), 500);
@@ -206,9 +269,9 @@ export function GameScene({
   const remainingMs = task ? remaining(task.closesAt) : null;
   const locked = !online || !!pending || (remainingMs !== null && remainingMs === 0);
 
-  const choose = (playerId: string, change: 1 | -1) => {
+  const choose = (playerId: string) => {
     if (!locked && task?.targets) {
-      setDraft({ ...draft, targets: updateSelection(task.targets, draft.targets, playerId, change) });
+      setDraft({ ...draft, targets: updateSelection(task.targets, draft.targets, playerId) });
     }
   };
 
@@ -320,9 +383,11 @@ export function GameScene({
           disabled: locked || !!actionIssue(view, task, draft) ||
             proposalEditSyncing || proposal.revision > 0 && !proposalModified && (proposalConfirmedBySelf || proposalConfirmationSyncing),
         } : null,
-        emptyAction: basePresentation.emptyAction ? {
+        // 单一动作按钮：本地目标为空时这一格承担「空刀」，有目标时由 primary 承担「发布并确认方案」。
+        // 空刀不再与方案按钮并列（先「清空选择」再发布），v0 无草稿时的两个同载荷按钮也随之消失。
+        emptyAction: basePresentation.emptyAction && draft.targets.length === 0 ? {
           ...basePresentation.emptyAction,
-          label: proposal.revision > 0 && !proposalModified && draft.targets.length === 0
+          label: proposal.revision > 0 && !proposalModified
             ? proposalConfirmedBySelf ? `已同意 v${proposal.revision}`
               : proposalConfirmationSyncing ? confirmationSyncLabel
               : `同意方案 v${proposal.revision}`
@@ -395,6 +460,34 @@ export function GameScene({
       </StageActionCard>
     );
 
+  // HUD 操作在展开态与窄屏「更多」菜单里共用同一组按钮（同一时刻只渲染一处，避免重名）。
+  const hudChoose = (action: () => void) => () => { setHudMenu(false); action(); };
+  const hudActions = (
+    <>
+      {privateView && (
+        <button type="button" className="button" onClick={hudChoose(() => setOverlay({ kind: 'identity' }))}>
+          {view.viewer.readOnly ? '当前观察身份' : '我的身份'}
+        </button>
+      )}
+      <button type="button" className="button" onClick={hudChoose(() => setOverlay({ kind: 'navigation' }))}>
+        导航
+      </button>
+      <button type="button" className="button" onClick={hudChoose(() => setOverlay({ kind: 'second-screen' }))}>
+        第二屏
+      </button>
+      <button
+        type="button"
+        className="button"
+        onClick={hudChoose(() => {
+          setManagementVisited(true);
+          setManage(true);
+        })}
+      >
+        房间管理
+      </button>
+    </>
+  );
+
   return (
     <>
       {managementVisited && (
@@ -420,7 +513,7 @@ export function GameScene({
         {active && identityEntryReveal && (
           <IdentityEntryReveal view={view} catalog={catalog} onEnter={() => setIdentityEntryReveal(false)} />
         )}
-        <header className="game-hud">
+        <header className={`game-hud${compact ? ' game-hud--compact' : ''}`} ref={hud}>
           <div>
             <span className="eyebrow">
               第 {view.public?.dayNumber ?? 1} 轮 · {view.public?.phase === 'night' ? '夜晚' : '白天'} · 第{' '}
@@ -435,35 +528,29 @@ export function GameScene({
               {view.public?.seats.length ?? 0}
             </span>
           </div>
-          <div className="hud-tools">
-            <span
-              className="hud-room-code"
-              title={`房间 ${view.room.code} · ${view.room.config.mode === 'formal' ? '正式模式' : '实验模式'}`}
-            >
-              房间 {view.room.code} · {view.room.config.mode === 'formal' ? '正式' : '实验'}
-            </span>
-            {privateView && (
-              <button type="button" className="button" onClick={() => setOverlay({ kind: 'identity' })}>
-                {view.viewer.readOnly ? '当前观察身份' : '我的身份'}
+          {compact ? (
+            <div className="hud-tools hud-tools--compact">
+              <button type="button" className="button hud-more" aria-expanded={hudMenu} onClick={() => setHudMenu(value => !value)}>
+                更多
               </button>
-            )}
-            <button type="button" className="button" onClick={() => setOverlay({ kind: 'navigation' })}>
-              导航
-            </button>
-            <button type="button" className="button" onClick={() => setOverlay({ kind: 'second-screen' })}>
-              第二屏
-            </button>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setManagementVisited(true);
-                setManage(true);
-              }}
-            >
-              房间管理
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div className="hud-tools">
+              <span
+                className="hud-room-code"
+                title={`房间 ${view.room.code} · ${view.room.config.mode === 'formal' ? '正式模式' : '实验模式'}`}
+              >
+                房间 {view.room.code} · {view.room.config.mode === 'formal' ? '正式' : '实验'}
+              </span>
+              {hudActions}
+            </div>
+          )}
+          {compact && hudMenu && (
+            <div className="hud-menu" aria-label="对局操作">
+              <span className="hud-menu__room">房间 {view.room.code} · {view.public?.seats.filter(seat => seat.alive).length ?? 0} / {view.public?.seats.length ?? 0} 存活</span>
+              {hudActions}
+            </div>
+          )}
         </header>
 
         {view.viewer.readOnly && (
@@ -499,6 +586,7 @@ export function GameScene({
               actionSlot={actionSlot}
               onSelect={choose}
               onInfo={(seat: SeatDTO) => setOverlay({ kind: 'player', playerId: seat.playerId })}
+              liveSpeakingPlayerIds={liveSpeakingSeats}
             />
           </div>
           <GameSidebar

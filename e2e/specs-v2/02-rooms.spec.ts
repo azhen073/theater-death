@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { loadRoomAccounts, confirmModal, dismissIdentityEntryReveal, enterRoom, leaveRoom, loginRoomAccount, memberCard, myRooms, noHorizontalOverflow, roomView, waitRoom } from '../helpers-v2/rooms.ts';
+import { loadRoomAccounts, confirmModal, dismissIdentityEntryReveal, enterRoom, leaveRoom, loginRoomAccount, memberCard, myRooms, noHorizontalOverflow, roomView, waitRoom, selectPublicChat, revealHudActions } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
 async function createPage(browser: Browser, account: RoomAccount): Promise<{ context: BrowserContext; page: Page }> {
@@ -31,19 +31,25 @@ test('正式房间：默认13人板、治理、刷新与解散', async ({ browse
   const host = await createPage(browser, accounts[0]!);
   const joiner = await createPage(browser, accounts[1]!);
   try {
-    await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
     await expect(host.page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
+    // 公屏写权限必须显式选择（没有默认值）：未选时两个单选框都未选中，提交按钮不可用
+    await expect(host.page.getByRole('button', { name: '创建房间', exact: true })).toBeDisabled();
+    await expect(host.page.getByText('请先选择公屏权限')).toBeVisible();
+    await expect(host.page.getByRole('radio', { name: '公屏权限：仅存活正式玩家' })).toHaveAttribute('aria-checked', 'false');
+    await expect(host.page.getByRole('radio', { name: '公屏权限：存活与死者全体' })).toHaveAttribute('aria-checked', 'false');
     const requestPromise = host.page.waitForRequest(request => request.url().endsWith('/api/v2/rooms') && request.method() === 'POST');
     const createRequest = requestPromise;
-    await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
     const createBody = createRequest ? await createRequest : null;
     const body = createBody?.postDataJSON() as Record<string, unknown>;
-    expect(body).toMatchObject({ presetId: 'default-13' });
+    expect(body).toMatchObject({ presetId: 'default-13', publicChat: 'alive_only', freeSpeech: false });
     expect(body).not.toHaveProperty('roles');
     await waitRoom(host.page);
     const code = (await host.page.locator('.room-code strong').innerText()).trim();
     expect(code).toMatch(/^[A-Z2-9]{6}$/);
     await expect(host.page.getByText('13 人 · 正式模式')).toBeVisible();
+    await expect(host.page.getByText('公屏权限：仅存活正式玩家（死者只读）')).toBeVisible();
     await expect(host.page.getByText('配置已冻结')).toBeVisible();
     await host.page.getByRole('button', { name: '查看完整规则' }).click();
     await expect(host.page.getByRole('dialog')).toContainText('完整规则 · 2.0');
@@ -93,13 +99,13 @@ test('实验房间：五人冻结配置、观众晋升、离线开局与公开�
   const open = async (index: number) => { const result = await createPage(browser, accounts[index]!); contexts.push(result); return result.page; };
   try {
     const hostPage = await open(0);
-    await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(hostPage); await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
     await expect(hostPage.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
     await hostPage.getByRole('button', { name: '自定义角色组成' }).click();
     await hostPage.getByLabel('玩家人数').fill('5');
     for (const [label, value] of [['莱莱可人数', '0'], ['门先生人数', '1'], ['水妖人数', '0'], ['降临者人数', '0'], ['科研员人数', '1'], ['平民人数', '1'], ['死神人数', '1'], ['魂灵人数', '1'], ['丧亲者人数', '0']] as const) await hostPage.getByLabel(label).fill(value);
     const requestPromise = hostPage.waitForRequest(request => request.url().endsWith('/api/v2/rooms') && request.method() === 'POST');
-    await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(hostPage); await hostPage.getByRole('button', { name: '创建房间', exact: true }).click();
     const body = (await requestPromise).postDataJSON() as Record<string, any>;
     expect(body.playerCount).toBe(5);
     expect(body.roles).toMatchObject({ door: 1, researcher: 1, civilian: 1, death: 1, spirit: 1 });
@@ -141,7 +147,7 @@ test('实验房间：五人冻结配置、观众晋升、离线开局与公开�
     await hostPage.reload();
     await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 20_000 });
     expect((await roomView(hostPage, code)).gameId).toBe(gameId);
-    await hostPage.getByRole('button', { name: '房间管理', exact: true }).click();
+    await revealHudActions(hostPage); await hostPage.getByRole('button', { name: '房间管理', exact: true }).click();
     await expect(memberCard(hostPage, accounts[2]!.username).getByRole('button', { name: '移出' })).toHaveCount(0);
     await kickMember(hostPage, accounts[1]!.username);
     await expect(contexts[1]!.page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
@@ -162,7 +168,7 @@ test('创建请求重试与同账号接管：保留原意图、taken_over 清旧
   const other = await createPage(browser, accounts[1]!);
   const createBodies: string[] = [];
   try {
-    await oldHost.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(oldHost.page); await oldHost.page.getByRole('button', { name: '创建房间', exact: true }).click();
     await expect(oldHost.page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
     const beforeRooms = await myRooms(oldHost.page);
     const beforeRoomIds = new Set((beforeRooms.rooms as Array<{ roomId: string }>).map(room => room.roomId));
@@ -173,7 +179,7 @@ test('创建请求重试与同账号接管：保留原意图、taken_over 清旧
       if (createAttempts === 1) { await route.fetch(); await route.abort('failed'); }
       else await route.continue();
     });
-    await oldHost.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(oldHost.page); await oldHost.page.getByRole('button', { name: '创建房间', exact: true }).click();
     await expect(oldHost.page.getByText('尚未确认结果')).toBeVisible();
     await oldHost.page.getByRole('button', { name: '以原请求确认创建结果' }).click();
     await waitRoom(oldHost.page);
@@ -222,9 +228,9 @@ test('大厅房主只有「解散房间」（F1）；房主 /leave 即解散整�
   const host = await createPage(browser, accounts[0]!);
   const joiner = await createPage(browser, accounts[1]!);
   try {
-    await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
     await expect(host.page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
-    await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
     await waitRoom(host.page);
     const code = (await host.page.locator('.room-code strong').innerText()).trim();
     expect(code).toMatch(/^[A-Z2-9]{6}$/);

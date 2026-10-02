@@ -59,7 +59,7 @@ vi.mock('agora-rtc-sdk-ng', () => {
 import { VoiceSession } from '../web-v2/src/features/voice/session.ts';
 
 const context = (overrides: Partial<VoiceContext> = {}): VoiceContext => ({
-  roomCode: 'ROOM01', gameId: 'game-1', canPublish: true, readOnly: false, online: true, activePage: true, deliveryWindow: null, ...overrides,
+  roomCode: 'ROOM01', scope: 'game-1', gameId: 'game-1', canPublish: true, readOnly: false, online: true, activePage: true, deliveryWindow: null, ...overrides,
 });
 
 async function connectedSession() {
@@ -102,6 +102,32 @@ describe('v2 voice session intent lifecycle（声网）', () => {
     session.setContext(context({ online: false }));
     expect(session.state()).toMatchObject({ requested: false, microphoneEnabled: false });
     expect(client.published).toHaveLength(0);
+  });
+
+  it('大厅 / 复盘（房间频道，Q-12）也能加入：token 请求不带 gameId', async () => {
+    const session = new VoiceSession();
+    session.setContext(context({ scope: 'lobby', gameId: null }));
+    await session.join();
+    expect(session.state().connection).toBe('connected');
+    const [, body] = mocks.post.mock.calls.at(-1)!;
+    expect(body).not.toHaveProperty('gameId');
+  });
+
+  it('房间频道 ↔ 对局频道：范围变化即离开旧频道，再按新范围重新加入', async () => {
+    const session = new VoiceSession();
+    session.setContext(context({ scope: 'lobby', gameId: null }));
+    await session.join();
+    const lobbyClient = mocks.clients.at(-1)!;
+    expect(session.state().connection).toBe('connected');
+
+    // 开局：切到对局频道 → 先离开大厅频道（会话回到 idle），随后的加入请求带上 gameId
+    session.setContext(context({ scope: 'game-1', gameId: 'game-1' }));
+    await vi.waitFor(() => expect(lobbyClient.leave).toHaveBeenCalled());
+    await vi.waitFor(() => expect(session.state().connection).toBe('idle'));
+    await session.join();
+    expect(mocks.clients.at(-1)).not.toBe(lobbyClient);
+    const [, body] = mocks.post.mock.calls.at(-1)!;
+    expect(body).toMatchObject({ gameId: 'game-1' });
   });
 });
 

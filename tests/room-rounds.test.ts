@@ -58,7 +58,7 @@ function account(accounts: AccountStore, username: string): User {
 
 async function createStableRoom(directory: RoomDirectory, accounts: AccountStore) {
   const host = account(accounts, 'round_host');
-  const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+  const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
   const players = [host];
   for (let index = 1; index < 13; index += 1) {
     const player = account(accounts, `round_player_${index}`);

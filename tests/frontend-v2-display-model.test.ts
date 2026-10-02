@@ -26,7 +26,7 @@ describe('v2 display preference model', () => {
   it('keeps only the allowed non-sensitive fields and strips tokens/user objects', () => {
     const parsed = parsePreferences({ motion: 'full', deathEffects: false, scale: 110, token: 'secret', user: { id: 'u1' }, room: 'room' });
     expect(parsed).toEqual({ ...defaultPreferences, motion: 'full', deathEffects: false, scale: 110 });
-    expect(Object.keys(parsed).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+    expect(Object.keys(parsed).sort()).toEqual(['attentionSound', 'autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
     expect(parsed).not.toHaveProperty('token');
     expect(parsed).not.toHaveProperty('user');
   });
@@ -52,6 +52,15 @@ describe('v2 display preference model', () => {
     expect(parsePreferences({ voiceLevels: 'yes', voiceMuted: 1 })).toMatchObject({ voiceLevels: true, voiceMuted: false });
     expect(parsePreferences({ autoMic: 'yes' })).toMatchObject({ autoMic: true });
     expect(parsePreferences({ autoMic: false })).toMatchObject({ autoMic: false });
+  });
+
+  it('默认不开启提示音，只接受布尔值（非布尔回落默认关闭）', () => {
+    expect(defaultPreferences.attentionSound).toBe(false);
+    expect(parsePreferences({})).toMatchObject({ attentionSound: false });
+    expect(parsePreferences({ attentionSound: true })).toMatchObject({ attentionSound: true });
+    expect(parsePreferences({ attentionSound: false })).toMatchObject({ attentionSound: false });
+    expect(parsePreferences({ attentionSound: 'yes' })).toMatchObject({ attentionSound: false });
+    expect(parsePreferences({ attentionSound: 1 })).toMatchObject({ attentionSound: false });
   });
 });
 

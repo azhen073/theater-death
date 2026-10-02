@@ -69,7 +69,7 @@ describe('2.1 foundation account cookie contract', () => {
     const defaultCookie = `td_account_v2=${session.token}`;
     expect((await fetch(`${base}/api/v2/auth/me`, { headers: { cookie: customCookie } })).status).toBe(200);
     expect((await fetch(`${base}/api/v2/auth/me`, { headers: { cookie: defaultCookie } })).status).toBe(401);
-    const roomResponse = await fetch(`${base}/api/v2/rooms`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: customCookie }, body: JSON.stringify({ requestId: 'foundation-create' }) });
+    const roomResponse = await fetch(`${base}/api/v2/rooms`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: customCookie }, body: JSON.stringify({ requestId: 'foundation-create', publicChat: 'alive_only', freeSpeech: false }) });
     expect(roomResponse.status).toBe(201);
     const room = await roomResponse.json() as { roomId: string; gameId: null };
 

@@ -33,3 +33,14 @@ docker compose -p td-death-fx-20260922 -f deploy/compose.frontend-acceptance.yml
 首轮新增 E2E 发现首次挂载时父级 ref 尚未附着、粒子层未找到舞台的问题；改为提交后的 effect 查询，双浏览器复验通过。另修正新测试对“记录”标签的精确名称定位（未读标记会加入可访问名称），未改变公屏实现。
 
 本轮未跑全量回归，未升级现有本地游戏镜像、未部署服务器、未合并 PR。这里只声明浏览器/容器验证，不声称已经在实体低端手机测量帧率。
+
+## 追加（2026-09-23）：死亡公告横幅的定位
+
+**问题**：`.death-notice`（「死亡公告 N号已死亡」）原来写死 `top: 88px; right: 24px`（窄屏另有一条 `top: 90px`），而 HUD 是 `position: sticky; top: 0; z-index: 5`、高度随宽度/显示缩放变成 88 / 123 / 135px 且未滚动时还带场景顶部内边距（桌面 24px、窄屏 10px）。横幅 z-index 20 > HUD 的 5，因此窄屏下必然压在 HUD 第二行（导航 / 第二屏 / 房间管理）上，桌面未滚动时也会与 HUD 相交。**逐项实测 chromium 与 webkit 坐标完全相同**，所以不是 WebKit 专有，而是写死偏移与可变 HUD 高度不匹配；Safari 桌面因字体度量略宽、HUD 更早折行而更容易撞见。
+
+**修法**：
+- `web-v2/src/features/game/scene.tsx` 在 HUD 上挂 ref，用 `ResizeObserver` + `scroll`/`resize`（rAF 节流）把 HUD 当前下沿写进根元素的自定义属性 `--hud-bottom`；场景被「房间管理」隐藏（高度 0）时保留上一次的值，卸载时移除该属性。
+- `web-v2/src/styles/preferences.css`：`.death-notice` 改为 `top: calc(var(--hud-bottom, 112px) + 8px)`，并删除窄屏那条写死的 `top: 90px`；≤680px 仍为 HUD 之下的全宽条（`left/right: 12px; max-width: none`）。
+- 回归护栏（`e2e/specs-v2/20-death-effects.spec.ts`）：横幅出现后断言其 `y` ≥ HUD 下沿、且 ≥ 工具行下沿；再滚动 300px 后重复断言（覆盖 sticky 吸附态）。
+
+**验证（容器内）**：`typecheck:web:v2` / `typecheck:web:v2-tests` exit 0；`frontend-v2-*` **21 文件 170 例**全过；E2E `20-death-effects` 双浏览器 **12/12**（chromium 1440×900 横幅 top=120 ≥ HUD 下沿 112；webkit 390×844 top=141 ≥ 133）。截图 `test-results-frontend-v2/death-fx/burst-{chromium,webkit}.png`，可见横幅整条落在 HUD 之下、四个工具按钮完全露出。

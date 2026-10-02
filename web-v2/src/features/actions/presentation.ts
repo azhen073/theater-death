@@ -2,6 +2,8 @@ import type { CommandAction, RoomSnapshot, SubmissionDTO, TaskDTO } from '../../
 import type { TrackedCommand } from './commands.ts';
 import type { ActionDraft } from './model.ts';
 import { actionIssue, currentTask, skipLabels, targetActions, taskKey } from './model.ts';
+import { electionVoteNote, electionVoteNoteText } from '../game/election-vote-notes.ts';
+import { freeSpeechNoteText } from '../game/free-speech-note.ts';
 import { actionLabels } from '../../presentation/labels.ts';
 import { targetSummary } from '../../presentation/targets.ts';
 import { ApiFailure, errorMessage } from '../../transport/http.ts';
@@ -279,10 +281,18 @@ export function deriveActionPresentation({
   // 2. Formal player with no valid current task
   const validTask = task ? currentTask(view, task) : null;
   if (!validTask) {
+    // 自由发言阶段（Q-11）：本阶段不下发任何行动任务，但唯一的动作是开麦，不能用通用文案。
+    const freeSpeechText = freeSpeechNoteText(view);
+    // 竞选投票阶段：本人被排除（候选人 / 重投平票者 / 死者 / 票权冻结）或已投票时，
+    // 用具体原因或回执替换通用文案；其余情况逐字不变。
+    const electionNote = electionVoteNote(view);
+    const electionText = electionNote === null ? null : electionVoteNoteText(electionNote);
+    // 两者互斥（分属不同的 day.step），实际不会同时命中。
+    const idleText = freeSpeechText ?? electionText;
     return {
       mode: 'idle',
-      title: '本阶段无需操作',
-      summary: '等待其他玩家或服务端推进阶段。',
+      title: idleText?.title ?? '本阶段无需操作',
+      summary: idleText?.summary ?? '等待其他玩家或服务端推进阶段。',
       serverSummary: null,
       status: 'idle',
       statusText: '无需操作',

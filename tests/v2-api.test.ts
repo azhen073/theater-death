@@ -39,7 +39,18 @@ describe('v2 HTTP core', () => {
     expect((await request(h, '/api/rooms')).status).toBe(404);
     expect((await request(h, '/api/v2/rooms', post({}))).status).toBe(401);
     expect((await request(h, '/api/v2/rooms', post({ nickname: 'missing-request-id' }), h.users[0])).status).toBe(400);
+    // 公屏档位必须显式选择：缺失或非法都拒绝，没有默认值
+    expect((await request(h, '/api/v2/rooms', post({ requestId: 'no-public-chat' }), h.users[0])).status).toBe(400);
+    const invalidChat = await request(h, '/api/v2/rooms', post({ requestId: 'bad-public-chat', publicChat: 'everyone_all_phases' }), h.users[0]);
+    expect(invalidChat.status).toBe(400);
+    expect((await json(invalidChat)).error).toMatchObject({ code: 'invalid_public_chat' });
     const room = await fillRoom(h);
+    const createdView = await json(await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[0]));
+    expect(createdView.room).toMatchObject({ publicChat: 'alive_only', freeSpeech: false });
+    const everyone = await createRoom(h, h.users[19]!, 'create-everyone', 'everyone');
+    expect(everyone.response.status).toBe(201);
+    const everyoneView = await json(await request(h, `/api/v2/rooms/${everyone.body.roomCode}/view`, {}, h.users[19]));
+    expect(everyoneView.room).toMatchObject({ publicChat: 'everyone' });
     const spectator = await enter(h, room.roomCode, h.users[13]!, 'spectator-enter');
     expect(spectator.response.status).toBe(200);
     expect(spectator.body).toMatchObject({ kind: 'public_spectator', playerId: null });
@@ -100,5 +111,24 @@ describe('v2 HTTP core', () => {
     expect(h.app.directory.byId.get(room.roomId)?.participants.has(h.users[0]!.userId)).toBe(true);
     const stale = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'stale', gameId: started.gameId, action: 'END_SPEECH', windowInstanceId: 'none' }), h.users[0]);
     expect(stale.status).toBe(403);
+  });
+
+  it('requires an explicit daytime free-speech choice and freezes it into the ruleset', async () => {
+    const h = await makeHarness();
+    // 缺失或非布尔值都拒绝（没有默认值）
+    expect((await request(h, '/api/v2/rooms', post({ requestId: 'no-free-speech', publicChat: 'alive_only' }), h.users[0])).status).toBe(400);
+    const invalid = await request(h, '/api/v2/rooms', post({ requestId: 'bad-free-speech', publicChat: 'alive_only', freeSpeech: 'yes' }), h.users[0]);
+    expect(invalid.status).toBe(400);
+    expect((await json(invalid)).error).toMatchObject({ code: 'invalid_free_speech' });
+    const off = await createRoom(h, h.users[1]!, 'free-speech-off');
+    expect(off.response.status).toBe(201);
+    const offView = await json(await request(h, `/api/v2/rooms/${off.body.roomCode}/view`, {}, h.users[1]));
+    expect(offView.room).toMatchObject({ freeSpeech: false });
+    expect(offView.room.config.timersSeconds.freeSpeech).toBeUndefined();
+    const on = await createRoom(h, h.users[2]!, 'free-speech-on', 'alive_only', true);
+    expect(on.response.status).toBe(201);
+    const onView = await json(await request(h, `/api/v2/rooms/${on.body.roomCode}/view`, {}, h.users[2]));
+    expect(onView.room).toMatchObject({ freeSpeech: true });
+    expect(onView.room.config.timersSeconds.freeSpeech).toBe(120);
   });
 });

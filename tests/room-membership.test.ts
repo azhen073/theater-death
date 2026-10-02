@@ -44,14 +44,14 @@ describe('v2 room membership policy', () => {
   it('serializes concurrent create/enter so one account has only one current room', async () => {
     const { accounts, directory } = setup();
     const user = account(accounts, 'race_user');
-    const created = await Promise.allSettled([directory.create(user.session, THEATER_DEATH_13_V2), directory.create(user.session, THEATER_DEATH_13_V2)]);
+    const created = await Promise.allSettled([directory.create(user.session, THEATER_DEATH_13_V2, 'alive_only'), directory.create(user.session, THEATER_DEATH_13_V2, 'alive_only')]);
     expect(created.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
     expect(created.filter((result) => result.status === 'rejected')).toHaveLength(1);
     expect(directory.byId.size).toBe(1);
 
     const roomA = created.find((result): result is PromiseFulfilledResult<StableRoom> => result.status === 'fulfilled')!.value;
     const other = account(accounts, 'other_host');
-    const roomB = await directory.create(other.session, THEATER_DEATH_13_V2);
+    const roomB = await directory.create(other.session, THEATER_DEATH_13_V2, 'alive_only');
     expect(directory.current.get(user.userId)).toBe(roomA.roomId);
     const entrant = account(accounts, 'enter_race');
     const entered = await Promise.allSettled([directory.enter(roomA, entrant.session), directory.enter(roomB, entrant.session)]);
@@ -63,7 +63,7 @@ describe('v2 room membership policy', () => {
   it('fills formal lobby seats, puts overflow in spectator membership, and makes repeated enter idempotent', async () => {
     const { accounts, directory } = setup();
     const host = account(accounts, 'lobby_host');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     await fillLobby(directory, accounts, room, 'lobby_player');
     expect(room.formalMembers()).toHaveLength(13);
     const overflow = account(accounts, 'overflow');
@@ -77,7 +77,7 @@ describe('v2 room membership policy', () => {
   it('preserves spectator identity on failed promotion and promotes into a freed lobby seat unready', async () => {
     const { accounts, directory } = setup();
     const host = account(accounts, 'promote_host');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     const users = await fillLobby(directory, accounts, room, 'promote_player');
     const spectator = account(accounts, 'promote_spectator');
     const member = await directory.enter(room, spectator.session);
@@ -96,7 +96,7 @@ describe('v2 room membership policy', () => {
   it('returns a departed player to the same participant seat while a newcomer remains only a spectator', async () => {
     const { accounts, directory } = setup();
     const host = account(accounts, 'match_host');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     const players = await fillLobby(directory, accounts, room, 'match_player');
     room.startMatch();
     const newcomer = account(accounts, 'new_spectator');
@@ -116,7 +116,7 @@ describe('v2 room membership policy', () => {
   it('requires explicit takeover for a second active session and invalidates the old lease', async () => {
     const { accounts, directory, controls } = setup();
     const user = account(accounts, 'takeover_user');
-    const room = await directory.create(user.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(user.session, THEATER_DEATH_13_V2, 'alive_only');
     const second = accounts.createSession(user.userId).session;
     await expect(directory.enter(room, second)).rejects.toMatchObject({ code: 'takeover_required' });
     const taken = await directory.enter(room, second, true);

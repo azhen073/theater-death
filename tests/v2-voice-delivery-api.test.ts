@@ -35,7 +35,7 @@ const EXPERIMENTAL_ROLES = {
 };
 
 async function startFivePlayerGame(h: HttpHarness): Promise<{ roomCode: string; gameId: string }> {
-  const created = await request(h, '/api/v2/rooms', post({ requestId: 'delivery-create', playerCount: 5, roles: EXPERIMENTAL_ROLES }), h.users[0]);
+  const created = await request(h, '/api/v2/rooms', post({ requestId: 'delivery-create', publicChat: 'alive_only', freeSpeech: false, playerCount: 5, roles: EXPERIMENTAL_ROLES }), h.users[0]);
   expect(created.status).toBe(201);
   const room = await json(created) as { roomCode: string };
   for (let index = 1; index < 5; index += 1) {

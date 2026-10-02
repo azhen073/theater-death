@@ -4,7 +4,7 @@ import { closeHarnesses, enter, json, makeHarness, post, request, waitFor, type 
 afterEach(closeHarnesses);
 
 async function startRoom(h: HttpHarness) {
-  const created = await request(h, '/api/v2/rooms', post({ requestId: 'receipt-create' }), h.users[0]);
+  const created = await request(h, '/api/v2/rooms', post({ requestId: 'receipt-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
   expect(created.status).toBe(201);
   const room = await created.json() as { roomId: string; roomCode: string };
   for (let index = 1; index < 13; index += 1) {
