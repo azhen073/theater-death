@@ -8,7 +8,7 @@
  * 组件 `components/badge-strip.tsx` 只认识「色调 + 文案」，不关心业务来源。
  */
 import type { Faction } from './faction.ts';
-export type BadgeTone = 'identity' | 'sheriff' | 'spirit';
+export type BadgeTone = 'identity' | 'sheriff' | 'spirit' | 'checked-not-spirit' | 'checked-human' | 'checked-death';
 
 export interface BadgeToneSpec {
   /** 默认文案（业务可覆盖）。 */
@@ -20,6 +20,10 @@ export const BADGE_TONES: Record<BadgeTone, BadgeToneSpec> = {
   identity: { label: '身份' },
   sheriff: { label: '天理' },
   spirit: { label: '魂灵' },
+  // 降临者查验结果（R-24）：一阶段问「是否魂灵」，二阶段问「是否死神阵营」；一个座位只显示最近一次。
+  'checked-not-spirit': { label: '非魂灵' },
+  'checked-human': { label: '人类阵营' },
+  'checked-death': { label: '死神阵营' },
 };
 
 export interface BadgeItem {

@@ -71,18 +71,43 @@
 | --- | --- | --- |
 | 模型 / 注册表 | `web-v2/src/presentation/badges.ts` | `BadgeTone` 联合类型、`BADGE_TONES`（色调 → 默认文案）、`badge(tone, overrides)`、`isSplitStrip`、`badgeStripLabel`。纯函数、无 React、可单测 |
 | 组件 | `web-v2/src/components/badge-strip.tsx` | `BadgeStrip({ items, size = 'sm', className?, ariaLabel? })`。只认识「色调 + 文案」，不关心业务来源；`items` 为空时不渲染 |
-| 业务派生 | `web-v2/src/features/game/seat-badges.ts` | `seatBadges(view, seat, catalog?)`——身份（本人）+ 天理（公开 `public.sheriff.holderId`）+ 魂灵（私有 `private.knowledge.spiritSeats`），**顺序固定 身份 → 天理 → 魂灵** |
+| 业务派生 | `web-v2/src/features/game/seat-badges.ts` | `seatBadges(view, seat, catalog?)`——身份（本人）+ 天理（公开 `public.sheriff.holderId`）+ 魂灵（私有 `private.knowledge.spiritSeats`）+ 查验结果（私有 `private.events`，见 `seat-check-marks.ts`），**顺序固定 身份 → 天理 → 魂灵 → 查验结果** |
+| 业务派生（查验） | `web-v2/src/features/game/seat-check-marks.ts` | `checkMarks(view)`——降临者查验事件 → `座位 → 徽标`，**一个座位只保留最近一次** |
 | 样式 | `web-v2/src/styles/main.css` | `.badge-strip` / `.badge-strip__item` / `.badge-strip__item--{tone}`（底色）/ `.badge-strip--split` |
 
-**三种色调**
+**六种色调**
 
 | 色调 | 文案来源 | 可见范围 | 底色 |
 | --- | --- | --- | --- |
 | `identity` 身份 | `private.self.roleId` → `catalog.roles[].name` | **只在本人座位**；第二屏（只读绑定视角）同样显示（座位号行标「视角」）；公开观众无私有视图 → 不显示 | **按阵营**：人类 `--faction-human #3d6b9c`（白字 5.6）/ 死神阵营 `--faction-death #8f3b48`（白字 7.3） |
 | `sheriff` 天理 | 固定「天理」 | 公开信息，所有视角 | `#81704c`（白字 4.8） |
 | `spirit` 魂灵 | 固定「魂灵」 | 私有知识：死神 / 丧亲者看全部魂灵，魂灵只看同伴（服务端已排除自己） | `#6b4c78`（白字 7.2） |
+| `checked-not-spirit` 非魂灵 | 固定「非魂灵」 | 私有知识：降临者一阶段查验返回「不是魂灵」的目标（只发给查验者本人） | `#66717f`（白字 4.96） |
+| `checked-human` 人类阵营 | 固定「人类阵营」 | 私有知识：降临者二阶段查验返回「不属于死神阵营」的目标 | `--faction-human #3d6b9c`（与身份徽标的人类阵营同源） |
+| `checked-death` 死神阵营 | 固定「死神阵营」 | 私有知识：降临者二阶段查验返回「属于死神阵营」的目标 | `--faction-death #8f3b48`（与身份徽标的死神阵营同源） |
 
 > 身份徽标的名称查不到（catalog 缺该项或不传 catalog）时**不显示**，不露出 `roleId` 原文——与「公开翻牌」同口径。
+
+### 4.1 降临者查验徽标（2026-10-03 用户裁定）
+
+- **口径**（R-24）：一阶段问「是否魂灵」→ 魂灵 / 非魂灵；二阶段问「是否属于死神阵营」→ 死神阵营 / 人类阵营。
+  颜色按用户裁定：魂灵沿用现有魂灵紫、死神阵营沿用 `--faction-death`、人类阵营用身份徽标的人类阵营色 `--faction-human`、非魂灵用灰。
+- **数据来源＝纯前端派生**：`presentation`/`features` 只读 `private.events` 里的 `descender_check_result`
+  （`engine/night.ts` 的 `resolveDescenderCheck` 本就只把该事件发给查验者本人，服务端已完成裁剪），
+  因此**不改契约 / 服务端 / 引擎**，也不新增 `private.knowledge` 字段；公开观众 `private === null` → 不显示，
+  第二屏（读绑定玩家的私有视图）与身份徽标同口径可见。
+- **一个座位只显示一枚**：取最近一次查验结果（先比 `nightNumber`，同夜按事件顺序取后者，用户裁定）。
+- **本人座位抑制身份徽标**（用户裁定）：降临者（也就是唯一会拿到查验结果的人）查验过自己座位时，
+  号码行不再渲染身份徽标——实测网格布局座位卡内容宽仅 96.95px（1440）/ 94.66px（390），
+  「3 字身份 + 天理 + 4 字查验」必然折行；抑制后该座位只显示「天理 + 查验」。
+- **字号**：4 字文案（人类阵营 / 死神阵营）用 **7px**（用户允许「适当缩小字号」）。等分底框按最宽一格定宽，
+  8px 时「天理 + 4 字」行宽 97px > 96.95px（1440）与 94.66px（390）会折行；7px 后行宽 89px，四档视口均单排、
+  卡片高度不变（95→123 由环形/网格布局决定，徽标不再改变高度）。2 字 / 3 字查验徽标沿用 8px。
+- **验证（2026-10-03，容器内）**：单测 `tests/frontend-v2-check-marks.test.ts` **8 例** +
+  `tests/frontend-v2-badges.test.ts` 补 4 例（合计 **32/32 通过**）；E2E `specs-v2/34-check-marks.spec.ts`
+  chromium + webkit **8/8 通过**（四类文案与底色、同座位取最近一次、未查验座位无徽标、本人座位抑制身份徽标、
+  公开观众无私有徽标、四档视口单排 / 卡片不变高 / 无横向溢出；截图 `check-marks-{chromium,webkit}.png`）；
+  `typecheck:web:v2`、`typecheck:web:v2-tests`、`build:web:v2` 退出码 0。未跑全量 Vitest / 全量 v2 E2E / v1 E2E。
 
 **阵营统一配色**（`presentation/faction.ts` + `main.css` 的 `--faction-human` / `--faction-death`）：座位身份徽标、`我的身份` 弹窗、开局身份卡、复盘「全部身份」行里的阵营标签**共用同一对变量**（`.faction-tag--human|death` 与 `.badge-strip__item--faction-human|death`），因此同一身份在任何位置颜色一致；未知阵营不渲染标签、不猜。
 

@@ -183,3 +183,65 @@ describe('阵营配色口径（统一来源）', () => {
     expect(catalog.roles.filter(role => role.faction === 'death_faction').map(role => role.roleId).sort()).toEqual(['death', 'mourner', 'spirit']);
   });
 });
+
+describe('降临者查验徽标（私有知识，一个座位一枚）', () => {
+  function descenderView(): RoomSnapshot {
+    const next = fixture<RoomSnapshot>('night-spirit-full.json');
+    next.private!.self = { ...next.private!.self, roleId: 'descender' };
+    next.private!.knowledge = { spiritSeats: [] };
+    next.private!.events = [];
+    next.public!.sheriff = { enabled: true, holderId: null };
+    return next;
+  }
+
+  function record(view: RoomSnapshot, night: number, seatNumber: number, kind: 'is_spirit' | 'in_death_faction', answer: boolean): void {
+    const target = view.public!.seats.find(item => item.seat === seatNumber)!;
+    view.private!.events = [...view.private!.events, {
+      cursor: view.private!.events.length + 1,
+      type: 'descender_check_result',
+      dayNumber: night,
+      stage: kind === 'is_spirit' ? 1 : 2,
+      payload: { nightNumber: night, targetPlayerId: target.playerId, targetSeat: seatNumber, kind, answer },
+    }];
+  }
+
+  it('查验结果作为最后一位接在 天理 / 魂灵 之后，顺序固定', () => {
+    const v = descenderView();
+    record(v, 3, peerSeat, 'in_death_faction', true);
+    v.public!.sheriff = { enabled: true, holderId: seatId(v, peerSeat) };
+    expect(seatBadges(v, seat(v, peerSeat), catalog).map(item => item.tone)).toEqual(['sheriff', 'checked-death']);
+    expect(badgeStripLabel(seatBadges(v, seat(v, peerSeat), catalog))).toBe('天理、死神阵营');
+    expect(isSplitStrip(seatBadges(v, seat(v, peerSeat), catalog))).toBe(true);
+  });
+
+  it('四类查验结论映射到对应色调与文案', () => {
+    const v = descenderView();
+    record(v, 1, 2, 'is_spirit', true);
+    record(v, 1, 3, 'is_spirit', false);
+    record(v, 2, 4, 'in_death_faction', true);
+    record(v, 2, 5, 'in_death_faction', false);
+    const read = (seatNumber: number) => seatBadges(v, seat(v, seatNumber), catalog).at(-1);
+    expect(read(2)).toMatchObject({ tone: 'spirit', label: '魂灵' });
+    expect(read(3)).toMatchObject({ tone: 'checked-not-spirit', label: '非魂灵' });
+    expect(read(4)).toMatchObject({ tone: 'checked-death', label: '死神阵营' });
+    expect(read(5)).toMatchObject({ tone: 'checked-human', label: '人类阵营' });
+  });
+
+  it('降临者查验过自己座位时抑制身份徽标（避免号码行折行）', () => {
+    const v = descenderView();
+    expect(seatBadges(v, seat(v, selfSeat), catalog).map(item => item.tone)).toEqual(['identity']);
+    record(v, 1, selfSeat, 'is_spirit', false);
+    expect(seatBadges(v, seat(v, selfSeat), catalog).map(item => item.tone)).toEqual(['checked-not-spirit']);
+    v.public!.sheriff = { enabled: true, holderId: seatId(v, selfSeat) };
+    expect(seatBadges(v, seat(v, selfSeat), catalog).map(item => item.tone)).toEqual(['sheriff', 'checked-not-spirit']);
+  });
+
+  it('其它座位不受影响；观众没有私有视图时不显示', () => {
+    const v = descenderView();
+    record(v, 1, peerSeat, 'is_spirit', true);
+    const spectator = structuredClone(v);
+    spectator.private = null;
+    spectator.viewer = { ...spectator.viewer, kind: 'public_spectator', readOnly: true };
+    expect(seatBadges(spectator, seat(spectator, peerSeat), catalog)).toEqual([]);
+  });
+});
