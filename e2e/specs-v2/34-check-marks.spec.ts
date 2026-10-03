@@ -82,7 +82,7 @@ test('一阶段查验：魂灵 / 非魂灵（含颜色），一个座位只留�
   await expect(seatStrip(page, PLAIN_SEAT)).toHaveCount(0);
 });
 
-test('二阶段查验：人类阵营 / 死神阵营，颜色与身份徽标阵营色同源', async ({ page }) => {
+test('二阶段查验：人类阵营（身份徽标同源蓝）/ 死神阵营（魂灵紫）', async ({ page }) => {
   await mount(page, descenderFixture([
     { night: 4, seat: 6, kind: 'in_death_faction', answer: false },
     { night: 4, seat: 7, kind: 'in_death_faction', answer: true },
@@ -96,7 +96,7 @@ test('二阶段查验：人类阵营 / 死神阵营，颜色与身份徽标阵�
   const death = await stripFacts(page, 7);
   expect(death.labels).toEqual(['死神阵营']);
   expect(death.tones).toEqual(['checked-death']);
-  expect(death.backgrounds).toEqual(['rgb(143, 59, 72)']); // --faction-death
+  expect(death.backgrounds).toEqual(['rgb(107, 76, 120)']); // 与魂灵同一支紫
 });
 
 test('本人座位：查验过自己时抑制身份徽标；天理 + 查验共存；观众视角无徽标', async ({ page }) => {
