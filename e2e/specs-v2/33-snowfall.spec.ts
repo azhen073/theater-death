@@ -133,7 +133,8 @@ test('页面隐藏即卸载，返回后回来；离场与复盘都不出现；�
   await mount(page, night);
   await expect(page.locator('.snowfall')).toHaveClass(/snowfall--night/);
   await expect(page.locator('.night-atmosphere')).toBeVisible();
-  await page.screenshot({ path: `/results/snowfall-night-${testInfo.project.name}.png` });
+  // AGENTS.md「测试策略」：汇报用截图必须是整页（fullPage），不要只截视口或元素局部。
+  await page.screenshot({ path: `/results/snowfall-night-${testInfo.project.name}.png`, fullPage: true });
 
   await setDocumentVisibility(page, 'hidden');
   await expect(page.locator('.snowfall')).toHaveCount(0);
@@ -161,5 +162,5 @@ test('二阶段飘雪在四档宽度不产生横向溢出，座位与行动卡�
     await expect(stage.locator('.seat-main').first()).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
-  await page.screenshot({ path: `/results/snowfall-${testInfo.project.name}.png` });
+  await page.screenshot({ path: `/results/snowfall-${testInfo.project.name}.png`, fullPage: true });
 });
