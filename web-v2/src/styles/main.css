@@ -233,9 +233,10 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .seat-main { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 5px; border: 1px solid #bac7d8; border-radius: 8px; background: #f8fafde8; color: var(--ink); min-height: 116px; box-shadow: 0 3px 9px #28446609; }
 .seat-main:disabled { cursor: default; opacity: 1; }
 /* 座位号行：徽标条恒定与号码同排（不再按数量换行）。
-   8px 徽标 + 2px 3px 内边距后，最紧的「3 字身份 + 天理」行宽 76px / 可用 97px（webkit 94.7px），
-   两引擎余量 ≥18px；`flex-wrap: wrap` 仅作更窄视口/缩放的兜底，正常不触发。 */
-.seat-number { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; align-items: center; font-size: 12px; font-family: ui-monospace,monospace; color: #60718d; }
+   徽标统一 7px / 35px×12px（见下面的统一尺寸说明）后，最紧的「两枚徽标」行宽 86px / 可用 96.95px（1440）、
+   94.66px（390），两引擎余量 10.95 / 8.66px；`gap` 由 7px 收到 4px 就是为了给统一后的宽盒宽让出余量。
+   `flex-wrap: wrap` 仅作更窄视口/缩放的兜底，正常不触发。 */
+.seat-number { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; align-items: center; font-size: 12px; font-family: ui-monospace,monospace; color: #60718d; }
 .seat-number small { font-family: inherit; font-size: 9px; }
 .seat-main > strong { width: 100%; display: block; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: 10px; font-weight: 500; line-height: 1.5; }
 .seat-status { font-size: 9px; color: var(--muted); min-height: 14px; }
@@ -247,9 +248,12 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 /* 通用徽标条（components/badge-strip.tsx）：单徽标＝一个圆角底色块；多徽标＝共用一个底色框、按色调等分。
    新增色调只需在这里加一条 `.badge-strip__item--{tone}` 底色 + 在 presentation/badges.ts 注册文案。 */
 .badge-strip { display: inline-flex; align-items: stretch; overflow: hidden; border-radius: 4px; font-family: var(--font-ui); font-weight: 600; line-height: 1; }
-.badge-strip--sm { font-size: 8px; }
+/* 座位徽标统一尺寸（用户裁定 2026-10-04）：2 / 3 / 4 字一律 7px 字号、35×12px 盒。
+   35px 按最宽的 4 字文案（人类阵营 / 死神阵营）定宽，`min-height: 12px` 让 4 字那枚不再矮 1px；
+   2 字徽标因此左右留白更宽，但所有徽标同宽同高、等分底色框每格严格等宽。 */
+.badge-strip--sm { font-size: 7px; }
 .badge-strip--md { font-size: 12px; }
-.badge-strip__item { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; padding: 2px 3px; color: #fff; white-space: nowrap; }
+.badge-strip__item { display: inline-flex; align-items: center; justify-content: center; min-width: 35px; min-height: 12px; padding: 2px 3px; color: #fff; white-space: nowrap; }
 /* 多徽标共用一个底色框：用 grid 的 1fr 等分（flex + 边框会差 1px），半块之间的白线画在格子内侧 */
 .badge-strip--split { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
 .badge-strip--split .badge-strip__item + .badge-strip__item { border-left: 1px solid #ffffff8c; }
@@ -259,12 +263,10 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 /* 降临者查验结果（私有知识，一个座位只显示最近一次）：
    一阶段问「是否魂灵」→ 魂灵 / 非魂灵；二阶段问「是否属于死神阵营」→ 死神阵营 / 人类阵营。
    底色（用户裁定 2026-10-04）：魂灵与死神阵营统一取死神阵营色 var(--faction-death #8f3b48)，
-   人类阵营与身份徽标同源 var(--faction-human)，非魂灵用灰 #66717f（白字对比度 4.96）。 */
-/* 4 字文案（人类阵营 / 死神阵营）用 7px：等分底框按最宽一格定宽，8px 时「天理 + 4 字」行宽 97px，
-   而网格布局座位卡内容宽只有 96.95px（1440）／94.66px（390）——实测会折行；7px 后行宽 ≈87px，留余量。
-   2 字/3 字查验徽标（魂灵 / 非魂灵）沿用 8px，不受影响。 */
-.badge-strip__item--checked-human { background: var(--faction-human); font-size: 7px; }
-.badge-strip__item--checked-death { background: var(--faction-death); font-size: 7px; }
+   人类阵营与身份徽标同源 var(--faction-human)，非魂灵用灰 #66717f（白字对比度 4.96）。
+   字号不再按文案长度区分：2026-10-04 起 2/3/4 字一律 7px（见上面的统一尺寸说明）。 */
+.badge-strip__item--checked-human { background: var(--faction-human); }
+.badge-strip__item--checked-death { background: var(--faction-death); }
 .badge-strip__item--checked-not-spirit { background: #66717f; }
 /* 阵营配色（统一口径）：身份徽标按阵营改底色；文字标签（身份弹窗 / 开局身份卡 / 复盘）用同一对变量 */
 .badge-strip__item--faction-human { background: var(--faction-human); }

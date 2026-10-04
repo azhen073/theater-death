@@ -52,6 +52,11 @@ async function stripFacts(page: Page, seatNumber: number) {
     labels: Array.from(element.querySelectorAll('.badge-strip__item')).map(item => item.textContent ?? ''),
     tones: Array.from(element.querySelectorAll('.badge-strip__item')).map(item => item.getAttribute('data-badge') ?? ''),
     backgrounds: Array.from(element.querySelectorAll('.badge-strip__item')).map(item => getComputedStyle(item).backgroundColor),
+    // 统一尺寸（用户裁定 2026-10-04）：2/3/4 字一律 35 × 12px
+    sizes: Array.from(element.querySelectorAll('.badge-strip__item')).map(item => {
+      const box = item.getBoundingClientRect();
+      return { width: Math.round(box.width), height: Math.round(box.height) };
+    }),
     ariaLabel: element.getAttribute('aria-label'),
   }));
 }
@@ -68,6 +73,7 @@ test('一阶段查验：魂灵 / 非魂灵（含颜色），一个座位只留�
   expect(spirit.labels).toEqual(['魂灵']);
   expect(spirit.tones).toEqual(['spirit']);
   expect(spirit.backgrounds).toEqual(['rgb(143, 59, 72)']); // 死神阵营色 --faction-death #8f3b48（用户裁定 2026-10-04）
+  expect(spirit.sizes).toEqual([{ width: 35, height: 12 }]); // 2 字「魂灵」与 4 字同盒
   expect(spirit.ariaLabel).toBe('魂灵');
 
   const notSpirit = await stripFacts(page, 3);
@@ -92,11 +98,13 @@ test('二阶段查验：人类阵营（身份徽标同源蓝）/ 死神阵营（
   expect(human.labels).toEqual(['人类阵营']);
   expect(human.tones).toEqual(['checked-human']);
   expect(human.backgrounds).toEqual(['rgb(61, 107, 156)']); // --faction-human
+  expect(human.sizes).toEqual([{ width: 35, height: 12 }]);
 
   const death = await stripFacts(page, 7);
   expect(death.labels).toEqual(['死神阵营']);
   expect(death.tones).toEqual(['checked-death']);
   expect(death.backgrounds).toEqual(['rgb(143, 59, 72)']); // 与魂灵统一取死神阵营色 --faction-death
+  expect(death.sizes).toEqual([{ width: 35, height: 12 }]);
 });
 
 test('本人座位：查验过自己时抑制身份徽标；天理 + 查验共存；观众视角无徽标', async ({ page }) => {

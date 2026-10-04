@@ -257,12 +257,17 @@ test('座位徽标：天理与魂灵共用一个底色框、左半天理右半�
   expect(Math.abs(halves.leftW - halves.rightW)).toBeLessThan(1);
   expect(halves.leftH).toBeGreaterThan(8);
   expect(halves.rightH).toBeGreaterThan(8);
-  // 两枚 2 字徽标（天理 + 魂灵）与号码同排：卡片不加高、不换行、不裁字，且 8px 字号生效
+  // 两枚 2 字徽标（天理 + 魂灵）与号码同排：卡片不加高、不换行、不裁字；徽标统一 7px / 35×12px
   const cardHeight = await page.locator(`[data-player-id="${peerId}"] .seat-main`).evaluate(node => node.getBoundingClientRect().height);
   const plainHeight = await page.locator(`[data-player-id="${plainId}"] .seat-main`).evaluate(node => node.getBoundingClientRect().height);
   expect(Math.abs(cardHeight - plainHeight)).toBeLessThan(1);
   expect(await page.locator(`[data-player-id="${peerId}"] .seat-number`).evaluate(node => getComputedStyle(node).flexDirection)).toBe('row');
-  await expect(strip.locator('[data-badge="sheriff"]')).toHaveCSS('font-size', '8px');
+  await expect(strip.locator('[data-badge="sheriff"]')).toHaveCSS('font-size', '7px');
+  // 统一尺寸（用户裁定 2026-10-04）：2 字徽标与 4 字徽标同宽同高，等分框每格 35 × 12px
+  expect(await strip.evaluate(node => Array.from(node.children).map(child => {
+    const box = child.getBoundingClientRect();
+    return { width: Math.round(box.width), height: Math.round(box.height) };
+  }))).toEqual([{ width: 35, height: 12 }, { width: 35, height: 12 }]);
   // 行宽仍有余量（不贴边，因此不会触发 flex-wrap 兜底）
   const room = await strip.evaluate(node => {
     const card = node.closest('.seat-main') as HTMLElement;
@@ -270,7 +275,8 @@ test('座位徽标：天理与魂灵共用一个底色框、左半天理右半�
     const available = card.getBoundingClientRect().width - parseFloat(style.paddingLeft) * 2 - parseFloat(style.borderLeftWidth) * 2;
     return available - (node.parentElement as HTMLElement).getBoundingClientRect().width;
   });
-  expect(room).toBeGreaterThan(8);
+  // 余量阈值随统一盒宽重设：实测两引擎 10.95px（1440）/ 8.66px（390），取 6px 作为「不贴边」闸门
+  expect(room).toBeGreaterThan(6);
   const inside = await strip.evaluate(node => {
     const card = node.closest('.seat-main')!.getBoundingClientRect();
     const box = node.getBoundingClientRect();
@@ -444,7 +450,7 @@ test('多个徽标同时存在：身份+天理 一个底色框等分，且不与
   await page.screenshot({ path: '/results/seat-badges-multi-390-' + test.info().project.name + '.png', fullPage: true });
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  // 3 字身份（门先生）+ 天理：8px 徽标下也能与号码同排（不换行、卡片不加高、行内仍有 ≥12px 余量）
+  // 3 字身份（门先生）+ 天理：统一盒宽下仍与号码同排（不换行、卡片不加高、行内仍有 ≥6px 余量）
   const longRole = loadGameFixture('night-spirit-full.json');
   longRole.view.private!.self.roleId = 'door';
   // 视角身份换成门先生后必须同步清掉魂灵夹具的 `spiritSeats`：门先生没有魂灵知识，
@@ -465,7 +471,12 @@ test('多个徽标同时存在：身份+天理 一个底色框等分，且不与
     const available = card.getBoundingClientRect().width - parseFloat(style.paddingLeft) * 2 - parseFloat(style.borderLeftWidth) * 2;
     return available - (node.parentElement as HTMLElement).getBoundingClientRect().width;
   });
-  expect(longRoom).toBeGreaterThan(12);
+  expect(longRoom).toBeGreaterThan(6);
+  // 3 字身份徽标与 2 字天理同样统一为 35 × 12px
+  expect(await longStrip.evaluate(node => Array.from(node.children).map(child => {
+    const box = child.getBoundingClientRect();
+    return { width: Math.round(box.width), height: Math.round(box.height) };
+  }))).toEqual([{ width: 35, height: 12 }, { width: 35, height: 12 }]);
   // 徽标条完整落在卡片内、文字不被裁切、卡片与无徽标座位同高
   expect(await longStrip.evaluate(node => {
     const card = node.closest('.seat-main')!.getBoundingClientRect();
