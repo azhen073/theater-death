@@ -255,17 +255,16 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .badge-strip--split .badge-strip__item + .badge-strip__item { border-left: 1px solid #ffffff8c; }
 .badge-strip__item--identity { background: #455974; }
 .badge-strip__item--sheriff { background: #81704c; }
-.badge-strip__item--spirit { background: #6b4c78; }
+.badge-strip__item--spirit { background: var(--faction-death); }
 /* 降临者查验结果（私有知识，一个座位只显示最近一次）：
-   魂灵复用上面的 spirit 紫；非魂灵用灰 #66717f（白字对比度 4.96）；
-   二阶段阵营色与身份徽标同源（人类阵营 = --faction-human、死神阵营 = --faction-death）。 */
+   一阶段问「是否魂灵」→ 魂灵 / 非魂灵；二阶段问「是否属于死神阵营」→ 死神阵营 / 人类阵营。
+   底色（用户裁定 2026-10-04）：魂灵与死神阵营统一取死神阵营色 var(--faction-death #8f3b48)，
+   人类阵营与身份徽标同源 var(--faction-human)，非魂灵用灰 #66717f（白字对比度 4.96）。 */
 /* 4 字文案（人类阵营 / 死神阵营）用 7px：等分底框按最宽一格定宽，8px 时「天理 + 4 字」行宽 97px，
    而网格布局座位卡内容宽只有 96.95px（1440）／94.66px（390）——实测会折行；7px 后行宽 ≈87px，留余量。
-   2 字/3 字查验徽标（魂灵 / 非魂灵）沿用 8px，不受影响。
-   死神阵营与魂灵同用魂灵紫（用户裁定 2026-10-03「死神阵营徽标底色统一为魂灵紫」）——
-   仅指这枚查验徽标；身份徽标仍按阵营取 --faction-death。 */
+   2 字/3 字查验徽标（魂灵 / 非魂灵）沿用 8px，不受影响。 */
 .badge-strip__item--checked-human { background: var(--faction-human); font-size: 7px; }
-.badge-strip__item--checked-death { background: #6b4c78; font-size: 7px; }
+.badge-strip__item--checked-death { background: var(--faction-death); font-size: 7px; }
 .badge-strip__item--checked-not-spirit { background: #66717f; }
 /* 阵营配色（统一口径）：身份徽标按阵营改底色；文字标签（身份弹窗 / 开局身份卡 / 复盘）用同一对变量 */
 .badge-strip__item--faction-human { background: var(--faction-human); }
