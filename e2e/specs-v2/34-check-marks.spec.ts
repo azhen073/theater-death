@@ -147,5 +147,6 @@ test('排版：四档视口下查验徽标保持单排、卡片不变高、无�
     expect(facts.checked.filter(item => item!.cardHeight !== facts.plain.cardHeight)).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
-  await page.screenshot({ path: `/results/check-marks-${testInfo.project.name}.png` });
+  // AGENTS.md「测试策略」：汇报用截图必须是整页（fullPage），不要只截视口或元素局部。
+  await page.screenshot({ path: `/results/check-marks-${testInfo.project.name}.png`, fullPage: true });
 });
