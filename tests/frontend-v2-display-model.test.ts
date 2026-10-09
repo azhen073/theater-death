@@ -26,7 +26,7 @@ describe('v2 display preference model', () => {
   it('keeps only the allowed non-sensitive fields and strips tokens/user objects', () => {
     const parsed = parsePreferences({ motion: 'full', deathEffects: false, scale: 110, token: 'secret', user: { id: 'u1' }, room: 'room' });
     expect(parsed).toEqual({ ...defaultPreferences, motion: 'full', deathEffects: false, scale: 110 });
-    expect(Object.keys(parsed).sort()).toEqual(['attentionSound', 'autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+    expect(Object.keys(parsed).sort()).toEqual(['attentionSound', 'autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'theme', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
     expect(parsed).not.toHaveProperty('token');
     expect(parsed).not.toHaveProperty('user');
   });
@@ -61,6 +61,17 @@ describe('v2 display preference model', () => {
     expect(parsePreferences({ attentionSound: false })).toMatchObject({ attentionSound: false });
     expect(parsePreferences({ attentionSound: 'yes' })).toMatchObject({ attentionSound: false });
     expect(parsePreferences({ attentionSound: 1 })).toMatchObject({ attentionSound: false });
+  });
+
+  it('界面主题默认跟随系统，只接受 light/dark，旧存档缺字段回落 system', () => {
+    expect(defaultPreferences.theme).toBe('system');
+    expect(parsePreferences({})).toMatchObject({ theme: 'system' });
+    expect(parsePreferences({ theme: 'light' })).toMatchObject({ theme: 'light' });
+    expect(parsePreferences({ theme: 'dark' })).toMatchObject({ theme: 'dark' });
+    expect(parsePreferences({ theme: 'system' })).toMatchObject({ theme: 'system' });
+    for (const value of ['blue', 'auto', '', 1, true, null, undefined, ['dark']]) {
+      expect(parsePreferences({ theme: value })).toMatchObject({ theme: 'system' });
+    }
   });
 });
 

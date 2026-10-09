@@ -4,6 +4,7 @@ import type { DisplayPreferences } from '../../state/preferences.ts';
 export function DisplaySettings({ showStageBrightness = false }: { showStageBrightness?: boolean }) {
   const { preferences, update, saved } = usePreferences();
   return <section className="panel display-settings" aria-label="显示与动画设置"><h2>显示与动画</h2><p className="muted">保存在当前浏览器，切换账号后继续使用。</p>
+    <label className="select-field">界面主题<select aria-label="界面主题" value={preferences.theme} onChange={event => update({ theme: event.target.value as DisplayPreferences['theme'] })}><option value="system">跟随系统</option><option value="light">浅色纸面</option><option value="dark">深色剧院</option></select></label>
     <label className="select-field">动画偏好<select aria-label="动画偏好" value={preferences.motion} onChange={event => update({ motion: event.target.value as DisplayPreferences['motion'] })}><option value="system">跟随系统</option><option value="reduced">减少动画</option><option value="full">标准动画</option></select></label>
     <label className="setting-row"><span>死亡特效<small className="muted">公开死讯粒子与头像印记；减少动画时只保留静态印记。关闭特效仍显示死亡公告、状态和记录。</small></span><input type="checkbox" aria-label="死亡特效" checked={preferences.deathEffects} onChange={event => update({ deathEffects: event.target.checked })}/></label>
     <label className="setting-row"><span>音量指示<small className="muted">显示自己与当前发言者的麦克风电平；只在本机可见，不上报、不入记录。</small></span><input type="checkbox" aria-label="音量指示" checked={preferences.voiceLevels} onChange={event => update({ voiceLevels: event.target.checked })}/></label>

@@ -21,6 +21,7 @@ test('直接注册、UID 展示、昵称编辑与改密', async ({ page, browser
   await expect(display).toBeVisible();
   const deathEffects = display.getByRole('checkbox', { name: '死亡特效', exact: true });
   await expect(deathEffects).toBeChecked();
+  await expect(display.getByLabel('界面主题')).toHaveValue('system');
   await expect(display.getByLabel('动画偏好')).toHaveValue('system');
   await expect(display.getByLabel('界面缩放')).toHaveValue('100');
   // 提示音开关（v2.0.7-alpha 从局内发言条移到本设置区）：默认关闭
@@ -31,11 +32,12 @@ test('直接注册、UID 展示、昵称编辑与改密', async ({ page, browser
     const row = section.querySelector('.setting-row');
     const size = (element: Element | null) => element ? getComputedStyle(element as HTMLElement).fontSize : '';
     return {
-      motion: size(fields[0] ?? null),
-      scale: size(fields[1] ?? null),
+      // fields[0] 是 P1 新增的「界面主题」，fields[1]/fields[2] 依次是动画偏好/界面缩放
+      motion: size(fields[1] ?? null),
+      scale: size(fields[2] ?? null),
       deathEffects: size(row?.querySelector('span') ?? null),
       helper: size(row?.querySelector('small') ?? null),
-      gap: row && fields[1] ? Math.round(fields[1].getBoundingClientRect().top - row.getBoundingClientRect().bottom) : -1,
+      gap: row && fields[2] ? Math.round(fields[2].getBoundingClientRect().top - row.getBoundingClientRect().bottom) : -1,
     };
   });
   expect(new Set([metrics.motion, metrics.scale, metrics.deathEffects]).size).toBe(1);
