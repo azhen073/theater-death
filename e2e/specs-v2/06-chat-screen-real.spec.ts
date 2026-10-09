@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { errors, expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { dismissIdentityEntryReveal, loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
@@ -116,11 +116,30 @@ test('真实转日公屏：授权后两玩家交换一次消息并验证 Socket 
     await expect.poll(() => senderBodies.length).toBeGreaterThanOrEqual(1);
     const body = JSON.parse(senderBodies[0]!) as Record<string, any>;
     expect(body).toMatchObject({ gameId: current[writers[0]!]!.gameId, channel: 'public', text });
-    const retry = sender.getByRole('button', { name: '重试原消息' });
-    if (await retry.isVisible().catch(() => false)) await retry.click();
+    const publicChannel = sender.getByRole('region', { name: '公屏交流', exact: true });
+    const delivered = publicChannel.getByLabel('公屏历史', { exact: true }).getByText(text, { exact: true });
+    const pending = publicChannel.locator('.chat-outgoing');
+    const retry = publicChannel.getByRole('button', { name: '重试原消息', exact: true });
+    await expect(delivered.or(retry).first()).toBeVisible();
+    if (!(await delivered.isVisible())) {
+      try {
+        await retry.click({ timeout: 5_000 });
+      } catch (error) {
+        if (!(error instanceof errors.TimeoutError)) throw error;
+        // Socket 确认可能在检查后移除重试按钮；只有历史已确认且待发送记录消失才接受。
+        await expect(delivered).toBeVisible();
+        await expect(pending).toHaveCount(0);
+      }
+    }
+    await expect(delivered).toHaveCount(1);
+    await expect(delivered).toBeVisible();
+    await expect(pending).toHaveCount(0);
+    for (const attempt of senderBodies.slice(1)) expect(JSON.parse(attempt)).toEqual(body);
     await expect.poll(async () => (await roomView(receiver, code)).chat.public.filter((message: Record<string, any>) => message.text === text).length).toBe(1);
     await expect(receiver.getByText(text, { exact: true })).toBeVisible();
-    expect((await roomView(receiver, code)).chat.public.filter((message: Record<string, any>) => message.text === text)).toHaveLength(1);
+    const received = (await roomView(receiver, code)).chat.public.filter((message: Record<string, any>) => message.text === text);
+    expect(received).toHaveLength(1);
+    expect(received[0]).toMatchObject({ clientMessageId: body.clientMessageId, senderId: current[writers[0]!]!.viewer.subjectPlayerId });
     const reply = '真实公屏回复';
     await receiver.getByLabel('公屏消息').fill(reply);
     await receiver.getByRole('button', { name: '发送公屏消息' }).click();

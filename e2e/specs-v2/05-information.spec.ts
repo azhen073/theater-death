@@ -195,7 +195,7 @@ test('死神/魂灵知识：已知魂灵在座位卡与身份弹窗中可见，�
     const playerId = deathFixture.view.public!.seats.find(item => item.seat === seat)!.playerId;
     await expect(page.locator(`[data-player-id="${playerId}"] .seat-known`)).toHaveText('魂灵');
   }
-  await page.getByRole('button', { name: '我的身份' }).click();
+  await page.getByRole('button', { name: '我的身份', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText(`已知身份 · 魂灵：${spiritSeats.map(seat => `${seat}号`).join('、')}`);
   await page.getByRole('button', { name: '关闭' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -214,7 +214,7 @@ test('死神/魂灵知识：已知魂灵在座位卡与身份弹窗中可见，�
   const doorFixture = loadGameFixture('night-door-full.json');
   const mounted = await mount(page, doorFixture);
   await expect(page.locator('.seat-known')).toHaveCount(0);
-  await page.getByRole('button', { name: '我的身份' }).click();
+  await page.getByRole('button', { name: '我的身份', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toContainText('已知身份');
   void mounted;
 });
@@ -224,6 +224,7 @@ test('房间管理视图保持聊天非零滚动位置与草稿', async ({ page 
   fixture.view.capabilities.canPostPublic = true;
   fixture.view.chat.public = Array.from({ length: 120 }, (_, index) => ({ messageId: 'manage-chat-' + index, clientMessageId: 'manage-client-' + index, cursor: index + 1, senderId: fixture.view.viewer.subjectPlayerId!, text: '管理视图消息 ' + index, at: index }));
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏', exact: true }).click();
   const history = page.getByLabel('公屏历史');
   const input = page.getByLabel('公屏消息');
   await input.fill('管理视图草稿');
