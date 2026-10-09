@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { fixtureRoute, loadGameFixture, pushFixture, taskFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
 
 async function mount(page: Page, fixture: GameHarnessFixture): Promise<void> {
@@ -96,7 +97,7 @@ test('页面设置切换减少动画会立即停止且只保留静态夜景；�
   const reduced = loadGameFixture('night-spirit-full.json');
   await mount(page, reduced);
   await expect(page.locator('.night-atmosphere__motion i')).toHaveCount(24);
-  await page.getByRole('button', { name: '导航' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '导航' }).click();
   await page.getByRole('dialog', { name: '剧院导航' }).getByRole('button', { name: '显示设置' }).click();
   const settings = page.getByRole('dialog', { name: '显示设置' });
   await settings.getByLabel('动画偏好').selectOption('reduced');

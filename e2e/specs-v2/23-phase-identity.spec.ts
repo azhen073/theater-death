@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { loadGameFixture, pushFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
 
 async function mount(page: Page, fixture: GameHarnessFixture) {
@@ -25,7 +26,7 @@ test('九身份两阶段均显示可追溯规则摘要，并随公开阶段实�
   const fixture = loadGameFixture('night-door-full.json');
   fixture.identityReveal = 'seen';
   const mounted = await mount(page, fixture);
-  await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
   const panel = page.getByRole('region', { name: '当前阶段身份能力' });
   for (const [roleId, clauses, first, second] of cases) {
     for (const [stage, text] of [[1, first], [2, second]] as const) {
@@ -51,7 +52,7 @@ test('生死与已用状态不冒充能力可用，边界以服务端舞台任�
   fixture.view.private!.self.abilities.laikeBladeUsed = true;
   fixture.view.tasks = [];
   await mount(page, fixture);
-  await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
   const panel = page.getByRole('region', { name: '当前阶段身份能力' });
   await expect(panel).toContainText('不代表此刻可行动');
   await expect(panel).toContainText('生死、技能次数和当前操作以服务端下发的舞台任务为准');
@@ -76,7 +77,7 @@ test('公开观众和错配subject没有私人能力面板，私人第二屏标�
 
   const observed = loadGameFixture('private-second-screen-full.json'); observed.identityReveal = 'seen';
   await mounted.set(observed);
-  await page.getByRole('button', { name: '当前观察身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '当前观察身份' }).click();
   await expect(page.getByRole('region', { name: '当前阶段身份能力' })).toContainText('当前观察视角');
 });
 
@@ -85,7 +86,7 @@ test('减少动画与390移动视口下能力说明可读且无横向溢出', as
   await page.setViewportSize({ width: 390, height: 844 });
   const fixture = loadGameFixture('night-door-full.json'); fixture.identityReveal = 'seen';
   await mount(page, fixture);
-  await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
   await expect(page.getByRole('region', { name: '当前阶段身份能力' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');

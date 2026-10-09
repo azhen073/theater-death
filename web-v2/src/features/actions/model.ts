@@ -14,10 +14,14 @@ export function selectionIssue(selection: TargetSelection, targets: readonly str
   return null;
 }
 
-export function updateSelection(selection: TargetSelection, targets: readonly string[], playerId: string, change: 1 | -1 = 1): string[] {
-  if (change < 0) { const index = targets.lastIndexOf(playerId); return targets.filter((_, i) => i !== index); }
+/**
+ * 点击座位即选中 / 取消选中（每个目标最多 1 个）。
+ * 重复目标已废止：界面上不再提供"同一目标多刀"，`allowRepeated` 因此不改变本函数行为，
+ * 但服务端与引擎仍接受重复载荷（本轮只改界面语义，见 docs/frontend-v2-stage-ux.md）。
+ */
+export function updateSelection(selection: TargetSelection, targets: readonly string[], playerId: string): string[] {
   if (!selection.playerIds.includes(playerId)) return [...targets];
-  if (!selection.allowRepeated && targets.includes(playerId)) return targets.filter(id => id !== playerId);
+  if (targets.includes(playerId)) return targets.filter(id => id !== playerId);
   if (selection.maxTargets === 1) return [playerId];
   if (targets.length >= selection.maxTargets) return [...targets];
   return [...targets, playerId];

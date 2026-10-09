@@ -82,8 +82,8 @@ export function post(body: unknown): RequestInit {
 
 export async function json(response: Response): Promise<Record<string, any>> { return (await response.json()) as Record<string, any>; }
 
-export async function createRoom(h: HttpHarness, user = h.users[0]!, requestId = 'create-1') {
-  const response = await request(h, '/api/v2/rooms', post({ requestId }), user);
+export async function createRoom(h: HttpHarness, user = h.users[0]!, requestId = 'create-1', publicChat: 'alive_only' | 'everyone' = 'alive_only', freeSpeech = false) {
+  const response = await request(h, '/api/v2/rooms', post({ requestId, publicChat, freeSpeech }), user);
   return { response, body: await json(response) };
 }
 

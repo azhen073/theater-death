@@ -20,8 +20,34 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 
 快照能力 `capabilities.supportsProposalEditConfirmation=true` 表示支持此扩展，不代表当前玩家具有编辑或确认权限。缺省或 false 时，客户端继续使用独立的 `EDIT_PROPOSAL` 与 `CONFIRM_PROPOSAL`。组合参数错误返回 `invalid_proposal_options`；依据版本已变化返回 `proposal_changed`，状态不产生部分写入。旧的、不带扩展字段的编辑语义保持不变。
 
+## 公屏写权限档位（2026-09-23 新增，用户裁定 Q-10）
+
+`POST /api/v2/rooms` 新增**必填**字段 `publicChat`，取值 `alive_only` 或 `everyone`（无默认值，缺失或非法返回 400 `invalid_public_chat`；创建后不可修改，`RoomSnapshot.room.publicChat` 原样回传）。公屏文字因此改为**对局内所有阶段可写**（夜间不再禁发）：`alive_only` 下仅存活正式玩家可写、死者只读（本人获准遗言期间仍可写）；`everyone` 下存活与死者都可写。`POST /rooms/{code}/chat`（`channel=public`）的 403 `chat_forbidden` 判定改由该档位与 `capabilities.canPostPublic` 决定；观众与第二屏在任何档位下都只读。夜间语音不受影响，仍按 R-43 全体静音。旧的、不带该字段的调用方会收到 400，属于本次契约收紧。
+
+## 白天自由发言阶段（2026-09-23 新增，用户裁定 Q-11）
+
+`POST /api/v2/rooms` 新增**必填**布尔字段 `freeSpeech`（缺失或非布尔返回 400 `invalid_free_speech`；`true`/`false` 都可，没有默认值）。选择「开启」时，冻结规则 `room.config.timersSeconds.freeSpeech = 120`，`RoomSnapshot.room.freeSpeech === true`；选择「不开启」时该键从冻结规则里移除、`room.freeSpeech === false`（1.1 板本来就不带该键）。开启后**每个白天**在**发言轮结束、放逐投票开始之前**插入固定 **120 秒**的阶段：`DayDTO.step === 'free_speech'`，公开窗口 `windows[].id === 'free_speech'`（给全桌倒计时），该阶段**不提前结束**。语音上**全体存活玩家**的 `capabilities.canPublishVoice` 为 `true`（可同时开麦；死者仍为 `false`），`private.voice.delivery` 照常下发（无唯一发言者：聚合按窗口计数，任何发布者自己的回执都不计，见 `docs/frontend-v2-voice.md`）。
+
+## 对局外语音与语音范围（2026-09-27 新增，用户裁定 Q-12）
+
+进出对局前后的语音范围统一挂在 `RoomSnapshot.voice`（**必有字段**，语音未启用时为 `null`）：
+
+- `voice.channel`：对局内是**对局频道**（等于 `gameId`）；进入对局前的大厅与复盘是**房间频道** `l_<roomId>`（跨局复用，与任何一局无关）。
+- `voice.uids`：频道 `uid → 语音主体`。对局频道里主体是 `playerId`（客户端与 `public.seats[].playerId` 比对），房间频道里是 `memberId`（大厅/复盘还没有 playerId，与 `room.formalMembers[].memberId` 比对）。仅用于按本机远端电平显示「谁在说话」，不含隐藏信息；观众/第二屏的租约 id 不是主体，不会出现在表里。
+
+对应的权限与生命周期：
+
+- `capabilities.canPublishVoice` 在**大厅与复盘**对正式成员为 `true`（自由开麦）、对观众与第二屏恒为 `false`；对局内仍按 R-43 / Q-11（含「窗口未开启即无发布权」）。
+- `POST /rooms/{code}/voice/token`：请求体 `gameId` 变为**可选**（仅对局内需要并被校验）；大厅/复盘的相位**以服务端为准**，此时即使带上 `gameId` 也只会签发房间频道凭证。签发后仍会复核身份，变化即撤销并返回 403 `authorization_changed`。
+- `private.voice.delivery` 只在 `playing` 相位出现（房间频道没有发言窗口）。
+- **开局即关闭房间频道**（避免有人带着大厅发布凭证留在频道内），客户端检测到范围变化会先离开再加入对局频道；终局后回到复盘即重新使用房间频道。频道对账（D 组）同时覆盖房间频道与对局频道。
+
+原先位于 `PublicGameDTO` 的可选 `voice.uids` **已移除**，统一由顶层 `RoomSnapshot.voice` 承载（契约版本仍为 2.2，属同版本内的结构调整；两个前端与本仓库的夹具已同步）。
+
 ## 公开夜幕时钟与私人身份知识
 
 `RoomSnapshot.public.night` 为 `{closesAt}` 或 `null`：夜间阶段给出**当前夜间段**的截止时间，供全桌（含无夜间任务者与观战者）显示剩余时间；不包含段名与段数，白天与大厅为 `null`。该字段与角色私有窗口（`windows`/`tasks`）相互独立，不随提前提交缩短。
 
 `RoomSnapshot.private.knowledge.spiritSeats` 为**本人已知的魂灵座位号**（升序，含已出局者）：死神与丧亲者知晓全部魂灵（R-27、R-31），魂灵知晓其他魂灵（R-30，不含自己），其余身份为空数组。该字段只出现在本人（含绑定第二屏）的私人视图，用于座位标记与身份弹窗；公共视图与观战者没有该字段。
+
+`RoomSnapshot.private.knowledge.dyingSeats` 为**本夜濒死名单的座位号**（升序，**可选字段**）：仅在一阶段、夜间、且攻击结算已产生名单时，下发给**在世的降临者**（R-24）与**在世且未使用还魂曲的水妖**（R-20，用后当场失去名单视野）；二阶段、白天、名单未产生、本人已死亡、其他身份都**不含该字段**（不以下发空数组冒充"本夜无人濒死"）。它与同夜 `private.events` 的 `dying_list.payload.seats` 集合一致。濒死**不影响**公开的 `seats[].alive`（`visibility/projection.ts` 规定濒死对外视为存活），因此该字段只用于本人页面的座位左下角标记，公共视图与观战者永远没有它。

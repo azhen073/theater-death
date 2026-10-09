@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { advanceAcceptanceClock } from '../helpers-v2/full-game.ts';
-import { dismissIdentityEntryReveal, loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom, selectPublicChat } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
 async function open(browser: Browser, account: RoomAccount): Promise<{ context: BrowserContext; page: Page }> {
@@ -13,13 +13,13 @@ async function open(browser: Browser, account: RoomAccount): Promise<{ context: 
 async function setupFive(browser: Browser, accounts: RoomAccount[]): Promise<{ contexts: Array<{ context: BrowserContext; page: Page }>; code: string }> {
   const contexts: Array<{ context: BrowserContext; page: Page }> = [];
   const host = await open(browser, accounts[0]!); contexts.push(host);
-  await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(host.page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
   await host.page.getByRole('button', { name: '自定义角色组成' }).click();
   await host.page.getByLabel('玩家人数').fill('5');
   for (const [label, value] of [['莱莱可人数', '0'], ['门先生人数', '1'], ['水妖人数', '0'], ['降临者人数', '0'], ['科研员人数', '1'], ['平民人数', '1'], ['死神人数', '1'], ['魂灵人数', '1'], ['丧亲者人数', '0']] as const) await host.page.getByLabel(label).fill(value);
   const request = host.page.waitForRequest(item => item.url().endsWith('/api/v2/rooms') && item.method() === 'POST');
-  await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(host.page); await host.page.getByRole('button', { name: '创建房间', exact: true }).click();
   expect((await request).postDataJSON()).toMatchObject({ playerCount: 5 });
   await waitRoom(host.page);
   const code = (await host.page.locator('.room-code strong').innerText()).trim();
@@ -39,7 +39,7 @@ function targetButton(page: Page, view: Record<string, any>, playerId: string) {
   return page.getByRole('button', { name: new RegExp(`${seat.seat}号 .*可选目标`) });
 }
 
-test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿', async ({ browser }, testInfo) => {
+test('真实五人夜间闭环：Door 守护确认与 Death 单刀草稿（点击切换选中/取消）', async ({ browser }, testInfo) => {
   test.setTimeout(180_000);
   const accounts = loadRoomAccounts(testInfo.project.name);
   const { contexts, code } = await setupFive(browser, accounts);
@@ -96,10 +96,18 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     const deathView = await roomView(death, code);
     const proposalTask = deathView.tasks.find((task: Record<string, any>) => task.action === 'EDIT_PROPOSAL')!;
     const deathTarget = proposalTask.targets.playerIds[0];
+    const secondTarget = proposalTask.targets.playerIds[1];
+    expect(secondTarget).toBeTruthy();
     const deathSeat = deathView.public.seats.find((seat: Record<string, any>) => seat.playerId === deathTarget);
     expect(deathSeat).toBeTruthy();
+    // 界面上已无加减按钮；点击＝选中，再点同一座位＝取消，提交的目标集合不含重复
+    await expect(death.getByRole('button', { name: new RegExp(`增加${deathSeat.seat}号目标次数`) })).toHaveCount(0);
     await targetButton(death, deathView, deathTarget).click();
-    await death.getByRole('button', { name: new RegExp(`增加${deathSeat.seat}号目标次数`) }).click();
+    await expect(death.getByText(/1 \/ 2/)).toBeVisible();
+    await targetButton(death, deathView, deathTarget).click();
+    await expect(death.getByText(/0 \/ 2/)).toBeVisible();
+    await targetButton(death, deathView, deathTarget).click();
+    await targetButton(death, deathView, secondTarget).click();
     await expect(death.getByText(/2 \/ 2/)).toBeVisible();
     const deathRequest = death.waitForRequest(request => request.method() === 'POST' && request.url().endsWith('/command'));
     const deathResponse = death.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/command'));
@@ -108,8 +116,8 @@ test('真实五人夜间闭环：Door 守护确认与 Death 重复双刀草稿',
     const deathBody = await (await deathRequest).postDataJSON() as Record<string, any>;
     const deathReceipt = await (await deathResponse).json() as Record<string, any>;
     expect(deathReceipt).toMatchObject({ requestId: deathBody.requestId, status: 'accepted' });
-    expect(deathBody).toMatchObject({ gameId: deathView.gameId, windowInstanceId: proposalTask.windowInstanceId, action: 'EDIT_PROPOSAL', targets: [deathTarget, deathTarget], confirmSelf: true, expectedRevision: 0 });
-    await expect.poll(async () => { const proposal = (await roomView(death, code)).private?.proposal; return { latest: proposal?.targetPlayerIds.filter((id: string) => id === deathTarget).length ?? 0, effective: proposal?.effective.targetPlayerIds.filter((id: string) => id === deathTarget).length ?? 0 }; }, { timeout: 15_000 }).toEqual({ latest: 2, effective: 2 });
+    expect(deathBody).toMatchObject({ gameId: deathView.gameId, windowInstanceId: proposalTask.windowInstanceId, action: 'EDIT_PROPOSAL', targets: [deathTarget, secondTarget], confirmSelf: true, expectedRevision: 0 });
+    await expect.poll(async () => { const proposal = (await roomView(death, code)).private?.proposal; const latest = proposal?.targetPlayerIds ?? []; return { latest: latest.length, effective: proposal?.effective.targetPlayerIds.length ?? 0, duplicated: latest.length !== new Set(latest).size }; }, { timeout: 15_000 }).toEqual({ latest: 2, effective: 2, duplicated: false });
     await death.evaluate(() => window.scrollTo(0, 0));
     await death.screenshot({ path: `/results/real-night-death-stage-${testInfo.project.name}.png` });
     await death.getByRole('region', { name: '舞台行动', exact: true }).scrollIntoViewIfNeeded();

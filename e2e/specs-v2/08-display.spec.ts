@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { alivePlayers, loadGameFixture, loadReviewDocument, loadReviewFixture, pushFixture, resizeSeats, taskFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
 
 async function mountPlaying(page: Page, fixture: GameHarnessFixture) {
@@ -19,7 +20,7 @@ async function mountReview(page: Page, fixture = loadReviewFixture()) {
 }
 
 async function openSettings(page: Page) {
-  await page.getByRole('button', { name: '导航' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '导航' }).click();
   await page.getByRole('dialog', { name: '剧院导航' }).getByRole('button', { name: '显示设置' }).click();
   return page.getByRole('dialog', { name: '显示设置' });
 }
@@ -32,7 +33,7 @@ async function expectActionClearOfSeatsAndTools(page: Page) {
   await expect.poll(async () => page.evaluate(() => {
       const card = document.querySelector('.stage-action-slot')?.getBoundingClientRect();
       if (!card || card.width <= 0 || card.height <= 0) return 'action card is not measurable';
-      for (const element of document.querySelectorAll('.seat-main, .seat-tools, .seat-count, .seat-sheriff')) {
+      for (const element of document.querySelectorAll('.seat-main, .seat-tools, .seat-count, .badge-strip')) {
         const rect = element.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) continue;
         if (card.left - 1 < rect.right && card.right + 1 > rect.left && card.top - 1 < rect.bottom && card.bottom + 1 > rect.top) {
@@ -71,7 +72,7 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
   await dialog.getByLabel('动画偏好').selectOption('system');
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}') as Record<string, unknown>);
-  expect(Object.keys(stored).sort()).toEqual(['autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+  expect(Object.keys(stored).sort()).toEqual(['attentionSound', 'autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
   expect(stored).toMatchObject({ deathEffects: true, motion: 'system', scale: 110 });
 
   await page.getByRole('button', { name: '关闭' }).click();
@@ -163,7 +164,7 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
     { width: 681, height: 800, cols: 4 },
     { width: 680, height: 750, cols: 3 },
     { width: 390, height: 844, cols: 3 },
-    { width: 320, height: 740, cols: 3 },
+    { width: 320, height: 740, cols: 2 },
     { width: 844, height: 390, cols: 4 },
     { width: 1440, height: 900, cols: 0 },
   ];
@@ -182,9 +183,9 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   }
 
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: `/results/display-desktop-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ path: `/results/display-desktop-${testInfo.project.name}.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: `/results/display-mobile-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ path: `/results/display-mobile-${testInfo.project.name}.png`, fullPage: true });
 
   for (const count of [5, 13, 26, 64]) {
     const resized = resizeSeats(base.view, count);

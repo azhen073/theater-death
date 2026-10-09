@@ -41,7 +41,7 @@ function account(accounts: AccountStore, name: string) {
 
 async function fullMatch(directory: RoomDirectory, accounts: AccountStore, prefix: string) {
   const host = account(accounts, `${prefix}_host`);
-  const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+  const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
   const players = [host];
   for (let i = 1; i < 13; i += 1) {
     const player = account(accounts, `${prefix}_${i}`);
@@ -57,7 +57,7 @@ describe('v2 empty room policy', () => {
   it('treats all-offline formal members as non-empty, then reclaims the room after the offline TTL', async () => {
     const { clock, accounts, directory, empty } = setup();
     const host = account(accounts, 'empty_formal');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     empty.observe(room);
     expect(room.emptyDeadline).toBeNull();
     expect(room.allOfflineSince).toBe(1_000);
@@ -93,7 +93,7 @@ describe('v2 empty room policy', () => {
   it('runs the delayed expiry check at membership entry even when the timer callback was not flushed', async () => {
     const { clock, accounts, directory, controls } = setup();
     const host = account(accounts, 'delayed_expiry_host');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     await directory.leave(room, host.session);
     clock.elapse(EMPTY_ROOM_TTL_MS);
     const newcomer = accounts.createSession(host.userId).session;
@@ -138,7 +138,7 @@ describe('v2 empty room policy', () => {
   it('old expiry handles cannot remove a room after a formal member cancels emptiness', async () => {
     const { clock, accounts, directory } = setup();
     const host = account(accounts, 'empty_cancel');
-    const room = await directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     await directory.leave(room, host.session);
     const restored = accounts.createSession(host.userId).session;
     await directory.enter(room, restored);
@@ -150,13 +150,13 @@ describe('v2 empty room policy', () => {
   it('forget cancels and drops both pending timers so a disposed room leaves no residue', async () => {
     const { clock, accounts, directory, empty } = setup();
     const offlineHost = account(accounts, 'forget_offline');
-    const offlineRoom = await directory.create(offlineHost.session, THEATER_DEATH_13_V2);
+    const offlineRoom = await directory.create(offlineHost.session, THEATER_DEATH_13_V2, 'alive_only');
     empty.observe(offlineRoom);
     expect(offlineRoom.allOfflineSince).toBe(1_000);
     expect(empty.offlinePending.has(offlineRoom.roomId)).toBe(true);
 
     const emptyHost = account(accounts, 'forget_empty');
-    const emptyRoom = await directory.create(emptyHost.session, THEATER_DEATH_13_V2);
+    const emptyRoom = await directory.create(emptyHost.session, THEATER_DEATH_13_V2, 'alive_only');
     await directory.leave(emptyRoom, emptyHost.session);
     empty.observe(emptyRoom);
     expect(empty.pending.has(emptyRoom.roomId)).toBe(true);

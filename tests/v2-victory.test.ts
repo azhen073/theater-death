@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceSpeech, beginDay, settleDayVote, startDefaultSpeechRound, submitDayVote } from '../engine/day.ts';
+import { advanceFreeSpeech, advanceSpeech, beginDay, settleDayVote, startDefaultSpeechRound, submitDayVote } from '../engine/day.ts';
 import { resolveMorning } from '../engine/morning.ts';
 import type { GameState } from '../engine/types.ts';
 import { createFakeClock } from '../server/clock.ts';
@@ -37,6 +37,11 @@ function votingState(state: GameState): GameState {
     const speaker = current.day.speechRound?.order[current.day.speechRound.index];
     if (speaker === undefined) break;
     current = advanceSpeech(current, speaker).state;
+  }
+  // 规则 2.0 预设带 freeSpeech 键（房主建房时选择开关）：发言轮之后、放逐投票之前固定插入
+  // 120 秒自由发言窗口（Q-11），只推进到 vote 的用例必须一并推进这一段。
+  while (current.day?.step === 'free_speech') {
+    current = advanceFreeSpeech(current).state;
   }
   return current;
 }

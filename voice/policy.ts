@@ -15,6 +15,7 @@ import type { GameState } from '../engine/types.ts';
  * - vote_silence：投票期间全体禁麦
  * - not_your_turn：白天非发言时段或不是当前发言人
  * - spectator：观战者，只可旁听
+ * - lobby_speaker：进入对局前的大厅 / 复盘（Q-12，房间频道），正式成员自由开麦
  * - game_not_started / game_ended：流程外
  */
 export type VoicePermissionReason =
@@ -25,6 +26,7 @@ export type VoicePermissionReason =
   | 'vote_silence'
   | 'not_your_turn'
   | 'spectator'
+  | 'lobby_speaker'
   | 'game_not_started'
   | 'game_ended';
 
@@ -41,6 +43,32 @@ export interface VoicePermissionPush {
 
 /** 观战者固定许可：只听不说（不进入玩家动态授权策略） */
 export const SPECTATOR_PERMISSION: VoicePermission = { canPublish: false, reason: 'spectator' };
+
+/**
+ * 大厅 / 复盘（房间频道）的正式成员许可（Q-12）：对局前后的自由开麦。
+ * 这两个相位不属于对局，R-43 的时段规则不适用，因此与 `voicePermission` 分开表达。
+ */
+export const LOBBY_SPEAKER_PERMISSION: VoicePermission = { canPublish: true, reason: 'lobby_speaker' };
+
+/**
+ * 房间级语音许可汇总（Q-12）：**服务端所有判定都必须走这里**，避免出现第二份口径。
+ * - 大厅 / 复盘：正式成员自由开麦（观众与第二屏只听）；与对局的生死、时段无关。
+ * - 对局内：逐字转交 `voicePermission(state, playerId)`（R-43 / Q-11 口径不变）。
+ */
+export function roomVoicePermission(input: {
+  phase: 'lobby' | 'playing' | 'review';
+  formal: boolean;
+  state: GameState | null;
+  playerId: string | null;
+}): VoicePermission {
+  if (input.phase !== 'playing') {
+    return input.formal ? LOBBY_SPEAKER_PERMISSION : SPECTATOR_PERMISSION;
+  }
+  if (input.state === null || input.playerId === null) {
+    return { canPublish: false, reason: 'game_not_started' };
+  }
+  return voicePermission(input.state, input.playerId);
+}
 
 function denied(reason: VoicePermissionReason): VoicePermission {
   return { canPublish: false, reason };
@@ -112,6 +140,13 @@ export function voicePermission(state: GameState, playerId: string): VoicePermis
         return granted();
       }
       return denied(player.life === 'dead' ? 'dead_listener' : 'not_your_turn');
+    }
+    // 白天「自由发言」（房主开启）：存活玩家可开麦；死者仍只能旁听。
+    case 'free_speech': {
+      if (player.life === 'dead') {
+        return denied('dead_listener');
+      }
+      return granted();
     }
     case 'vote': {
       const ballot = day.ballot;

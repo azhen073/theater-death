@@ -12,8 +12,8 @@ export function ElectionRoster({ view }: { view: RoomSnapshot }) {
   const active = candidates.filter(seat => !withdrawn.has(seat.playerId));
   const winner = view.public?.seats.find(seat => seat.playerId === election.winnerId);
   const done = election.phase === 'done';
-  return <section className="election-roster" aria-label="公开上警名单">
-    <h2>{done ? '竞选结果' : '上警名单'}<span>{done ? (winner ? `${winner.seat}号当选` : '本局无天理') : `${active.length} 人参选`}</span></h2>
+  return <section className="election-roster" aria-label="公开竞选名单">
+    <h2>{done ? '竞选结果' : '竞选名单'}<span>{done ? (winner ? `${winner.seat}号当选` : '本局无天理') : `${active.length} 人参选`}</span></h2>
     {!candidates.length ? <p>{done ? '竞选已结束。' : '暂无报名，名单随公开状态更新。'}</p> : <ul aria-label="候选与退选名单">
       {candidates.map(seat => <li key={seat.playerId} className={withdrawn.has(seat.playerId) ? 'election-roster__withdrawn' : ''}>
         <strong>{seat.seat}号</strong><span title={seat.nickname}>{seat.nickname}</span>

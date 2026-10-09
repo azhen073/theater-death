@@ -7,7 +7,13 @@ import { newRequestId } from '../../transport/ids.ts';
 export type VoiceConnection = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 export interface VoiceContext {
   roomCode: string;
-  gameId: string;
+  /**
+   * 语音范围键（Q-12）：对局内是 `gameId`，大厅 / 复盘是相位名（`lobby` / `review`）。
+   * 键变化 = 换频道（大厅房间频道 ↔ 对局频道），会话必须先离开再重新加入。
+   */
+  scope: string;
+  /** 只有对局频道才有 `gameId`；大厅 / 复盘为 null（此时不校验本局）。 */
+  gameId: string | null;
   canPublish: boolean;
   readOnly: boolean;
   online: boolean;
@@ -116,18 +122,22 @@ export class VoiceSession {
   #deliveryKey = '';
   #deliveryAt = 0;
   #listeners = new Set<(state: VoiceState) => void>();
+  #levels = new Map<number, number>();
+  #levelListeners = new Set<(levels: ReadonlyMap<number, number>) => void>();
 
   state() { return this.#state; }
   subscribe(listener: (state: VoiceState) => void) { this.#listeners.add(listener); return () => { this.#listeners.delete(listener); }; }
+  /** 每次音量采样（含自己）的 uid → 电平；只在本机使用，用于判定「谁在说话」。 */
+  onLevels(listener: (levels: ReadonlyMap<number, number>) => void) { this.#levelListeners.add(listener); return () => { this.#levelListeners.delete(listener); }; }
   #set(patch: Partial<VoiceState>) { this.#state = { ...this.#state, ...patch }; for (const listener of this.#listeners) listener(this.#state); }
 
   setContext(context: VoiceContext | null) {
-    const changedGame = this.#context !== null && (context === null || context.gameId !== this.#context.gameId || context.roomCode !== this.#context.roomCode);
+    const changedScope = this.#context !== null && (context === null || context.scope !== this.#context.scope || context.roomCode !== this.#context.roomCode);
     const lostPermission = this.#context?.canPublish === true && context?.canPublish !== true;
     // 换了发言窗口 → 上一轮的回执节流作废（新窗口的第一条要立即上报）
     if (context?.deliveryWindow !== this.#context?.deliveryWindow) { this.#deliveryKey = ''; this.#deliveryAt = 0; }
     this.#context = context;
-    if (changedGame) { void this.leave(); return; }
+    if (changedScope) { void this.leave(); return; }
     if (!context?.online || !context.activePage || !context.canPublish || context.readOnly || lostPermission) this.#clearIntent();
     if (lostPermission && this.#client !== null) void this.#renewForContext().catch(() => undefined);
   }
@@ -139,7 +149,7 @@ export class VoiceSession {
     this.#set({ connection: 'connecting', error: '', microphoneError: '' });
     let client: IAgoraRTCClient | null = null;
     try {
-      const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), gameId: context.gameId });
+      const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), ...(context.gameId === null ? {} : { gameId: context.gameId }) });
       if (generation !== this.#generation) return;
       AgoraRTC.onAutoplayFailed = () => { this.#set({ audioBlocked: true }); this.#reportDelivery('blocked'); };
       client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -149,12 +159,16 @@ export class VoiceSession {
       indicator.onVolumeIndicator?.((users) => {
         let own = 0;
         let remote = 0;
+        this.#levels.clear();
         for (const user of users) {
           const level = typeof user.level === 'number' && Number.isFinite(user.level) ? Math.min(100, Math.max(0, Math.round(user.level))) : 0;
-          if (Number(user.uid) === this.#uid) own = Math.max(own, level);
+          const uid = Number(user.uid);
+          if (Number.isFinite(uid)) this.#levels.set(uid, level);
+          if (uid === this.#uid) own = Math.max(own, level);
           else remote = Math.max(remote, level);
         }
         this.#set({ level: own, remoteLevel: remote });
+        for (const listener of this.#levelListeners) listener(this.#levels);
       });
       client.on('user-published', (user, mediaType) => {
         void (async () => {
@@ -281,7 +295,7 @@ export class VoiceSession {
   async #renewForContext(): Promise<void> {
     const client = this.#client, context = this.#context;
     if (!client || !context) return;
-    const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), gameId: context.gameId });
+    const credentials = await post<VoiceCredentials>(`/rooms/${encodeURIComponent(context.roomCode)}/voice/token`, { requestId: newRequestId(), ...(context.gameId === null ? {} : { gameId: context.gameId }) });
     await client.renewToken(credentials.token);
   }
   async #afterReconnect() {
@@ -386,6 +400,9 @@ export class VoiceSession {
     // 离开后不再把自动播放失败记到已销毁的会话上（新会话 join 时会重新注册）
     AgoraRTC.onAutoplayFailed = () => undefined;
     this.#uid = 0;
+    // 离开/重连时清空远端电平，避免「谁在说话」的光环停在旧状态。
+    this.#levels.clear();
+    for (const listener of this.#levelListeners) listener(this.#levels);
     void this.#stopTrack();
     client?.removeAllListeners();
   }

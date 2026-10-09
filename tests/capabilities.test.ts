@@ -7,6 +7,19 @@ import { runNight, scenario, overrideLife, overridePlayer } from './helpers.ts';
 const open = (...ids: string[]) => ids.map((id) => ({ id, closesAt: 10_000 }));
 
 describe('能力查询（后端 v2 02）', () => {
+  it('公屏档位透传到能力查询：alive_only 夜间活人可写，everyone 死者也可写，缺省仍是 legacy', () => {
+    const night = scenario();
+    const dead = overrideLife(night, 'p_7', 'dead');
+
+    expect(capabilities(night, 'p_6', open('faction'), 0, false, 'alive_only').canPostPublic).toBe(true);
+    expect(capabilities(dead, 'p_7', open('faction'), 0, false, 'alive_only').canPostPublic).toBe(false);
+    expect(capabilities(dead, 'p_7', open('faction'), 0, false, 'everyone').canPostPublic).toBe(true);
+    expect(capabilities(night, 'p_6', open('faction'), 0, false, 'legacy_day_only').canPostPublic).toBe(false);
+    // 未传档位＝legacy（v1 路由与只读分支保持旧行为）
+    expect(capabilities(night, 'p_6', open('faction'), 0).canPostPublic).toBe(false);
+    expect(capabilities(night, 'p_6', open('faction'), 0, true, 'everyone').canPostPublic).toBe(false);
+  });
+
   it('遗言者可发公屏和开麦，其他人不能代发', () => {
     const morning = runNight(scenario(), { stage1DeathTargetIds: ['p_6', 'p_7'] });
     const state = overrideLife(beginDay({ ...morning, phase: 'day' }).state, 'p_7', 'dead');

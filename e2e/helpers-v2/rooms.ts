@@ -16,6 +16,19 @@ export async function loginRoomAccount(page: Page, account: RoomAccount): Promis
   await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
 }
 
+/**
+ * 建房表单要求房主显式选择公屏写权限与「白天自由发言」开关（都没有默认值，未选时「创建房间」不可提交）。
+ * 用法：在点击「创建房间」之前调用。首页入口的同名按钮（跳转到建房表单）之前调用时，
+ * 页面上还没有单选框，本函数会跳过，因此可以无条件地插在每个「创建房间」点击之前。
+ */
+export async function selectPublicChat(page: Page, mode: 'alive_only' | 'everyone' = 'alive_only', freeSpeech = false): Promise<void> {
+  const radio = page.getByRole('radio', { name: mode === 'alive_only' ? '公屏权限：仅存活正式玩家' : '公屏权限：存活与死者全体' });
+  if (await radio.count() === 0) return;
+  await radio.click();
+  const freeSpeechRadio = page.getByRole('radio', { name: freeSpeech ? '自由发言：开启' : '自由发言：不开启' });
+  if (await freeSpeechRadio.count() > 0) await freeSpeechRadio.click();
+}
+
 export async function openJoin(page: Page, code?: string): Promise<void> {
   if (code) {
     await page.getByRole('button', { name: '我的房间' }).click();
@@ -53,6 +66,16 @@ export async function confirmModal(page: Page, title: string): Promise<void> {
   await page.getByRole('dialog').getByRole('button', { name: '确认操作' }).click();
 }
 
+/**
+ * 窄屏（≤680px）滚动后 HUD 会收成细条，工具行收进「更多」菜单。
+ * 需要点击 HUD 操作（我的身份 / 导航 / 第二屏 / 房间管理）之前先调用本函数：
+ * 展开态下它是空操作，收起态下它点开「更多」。
+ */
+export async function revealHudActions(page: Page): Promise<void> {
+  const more = page.getByRole('button', { name: '更多', exact: true });
+  if (await more.isVisible().catch(() => false)) await more.click();
+}
+
 export async function leaveRoom(page: Page): Promise<void> {
   await dismissIdentityEntryReveal(page);
   const dialog = page.getByRole('dialog');
@@ -62,6 +85,7 @@ export async function leaveRoom(page: Page): Promise<void> {
   }
   let leave = page.getByRole('button', { name: /^(离开房间|暂离对局)$/, exact: true });
   if (!(await leave.isVisible().catch(() => false))) {
+    await revealHudActions(page);
     const manage = page.getByRole('button', { name: '房间管理', exact: true });
     if (await manage.isVisible().catch(() => false)) {
       await manage.click();

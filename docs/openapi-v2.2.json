@@ -332,7 +332,7 @@
       "parameters": [],
       "post": {
         "summary": "创建冻结配置的持续房间",
-        "description": "roles存在时标记experimental；不传则为默认13人正式预设。playerCount若提供必须等于角色总数。显示名来自账号，无nickname输入。",
+        "description": "roles存在时标记experimental；不传则为默认13人正式预设。playerCount若提供必须等于角色总数。显示名来自账号，无nickname输入。publicChat为必填：建房时由房主显式选择公屏写权限档位，没有默认值，创建后不可改。",
         "requestBody": {
           "required": true,
           "content": {
@@ -356,10 +356,19 @@
                     "type": "integer",
                     "minimum": 5,
                     "maximum": 64
+                  },
+                  "publicChat": {
+                    "$ref": "#/components/schemas/PublicChatMode"
+                  },
+                  "freeSpeech": {
+                    "type": "boolean",
+                    "description": "必填：是否开启白天的「自由发言」阶段（发言轮之后、放逐投票之前，存活玩家可开麦）。true/false 都可，但不能缺省。"
                   }
                 },
                 "required": [
-                  "requestId"
+                  "requestId",
+                  "publicChat",
+                  "freeSpeech"
                 ],
                 "additionalProperties": true
               }
@@ -1887,8 +1896,8 @@
         }
       ],
       "post": {
-        "summary": "按当前身份获取公共语音凭证",
-        "description": "voice关闭返回voice_disabled。凭证仅授权加入公共语音房；发布权限由服务端同步，第二屏不能开麦。",
+        "summary": "按当前身份获取声网语音凭证（加入频道 + 订阅，必要时含发布权）",
+        "description": "声网 RTC：响应即浏览器加入频道所需字段。服务端按 R-43 决定 token 角色——此刻持有发布权时返回发布凭证（150 秒 TTL），否则返回订阅凭证（可听不可发，30 分钟 TTL）；观众、第二屏与不在发言窗口的玩家只拿订阅。**进入对局前的大厅与复盘（Q-12）走房间频道**：正式成员自由开麦（拿发布凭证），观众与第二屏只订阅；此时请求不带 gameId。voice 关闭返回 voice_disabled，媒体未就绪返回 voice_unavailable，解析过程中身份变化返回 authorization_changed。限流 6 次 / 3 秒。",
         "requestBody": {
           "required": true,
           "content": {
@@ -1900,12 +1909,12 @@
                     "$ref": "#/components/schemas/RequestId"
                   },
                   "gameId": {
+                    "description": "对局 id：只有对局频道要求（服务端校验它属于房间的当前一局）；大厅与复盘的房间频道不带该字段——相位以服务端为准，此时即使带上也会被忽略，只会签发房间频道凭证。",
                     "type": "string"
                   }
                 },
                 "required": [
-                  "requestId",
-                  "gameId"
+                  "requestId"
                 ],
                 "additionalProperties": true
               }
@@ -1920,20 +1929,28 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "url": {
-                      "type": "string"
+                    "appId": {
+                      "type": "string",
+                      "description": "声网 App ID（公开值，不是密钥）"
+                    },
+                    "channel": {
+                      "type": "string",
+                      "description": "频道名 = 本局 gameId"
+                    },
+                    "uid": {
+                      "type": "integer",
+                      "description": "服务端为该身份分配的稳定频道 uid（踢人与频道对账按它定位）"
                     },
                     "token": {
-                      "type": "string"
-                    },
-                    "roomName": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "订阅或发布凭证；角色随发言窗口变化，客户端需在 token-privilege-will-expire / did-expire 时重新申请"
                     }
                   },
                   "required": [
-                    "url",
-                    "token",
-                    "roomName"
+                    "appId",
+                    "channel",
+                    "uid",
+                    "token"
                   ],
                   "additionalProperties": false
                 }
@@ -2042,6 +2059,132 @@
         }
       }
     },
+    "/rooms/{code}/voice/receipt": {
+      "parameters": [
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "summary": "上报本机送达状态（送达回执 C 组）",
+        "description": "接收端在订阅并播放成功后上报 playing；自动播放被拦报 blocked；本机输出音量为 0 报 silent-output；订阅或播放失败报 failed。**身份一律由服务端会话解析**，载荷不含身份字段；只受理当前发言窗口与本人媒体身份，发言者自己的回执不算。没有发言窗口时返回 `{recorded:false, delivery:null}`。限流 60 次 / 60 秒。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestId": {
+                    "$ref": "#/components/schemas/RequestId"
+                  },
+                  "gameId": {
+                    "type": "string"
+                  },
+                  "windowInstanceId": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "playing",
+                      "blocked",
+                      "silent-output",
+                      "failed"
+                    ]
+                  },
+                  "client": {
+                    "description": "可选客户端自检快照，仅作诊断，服务端不据此授权",
+                    "type": "object",
+                    "properties": {
+                      "connectionState": {
+                        "type": "string"
+                      },
+                      "sendBitrate": {
+                        "type": "number"
+                      },
+                      "remoteUsers": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "connectionState",
+                      "remoteUsers"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "gameId",
+                  "windowInstanceId",
+                  "state"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功。delivery 是当前发言窗口的聚合，只在本人此刻持有发布权时有值；没有发言窗口时为 null。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "recorded": {
+                      "type": "boolean"
+                    },
+                    "delivery": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/VoiceDelivery"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "recorded",
+                    "delivery"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "voice 未启用时返回 voice_disabled。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/diagnostics": {
       "parameters": [],
       "get": {
@@ -2097,8 +2240,9 @@
     },
     "/voice/webhook": {
       "post": {
-        "summary": "LiveKit签名事件回调",
-        "description": "仅启用媒体验证器时开放；签名校验失败401。未知或已撤销媒体身份加入后会被移除。不是浏览器房间操作。",
+        "summary": "（历史遗留，未启用）上一代 LiveKit 媒体回调",
+        "description": "**当前未启用**：媒体层已换为声网 RTC，`server/v2/index.ts` 未注入 `verifyWebhook`，该路由不会被注册（`server/v2/app.ts` 保留为历史遗留）。媒体回收改由服务端同步 + 频道轮询对账完成。保留此条仅为记录上一代契约；签名校验失败 401。",
+        "deprecated": true,
         "security": [
           {
             "livekitSignature": []
@@ -2235,7 +2379,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "Authorization",
-        "description": "LiveKit服务端签名；SDK验证原始body。"
+        "description": "（历史遗留，未启用）上一代 LiveKit 服务端签名；仅 /voice/webhook 使用，而该路由当前未挂载。"
       },
       "accountCookie": {
         "type": "apiKey",
@@ -2245,6 +2389,43 @@
       }
     },
     "schemas": {
+      "VoiceDelivery": {
+        "description": "当前发言窗口的送达回执聚合。分母是「上报过的接收端数」，不是频道人数；只下发给此刻持有发布权的人。",
+        "type": "object",
+        "properties": {
+          "windowInstanceId": {
+            "type": "string"
+          },
+          "delivered": {
+            "type": "integer"
+          },
+          "blocked": {
+            "type": "integer"
+          },
+          "silentOutput": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "listeners": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "windowInstanceId",
+          "delivered",
+          "blocked",
+          "silentOutput",
+          "failed",
+          "listeners",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
       "JsonValue": {
         "anyOf": [
           {
@@ -2561,6 +2742,10 @@
               },
               "speechOrder": {
                 "type": "number"
+              },
+              "freeSpeech": {
+                "type": "number",
+                "description": "白天「自由发言」阶段时长（秒）。仅当房主在建房时选择开启才存在；缺失表示本局没有该阶段。"
               }
             },
             "required": [
@@ -3150,6 +3335,7 @@
               "first_night_last_words",
               "election",
               "speech_round",
+              "free_speech",
               "vote",
               "elimination_last_words",
               "handover",
@@ -3728,6 +3914,13 @@
                 "items": {
                   "type": "integer"
                 }
+              },
+              "dyingSeats": {
+                "description": "本夜濒死名单（可选）：仅一阶段、夜间、名单已产生时下发给未死亡的降临者与未使用还魂曲的水妖；其余情况不含该字段（不以下发空数组代替）",
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
               }
             },
             "required": [
@@ -3743,40 +3936,7 @@
             ],
             "properties": {
               "delivery": {
-                "type": "object",
-                "properties": {
-                  "windowInstanceId": {
-                    "type": "string"
-                  },
-                  "delivered": {
-                    "type": "integer"
-                  },
-                  "blocked": {
-                    "type": "integer"
-                  },
-                  "silentOutput": {
-                    "type": "integer"
-                  },
-                  "failed": {
-                    "type": "integer"
-                  },
-                  "listeners": {
-                    "type": "integer"
-                  },
-                  "updatedAt": {
-                    "type": "number"
-                  }
-                },
-                "required": [
-                  "windowInstanceId",
-                  "delivered",
-                  "blocked",
-                  "silentOutput",
-                  "failed",
-                  "listeners",
-                  "updatedAt"
-                ],
-                "additionalProperties": false
+                "$ref": "#/components/schemas/VoiceDelivery"
               }
             },
             "required": [
@@ -4215,6 +4375,35 @@
         ],
         "additionalProperties": false
       },
+      "PublicChatMode": {
+        "type": "string",
+        "description": "公屏写权限档位，建房时由房主显式选择且创建后不可改。alive_only＝对局内所有阶段仅存活正式玩家可写（死者只读，本人遗言窗口除外）；everyone＝对局内所有阶段存活与死者均可写。观众与第二屏在任何档位下都只读。",
+        "enum": [
+          "alive_only",
+          "everyone"
+        ]
+      },
+      "RoomVoice": {
+        "type": "object",
+        "description": "当前语音范围（Q-12）：对局内是对局频道（gameId），进入对局前的大厅与复盘是房间频道（独立于任何一局）。仅用于把本机远端电平归属到座位 / 成员卡显示「谁在说话」，不含隐藏信息（uid 本就是频道内可见编号）。",
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "uids": {
+            "description": "频道 uid → 语音主体：对局频道里是 playerId（座位卡比对），房间频道里是 memberId（大厅/复盘成员卡比对，因为那时还没有 playerId）。",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "channel",
+          "uids"
+        ],
+        "additionalProperties": false
+      },
       "RoomSnapshot": {
         "type": "object",
         "properties": {
@@ -4308,6 +4497,13 @@
               "config": {
                 "$ref": "#/components/schemas/Ruleset"
               },
+              "publicChat": {
+                "$ref": "#/components/schemas/PublicChatMode"
+              },
+              "freeSpeech": {
+                "type": "boolean",
+                "description": "房主建房时选择的「白天自由发言」开关（冻结在本局配置里，创建后不可改）。"
+              },
               "requiredPlayers": {
                 "type": "integer"
               },
@@ -4348,6 +4544,8 @@
               "code",
               "phase",
               "config",
+              "publicChat",
+              "freeSpeech",
               "requiredPlayers",
               "hostMemberId",
               "formalMembers",
@@ -4384,6 +4582,17 @@
             "items": {
               "$ref": "#/components/schemas/Window"
             }
+          },
+          "voice": {
+            "description": "当前语音范围（Q-12）。语音未启用时为 null。",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RoomVoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "tasks": {
             "type": "array",
@@ -4433,6 +4642,7 @@
           "private",
           "capabilities",
           "windows",
+          "voice",
           "tasks",
           "submissionState",
           "chat"

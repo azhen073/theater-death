@@ -10,6 +10,8 @@ import type { AccountSession } from './account-store.ts';
 import type { RoomDirectory } from './room-directory.ts';
 import type { ActiveMember, StableRoom } from './stable-room.ts';
 import type { DeliveryView } from './media.ts';
+import { roomVoiceChannel } from './room-voice.ts';
+import { roomVoicePermission } from '../../voice/policy.ts';
 import { gameView } from './view.ts';
 import { ApiError } from './errors.ts';
 
@@ -23,6 +25,11 @@ const actionWindows: Record<CommandAction, readonly string[]> = {
 const personalWindows = new Set(['guard', 'laike', 'faction', 'check', 'rescue', 'revive']);
 const noGameCapabilities = () => ({ canPostPublic: false, canPostFaction: false, canPublishVoice: false, canVote: false, allowedCommands: [] as CommandAction[] });
 const permission = (reason: string | null): Permission => ({ allowed: reason === null, reason });
+/** 房主是否开启「白天自由发言」：冻结在规则集里（1.1 板不带该键）。 */
+const freeSpeechEnabled = (room: StableRoom): boolean => {
+  const seconds = room.ruleset.timersSeconds.freeSpeech;
+  return typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0;
+};
 const events = (items: readonly ClientEvent[]): EventDTO[] => items.map((e) => ({ ...e, payload: e.payload as JsonValue }));
 
 function dayView(state: GameState): DayDTO | null {
@@ -44,8 +51,8 @@ export interface SnapshotDeps {
   directory: RoomDirectory;
   profile: (userId: string) => Profile;
   submissions?: (room: StableRoom, subjectPlayerId: string) => SubmissionDTO[];
-  /** C 组：当前发言窗口的送达聚合（只为「此刻持有发布权」的人读取） */
-  voice?: { deliveryFor: (gameId: string) => DeliveryView | null };
+  /** C 组：当前发言窗口的送达聚合（只为「此刻持有发布权」的人读取）；`uidMap` 供「谁在说话」归属。 */
+  voice?: { enabled: boolean; deliveryFor: (channel: string) => DeliveryView | null; uidMap: (channel: string) => Record<string, string> };
 }
 
 /** Viewer-specific fingerprints never use global engine/audit sequence counters. */
@@ -86,12 +93,17 @@ export class RoomSnapshots {
     const viewer = room.access?.resolve(session);
     const subject = viewer?.identity.subjectPlayerId ?? null;
     const runtime = room.runtime;
-    const projected = runtime ? gameView(runtime, { subjectPlayerId: subject, readOnly: false }, now) : null;
+    const projected = runtime ? gameView(runtime, { subjectPlayerId: subject, readOnly: false }, now, room.publicChat) : null;
     const known = runtime?.state ? publishedState(runtime.state, runtime.events) : null;
     const subjectCaps = projected?.capabilities ?? noGameCapabilities();
     const gameCaps = readOnly ? noGameCapabilities() : subjectCaps;
+    // 大厅 / 复盘走房间频道（Q-12）：正式成员自由开麦，观众与第二屏只读；
+    // 对局内仍以既有 capabilities 为准（含「窗口未开启即无发布权」的细化）。
+    const roomVoice = room.phase === 'playing' ? null : roomVoicePermission({ phase: room.phase, formal: member.kind === 'formal', state: runtime?.state ?? null, playerId: subject });
+    const canPublishVoice = readOnly ? false : roomVoice === null ? subjectCaps.canPublishVoice : roomVoice.canPublish;
     const caps: SnapshotCapabilities = {
       ...gameCaps,
+      canPublishVoice,
       supportsProposalEditConfirmation: true,
       allowedCommands: [...gameCaps.allowedCommands],
       commandReasons: Object.fromEntries(COMMAND_ACTIONS.map((action) => [action, gameCaps.allowedCommands.includes(action) ? null : readOnly ? 'spectator_read_only' : runtime ? 'action_unavailable' : 'game_not_started'])) as SnapshotCapabilities['commandReasons'],
@@ -114,12 +126,16 @@ export class RoomSnapshots {
       }
     }
     const gameId = room.gameId;
-    // C 组：送达回执只下发给此刻持有发布权的人（其他人不含该字段，避免听众信息变成公共知识）
-    const delivery = !readOnly && caps.canPublishVoice && gameId ? this.deps.voice?.deliveryFor(gameId) ?? null : null;
+    // C 组：送达回执只下发给此刻持有发布权的人（其他人不含该字段，避免听众信息变成公共知识）；
+    // 回执只存在于对局内（房间频道没有发言窗口）。
+    const delivery = room.phase === 'playing' && !readOnly && caps.canPublishVoice && gameId ? this.deps.voice?.deliveryFor(gameId) ?? null : null;
+    // 语音范围（Q-12）：对局内是对局频道，大厅/复盘是房间频道；uid 主体的含义见 RoomVoiceDTO。
+    const voiceChannel = room.phase === 'playing' ? gameId : roomVoiceChannel(room.roomId);
+    const voice = this.deps.voice === undefined || !this.deps.voice.enabled || voiceChannel === null ? null : { channel: voiceChannel, uids: this.deps.voice.uidMap(voiceChannel) };
     const result: Omit<RoomSnapshot, 'serverTime' | 'viewVersion'> = {
       contractVersion: CONTRACT_VERSION, rulesVersion: room.ruleset.version, roomId: room.roomId, gameId: room.gameId,
       viewer: { userId: member.userId, memberId: member.memberId, kind: member.kind, subjectPlayerId: subject, readOnly, isHost: room.hostMemberId === member.memberId },
-      room: { code: room.code, phase: room.phase, config: room.ruleset, requiredPlayers: room.requiredPlayers(), hostMemberId: room.hostMemberId, formalMembers: members.filter((m) => m.kind === 'formal').map((m) => this.member(room, m)), spectators: members.filter((m) => m.kind !== 'formal').map((m) => this.member(room, m)), emptyDeadline: room.emptyDeadline },
+      room: { code: room.code, phase: room.phase, config: room.ruleset, publicChat: room.publicChat, freeSpeech: freeSpeechEnabled(room), requiredPlayers: room.requiredPlayers(), hostMemberId: room.hostMemberId, formalMembers: members.filter((m) => m.kind === 'formal').map((m) => this.member(room, m)), spectators: members.filter((m) => m.kind !== 'formal').map((m) => this.member(room, m)), emptyDeadline: room.emptyDeadline },
       public: known && projected ? {
         phase: known.phase, dayNumber: known.dayNumber, stage: known.stage, sheriff: known.sheriff,
         seats: known.players.map<SeatDTO>((p) => {
@@ -138,7 +154,7 @@ export class RoomSnapshots {
         factionRoom: privateView.factionRoom ? { ...privateView.factionRoom, readOnly: readOnly || privateView.factionRoom.readOnly, canWrite: !readOnly && privateView.factionRoom.canWrite } : null,
         ...(delivery ? { voice: { delivery } } : {}),
       } : null,
-      capabilities: caps, windows,
+      capabilities: caps, windows, voice,
       tasks: gameCaps.allowedCommands.flatMap((action) => windows.filter((w) => actionWindows[action].includes(w.id)).map((w) => ({ action, windowInstanceId: w.instanceId, closesAt: w.closesAt, targets: privateView?.targets?.[action as keyof typeof privateView.targets] ?? null }))),
       submissionState: subject ? (this.deps.submissions?.(room, subject) ?? []).map((s) => ({ ...s, requestId: readOnly ? null : s.requestId })) : [],
       chat,

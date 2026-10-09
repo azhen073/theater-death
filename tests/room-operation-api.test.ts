@@ -5,7 +5,7 @@ import { MockVoice } from './contract-http-utils.ts';
 afterEach(closeHarnesses);
 
 async function startFullRoom(h: HttpHarness) {
-  const created = await request(h, '/api/v2/rooms', post({ requestId: 'full-create' }), h.users[0]);
+  const created = await request(h, '/api/v2/rooms', post({ requestId: 'full-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
   expect(created.status).toBe(201);
   const room = await json(created) as { roomId: string; roomCode: string; gameId: null };
   for (let index = 1; index < 13; index += 1) {
@@ -32,8 +32,8 @@ describe('v2 operation receipt HTTP contract', () => {
   it('deduplicates concurrent create requests, preserves the original response, and isolates accounts', async () => {
     const h = await makeHarness();
     const responses = await Promise.all([
-      request(h, '/api/v2/rooms', post({ requestId: 'concurrent-create' }), h.users[0]),
-      request(h, '/api/v2/rooms', post({ requestId: 'concurrent-create' }), h.users[0]),
+      request(h, '/api/v2/rooms', post({ requestId: 'concurrent-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]),
+      request(h, '/api/v2/rooms', post({ requestId: 'concurrent-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]),
     ]);
     expect(responses.map((response) => response.status)).toEqual([201, 201]);
     const first = await json(responses[0]!);
@@ -41,7 +41,7 @@ describe('v2 operation receipt HTTP contract', () => {
     expect(second).toEqual(first);
     expect(h.app.directory.byId.size).toBe(1);
 
-    const otherAccount = await request(h, '/api/v2/rooms', post({ requestId: 'concurrent-create' }), h.users[1]);
+    const otherAccount = await request(h, '/api/v2/rooms', post({ requestId: 'concurrent-create', publicChat: 'alive_only', freeSpeech: false }), h.users[1]);
     expect(otherAccount.status).toBe(201);
     expect((await json(otherAccount)).roomId).not.toBe(first.roomId);
     expect(h.app.directory.byId.size).toBe(2);
@@ -49,10 +49,10 @@ describe('v2 operation receipt HTTP contract', () => {
 
   it('rejects changed body and operation on the same account-room request id without replacing the original response', async () => {
     const h = await makeHarness();
-    const created = await request(h, '/api/v2/rooms', post({ requestId: 'body-conflict' }), h.users[0]);
+    const created = await request(h, '/api/v2/rooms', post({ requestId: 'body-conflict', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
     expect(created.status).toBe(201);
     const original = await json(created);
-    const changed = await request(h, '/api/v2/rooms', post({ requestId: 'body-conflict', presetId: 'default-13' }), h.users[0]);
+    const changed = await request(h, '/api/v2/rooms', post({ requestId: 'body-conflict', publicChat: 'alive_only', freeSpeech: false, presetId: 'default-13' }), h.users[0]);
     expect(changed.status).toBe(409);
     expectErrorBody(await json(changed), 'request_id_reused');
 
@@ -67,7 +67,7 @@ describe('v2 operation receipt HTTP contract', () => {
 
   it('replays ready without reversing a later ready request', async () => {
     const h = await makeHarness();
-    const created = await request(h, '/api/v2/rooms', post({ requestId: 'ready-create' }), h.users[0]);
+    const created = await request(h, '/api/v2/rooms', post({ requestId: 'ready-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
     const room = await json(created) as { roomCode: string; roomId: string };
     expect((await enter(h, room.roomCode, h.users[1]!, 'ready-enter')).response.status).toBe(200);
     const first = await request(h, `/api/v2/rooms/${room.roomCode}/ready`, post({ requestId: 'ready-on', ready: true }), h.users[1]);
@@ -104,7 +104,7 @@ describe('v2 operation receipt HTTP contract', () => {
 
   it('replays leave after the member is gone and dissolve after the room leaves the directory', async () => {
     const h = await makeHarness();
-    const created = await request(h, '/api/v2/rooms', post({ requestId: 'leave-create' }), h.users[0]);
+    const created = await request(h, '/api/v2/rooms', post({ requestId: 'leave-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
     const room = await json(created) as { roomCode: string; roomId: string };
     const leave = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: 'leave-once' }), h.users[0]);
     expect(leave.status).toBe(200);
@@ -113,7 +113,7 @@ describe('v2 operation receipt HTTP contract', () => {
     expect(leaveReplay.status).toBe(200);
     expect(await json(leaveReplay)).toEqual(leaveBody);
 
-    const dissolved = await request(h, '/api/v2/rooms', post({ requestId: 'dissolve-create' }), h.users[1]);
+    const dissolved = await request(h, '/api/v2/rooms', post({ requestId: 'dissolve-create', publicChat: 'alive_only', freeSpeech: false }), h.users[1]);
     const dissolveRoom = await json(dissolved) as { roomCode: string; roomId: string };
     const dissolve = await request(h, `/api/v2/rooms/${dissolveRoom.roomCode}/dissolve`, post({ requestId: 'dissolve-once' }), h.users[1]);
     expect(dissolve.status).toBe(200);
@@ -183,7 +183,7 @@ describe('v2 operation receipt HTTP contract', () => {
 
   it('applies the same receipt to lowercase, encoded, and trailing-slash room aliases', async () => {
     const h = await makeHarness();
-    const created = await request(h, '/api/v2/rooms', post({ requestId: 'alias-create' }), h.users[0]);
+    const created = await request(h, '/api/v2/rooms', post({ requestId: 'alias-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
     const room = await json(created) as { roomCode: string; roomId: string };
     const canonical = await request(h, `/api/v2/rooms/${room.roomCode}/enter`, post({ requestId: 'alias-enter' }), h.users[1]);
     expect(canonical.status).toBe(200);

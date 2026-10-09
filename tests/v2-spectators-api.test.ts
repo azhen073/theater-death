@@ -83,7 +83,7 @@ async function json(response: Response): Promise<Record<string, any>> {
 function intent(requestId: string, extra: Record<string, unknown> = {}) { return { requestId, ...extra }; }
 
 async function createRoom(h: Harness, user = h.users[0]!, requestId = 'create-room') {
-  const response = await request(h, '/api/v2/rooms', user, intent(requestId));
+  const response = await request(h, '/api/v2/rooms', user, intent(requestId, { publicChat: 'alive_only', freeSpeech: false }));
   expect(response.status).toBe(201);
   return await json(response) as { roomId: string; roomCode: string; gameId: null; memberId: string; kind: 'formal'; playerId: null };
 }

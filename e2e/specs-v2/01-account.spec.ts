@@ -23,6 +23,8 @@ test('直接注册、UID 展示、昵称编辑与改密', async ({ page, browser
   await expect(deathEffects).toBeChecked();
   await expect(display.getByLabel('动画偏好')).toHaveValue('system');
   await expect(display.getByLabel('界面缩放')).toHaveValue('100');
+  // 提示音开关（v2.0.7-alpha 从局内发言条移到本设置区）：默认关闭
+  await expect(display.getByRole('checkbox', { name: '发言与阶段提示音', exact: true })).not.toBeChecked();
   // F5：三个标签字号统一，帮助文字更小，且「死亡特效」与下一项之间保持间距
   const metrics = await display.evaluate(section => {
     const fields = [...section.querySelectorAll('.select-field')];
@@ -51,7 +53,7 @@ test('直接注册、UID 展示、昵称编辑与改密', async ({ page, browser
   await display.getByLabel('界面缩放').selectOption('100');
   await page.getByRole('button', { name: '修改昵称' }).click(); await page.getByLabel('新昵称').fill('新昵称用户'); await page.getByRole('button', { name: '保存' }).click(); await expect(page.getByRole('heading', { name: '新昵称用户' })).toBeVisible();
   const changed = newPasswordFor(account.nickname); await page.getByRole('button', { name: '修改密码' }).click(); await page.getByLabel('当前密码').fill(account.password); await page.getByLabel('新密码', { exact: true }).fill(changed); await page.getByLabel('确认新密码', { exact: true }).fill(changed); await page.getByRole('button', { name: '保存新密码' }).click();
-  await expect(page.getByRole('status')).toContainText('密码已更新'); await page.getByRole('button', { name: '返回登录' }).click(); await login(page, registeredUid, changed);
+  await expect(page.getByRole('dialog').getByRole('status')).toContainText('密码已更新'); await page.getByRole('button', { name: '返回登录' }).click(); await login(page, registeredUid, changed);
   const second = await browser.newContext(); const secondPage = await second.newPage(); try { await openAuth(secondPage); await login(secondPage, registeredUid, changed); } finally { await second.close(); }
 });
 

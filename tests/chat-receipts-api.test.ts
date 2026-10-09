@@ -3,8 +3,8 @@ import { closeHarnesses, connectRoom, enter, json, makeHarness, post, request, w
 
 afterEach(closeHarnesses);
 
-async function startFullRoom(h: HttpHarness) {
-  const created = await request(h, '/api/v2/rooms', post({ requestId: 'chat-create' }), h.users[0]);
+async function startFullRoom(h: HttpHarness, publicChat: 'alive_only' | 'everyone' = 'alive_only', freeSpeech = false) {
+  const created = await request(h, '/api/v2/rooms', post({ requestId: 'chat-create', publicChat, freeSpeech }), h.users[0]);
   expect(created.status).toBe(201);
   const room = await json(created) as { roomId: string; roomCode: string; gameId: null };
   for (let index = 1; index < 13; index += 1) {
@@ -186,5 +186,50 @@ describe('v2 chat acknowledgement and receipt contract', () => {
     expect(staleRetry.body.error).toMatchObject({ code: 'stale_game' });
     expect(h.logStore.listMessages(first.gameId, 0)).toHaveLength(1);
     expect(h.logStore.listMessages(next.gameId, 0)).toHaveLength(1);
+  });
+
+  it('alive_only：夜间活人可以发公屏；判定用的是「已公开」生死，未公告的死亡不提前泄露', async () => {
+    const h = await makeHarness();
+    const { room, gameId } = await startFullRoom(h, 'alive_only');
+    const stable = h.app.directory.byId.get(room.roomId)!;
+    const state = stable.runtime!.state!;
+    const aliveTarget = state.players.find((player) => player.roleId === 'civilian')!;
+    const deadTarget = state.players.find((player) => player.roleId === 'researcher' || player.roleId === 'door')!;
+    stable.runtime!.state = {
+      ...state,
+      phase: 'night',
+      players: state.players.map((player) => player.playerId === deadTarget.playerId ? { ...player, life: 'dead' as const } : player),
+    };
+    const alive = await sendChat(h, room.roomCode, playerUser(h, room.roomId, aliveTarget.playerId), messageBody(gameId, 'alive-only-night', '夜间活人公屏'));
+    expect(alive.response.status).toBe(201);
+    expect(alive.body).toMatchObject({ channel: 'public' });
+    expect(alive.body.message.text).toBe('夜间活人公屏');
+    // v2 的能力一律由「已公开状态」推导：夜间死亡要等晨间公告才公开，公告前本人仍看到自己存活，
+    // 因此此刻仍可发言（否则等于用发言权限泄露死讯）。公告之后的拒绝见 tests/visibility.test.ts 与 tests/capabilities.test.ts。
+    const deadView = await json(await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, playerUser(h, room.roomId, deadTarget.playerId)));
+    expect(deadView.private.self).toMatchObject({ playerId: deadTarget.playerId, life: 'alive' });
+    const beforeAnnouncement = await sendChat(h, room.roomCode, playerUser(h, room.roomId, deadTarget.playerId), messageBody(gameId, 'alive-only-night-dead', '公告前仍可发'));
+    expect(beforeAnnouncement.response.status).toBe(201);
+  });
+
+  it('everyone：夜间死者也能发公屏，且对其他玩家公开可见', async () => {
+    const h = await makeHarness();
+    const { room, gameId } = await startFullRoom(h, 'everyone');
+    const stable = h.app.directory.byId.get(room.roomId)!;
+    const state = stable.runtime!.state!;
+    const deadTarget = state.players.find((player) => player.roleId === 'civilian')!;
+    stable.runtime!.state = {
+      ...state,
+      phase: 'night',
+      players: state.players.map((player) => player.playerId === deadTarget.playerId ? { ...player, life: 'dead' as const } : player),
+    };
+    const sent = await sendChat(h, room.roomCode, playerUser(h, room.roomId, deadTarget.playerId), messageBody(gameId, 'everyone-night-dead', '死者夜间公屏'));
+    expect(sent.response.status).toBe(201);
+    expect(sent.body).toMatchObject({ channel: 'public' });
+    expect(sent.body.message.text).toBe('死者夜间公屏');
+    const watcher = await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[0]);
+    const view = await json(watcher);
+    expect(view.room).toMatchObject({ publicChat: 'everyone' });
+    expect(view.chat.public.some((message: any) => message.text === '死者夜间公屏')).toBe(true);
   });
 });

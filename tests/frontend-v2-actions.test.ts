@@ -79,16 +79,20 @@ describe('v2 action model', () => {
     expect(selectionIssue(selection, [])).toBeNull();
   });
 
-  it('supports single replacement, multi-select toggles, repeated multi-shot increments, and decrements', () => {
+  it('点击即选中/取消选中：单目标替换、多选切换、配额上限，且永不产生重复目标', () => {
     expect(updateSelection({ ...selection, maxTargets: 1 }, ['p_a'], 'p_b')).toEqual(['p_b']);
+    expect(updateSelection({ ...selection, maxTargets: 1 }, ['p_a'], 'p_a')).toEqual([]);
     expect(updateSelection(selection, [], 'p_a')).toEqual(['p_a']);
     expect(updateSelection(selection, ['p_a'], 'p_a')).toEqual([]);
     expect(updateSelection(selection, ['p_a'], 'p_b')).toEqual(['p_a', 'p_b']);
     expect(updateSelection(selection, ['p_a', 'p_b'], 'p_c')).toEqual(['p_a', 'p_b']);
+    // 重复目标已废止：allowRepeated 的团队攻击也走切换语义，点击已选座位只会取消
     const repeated = { ...selection, allowRepeated: true, maxTargets: 3 };
-    expect(updateSelection(repeated, ['p_a'], 'p_a')).toEqual(['p_a', 'p_a']);
-    expect(updateSelection(repeated, ['p_a', 'p_a'], 'p_a', -1)).toEqual(['p_a']);
-    expect(updateSelection(selection, ['p_a', 'p_b'], 'p_a', -1)).toEqual(['p_b']);
+    expect(updateSelection(repeated, [], 'p_a')).toEqual(['p_a']);
+    expect(updateSelection(repeated, ['p_a'], 'p_a')).toEqual([]);
+    expect(updateSelection(repeated, ['p_a'], 'p_b')).toEqual(['p_a', 'p_b']);
+    expect(updateSelection(repeated, ['p_a', 'p_b'], 'p_a')).toEqual(['p_b']);
+    expect(new Set(updateSelection(repeated, ['p_a', 'p_b'], 'p_c')).size).toBe(3);
   });
 
   it('requires the latest positive proposal revision and validates designate direction', () => {

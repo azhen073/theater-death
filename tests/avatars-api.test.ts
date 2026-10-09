@@ -69,7 +69,7 @@ function connect(h: Harness, user: User, roomId: string): { socket: Socket; view
 }
 
 async function startRoom(h: Harness) {
-  const created = await request(h, '/api/v2/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ requestId: 'avatar-room-create' }) }, h.users[0]);
+  const created = await request(h, '/api/v2/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ requestId: 'avatar-room-create', publicChat: 'alive_only', freeSpeech: false }) }, h.users[0]);
   expect(created.status).toBe(201);
   const room = await json(created) as { roomId: string; roomCode: string };
   for (let index = 1; index < 13; index += 1) {

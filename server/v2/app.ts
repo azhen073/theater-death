@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { CONTRACT_VERSION } from '../../contracts/v2.ts';
+import { CONTRACT_VERSION, PUBLIC_CHAT_MODES, type PublicChatMode } from '../../contracts/v2.ts';
 import type { Clock } from '../clock.ts';
 import type { LogStore } from '../log-store.ts';
 import { RoomRegistry } from '../rooms.ts';
@@ -18,6 +18,7 @@ import { gameView } from './view.ts';
 import { parseCommand } from './parse-command.ts';
 import { RateLimits } from './rate-limit.ts';
 import { V2Media, DELIVERY_STATES, type DeliveryState } from './media.ts';
+import { roomVoiceChannel, roomVoiceIdentity } from './room-voice.ts';
 import { createMaintenance } from './maintenance.ts';
 import { createDiagnostics } from './diagnostics.ts';
 import { RoomDirectory } from './room-directory.ts';
@@ -53,7 +54,9 @@ export function createV2App(deps: V2Deps) {
     if (closing) return;
     if (!room.dissolved) {
       governance.reconcile(room, event); empty.observe(room); room.recordCompletion();
-      if (!room.dissolved && room.access && room.gameId) { access.set(room.gameId, room.access); void media.sync(room.access); }
+      // 对局频道（房内）与房间频道（大厅/复盘，Q-12）各同步一次：关闭已终结的频道、回收失效身份。
+      void media.sync(media.roomScope(room));
+      if (!room.dissolved && room.access && room.gameId) { access.set(room.gameId, room.access); void media.sync(media.matchScope(room.access)); }
     }
     hub?.refresh(room.roomId);
   };
@@ -68,20 +71,26 @@ export function createV2App(deps: V2Deps) {
     changed: refresh,
     control: (room, sessionId, reason) => hub?.control(room, sessionId, reason),
     beforeMutation: (room) => empty.expireIfDue(room),
-    removed: (room) => { snapshots.forget(room.roomId); empty.forget(room.roomId); if (room.gameId) { access.delete(room.gameId); void media.closeRoom(room.gameId); } },
+    removed: (room) => { snapshots.forget(room.roomId); empty.forget(room.roomId); void media.closeRoom(roomVoiceChannel(room.roomId)); if (room.gameId) { access.delete(room.gameId); void media.closeRoom(room.gameId); } },
     closedMatch: (gameId) => { access.delete(gameId); void media.closeRoom(gameId); },
+    closeRoomVoice: (channel) => { void media.closeRoom(channel); },
   });
   governance = new RoomGovernance(directory);
   empty = new EmptyRooms(directory, governance);
   const presence = new MemberPresence(directory);
   const rounds = new RoomRounds(directory, governance);
   const grants = new ScreenGrants(directory);
-  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id), voice: { deliveryFor: (gameId) => media.deliveryFor(gameId) } });
+  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id), voice: { enabled: !!deps.voice, deliveryFor: (channel) => media.deliveryFor(channel), uidMap: (channel) => media.uidMap(channel) } });
   hub = createRoomRealtime({ directory, snapshots, presence, origin: deps.origin, cookieName: deps.cookieName });
-  // D 组对账：只对有对局且已进入对局的房间跑；REST 在媒体自己的串行队列里执行，不阻塞游戏队列
+  // D 组对账：大厅/复盘跑房间频道，对局跑对局频道；REST 在媒体自己的串行队列里执行，不阻塞游戏队列
   const maintenance = createMaintenance(directory, empty, deps.avatars ? () => deps.avatars!.collect() : undefined, {
     intervalMs: 5_000,
-    run: (room) => { const access = room.access; if (!access || room.phase !== 'playing' || !deps.voice) return Promise.resolve(); return media.reconcile(access); },
+    run: (room) => {
+      if (!deps.voice) return Promise.resolve();
+      const scopes = [media.roomScope(room)];
+      if (room.access) scopes.push(media.matchScope(room.access));
+      return Promise.all(scopes.map((scope) => media.reconcile(scope))).then(() => undefined);
+    },
   });
   const revokeUser = async (userId: string, event: AccountRevocation = { reason: 'credentials_changed' }) => {
     for (const room of [...directory.byId.values()]) await directory.transaction(() => room.enqueue(() => {
@@ -105,7 +114,10 @@ export function createV2App(deps: V2Deps) {
       if (!Buffer.isBuffer(req.body)) throw new Error('invalid_webhook');
       event = await deps.verifyWebhook!(req.body.toString('utf8'), req.get('authorization'));
     } catch { res.status(401).json({ error: { code: 'invalid_webhook' } }); return; }
-    if (event.event === 'participant_joined' && event.room && event.participant) await media.joined(access.get(event.room.name), event.room.name, event.participant.identity);
+    if (event.event === 'participant_joined' && event.room && event.participant) {
+      const meta = access.get(event.room.name);
+      await media.joined(meta ? media.matchScope(meta) : undefined, event.participant.identity);
+    }
     res.status(204).end();
   });
   const rawAvatar = express.raw({ type: () => true, limit: AVATAR_LIMITS.maxBytes });
@@ -224,13 +236,25 @@ export function createV2App(deps: V2Deps) {
   router.post('/rooms', async (req, res) => {
     const s = limited(req, 'create', 5, 60_000); intent(req);
     if (req.body?.presetId !== undefined && req.body.presetId !== 'default-13') throw new ApiError(400, 'invalid_preset');
-    const ruleset: RulesetConfig = req.body?.roles === undefined ? structuredClone(THEATER_DEATH_13_V2) : { ...structuredClone(THEATER_DEATH_13_V2), mode: 'experimental', roles: req.body.roles };
+    // 公屏写权限必须显式选择，没有默认档位（房主在建房时决定，创建后不可改）。
+    const publicChat = req.body?.publicChat;
+    if (typeof publicChat !== 'string' || !(PUBLIC_CHAT_MODES as readonly string[]).includes(publicChat)) throw new ApiError(400, 'invalid_public_chat');
+    // 白天「自由发言」阶段同样必须显式选择（true/false 都可，但不能缺省）。
+    const freeSpeech = req.body?.freeSpeech;
+    if (typeof freeSpeech !== 'boolean') throw new ApiError(400, 'invalid_free_speech');
+    const preset = structuredClone(THEATER_DEATH_13_V2);
+    // 关闭时把该时限从冻结规则里移除：引擎据此判定本局没有这个阶段（1.1 板本来就不带）。
+    const timers = { ...preset.timersSeconds };
+    if (!freeSpeech) delete timers.freeSpeech;
+    const ruleset: RulesetConfig = req.body?.roles === undefined
+      ? { ...preset, timersSeconds: timers }
+      : { ...preset, timersSeconds: timers, mode: 'experimental', roles: req.body.roles };
     const validation = validateRuleset(ruleset);
     if (!validation.ok) throw new ApiError(400, 'invalid_ruleset', validation.issues.map((v) => v.code).join(','));
     const count = Object.values(ruleset.roles).reduce((a, b) => a + b, 0);
     if (count > 64) throw new ApiError(400, 'player_limit');
     if (req.body?.playerCount !== undefined && req.body.playerCount !== count) throw new ApiError(400, 'player_count_mismatch');
-    const room = await directory.create(s, ruleset);
+    const room = await directory.create(s, ruleset, publicChat as PublicChatMode);
     res.status(201).json(entry(room, room.members.get(s.userId)!));
   });
   router.get('/me/rooms', async (req, res) => {
@@ -329,7 +353,7 @@ export function createV2App(deps: V2Deps) {
       const clientMessageId = textField(req.body?.clientMessageId, 'client_message_id', 1, 80);
       return room.chatReceipts.execute(gameId, id, clientMessageId, req.body, () => {
         limited(req, 'chat', 5, 2500);
-        const snapshot = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now());
+        const snapshot = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now(), room.publicChat);
         const channel = req.body?.channel;
         if (channel !== 'public' && channel !== 'faction') throw new ApiError(400, 'invalid_channel');
         if (!(channel === 'public' ? snapshot.capabilities?.canPostPublic : snapshot.capabilities?.canPostFaction)) throw new ApiError(403, 'chat_forbidden');
@@ -347,8 +371,42 @@ export function createV2App(deps: V2Deps) {
   router.post('/rooms/:code/second-screen/invitations', async (req, res) => { const s = intent(req); limited(req, 'screen', 10, 60_000); res.status(201).json(await grants.invite(roomFor(req), s, matchId(req))); });
   router.post('/rooms/:code/second-screen/redeem', async (req, res) => { const s = intent(req); limited(req, 'screen', 10, 60_000); res.json(await grants.redeem(roomFor(req), s, matchId(req), textField(req.body?.token, 'token'))); });
   router.post('/rooms/:code/second-screen/revoke', async (req, res) => { const s = intent(req); await grants.revoke(roomFor(req), s, matchId(req)); res.json({ revoked: true }); });
-  router.post('/rooms/:code/voice/token', async (req, res) => { const s = intent(req); limited(req, 'voice', 6, 3000); const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req)); res.json(await media.issue(room.access!, s)); });
-  router.post('/rooms/:code/voice/sync', async (req, res) => { const s = intent(req); limited(req, 'voice', 6, 3000); const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req)); if (!deps.voice) throw new ApiError(409, 'voice_disabled'); try { await media.sync(room.access!, true); } catch { throw new ApiError(503, 'voice_unavailable'); } res.json({ synced: true }); });
+  /** 房间频道（大厅/复盘）的语音身份：主体是 memberId + epoch，且要求会话仍是当前会话。 */
+  const roomVoiceIdentityFor = (room: StableRoom, session: AccountSession): string | null => {
+    const member = room.members.get(session.userId);
+    if (!member || member.sessionId !== session.id) return null;
+    return roomVoiceIdentity(roomVoiceChannel(room.roomId), member);
+  };
+  router.post('/rooms/:code/voice/token', async (req, res) => {
+    const room = roomFor(req); limited(req, 'voice', 6, 3000);
+    // 鉴权先于媒体可用性：非成员 / 会话已被接管 / 本局不匹配一律先按既有语义报错
+    const s = intent(req); directory.member(room, s);
+    const playing = room.phase === 'playing';
+    if (playing) requireMatch(room, matchId(req));
+    if (!deps.voice) throw new ApiError(409, 'voice_disabled');
+    // 身份一律由服务端解析：对局内是 playerId（对局频道），大厅/复盘是 memberId（房间频道）
+    const scope = playing ? media.matchScope(room.access!) : media.roomScope(room);
+    if (scope.ended) throw new ApiError(409, 'voice_unavailable');
+    const identity = playing ? room.access!.resolve(s)?.mediaIdentity ?? null : roomVoiceIdentityFor(room, s);
+    if (identity === null) throw new ApiError(403, 'room_access_required');
+    const credentials = await media.issue(scope, identity);
+    // 签发后复核：范围或身份在这一瞬间变化（接管 / 离开 / 开局）→ 撤销并拒绝
+    const stillValid = playing
+      ? room.access!.resolve(s)?.mediaIdentity === identity
+      : roomVoiceIdentityFor(room, s) === identity;
+    await media.revalidate(scope, identity, stillValid);
+    res.json(credentials);
+  });
+  router.post('/rooms/:code/voice/sync', async (req, res) => {
+    const room = roomFor(req); limited(req, 'voice', 6, 3000);
+    const s = intent(req); directory.member(room, s);
+    const playing = room.phase === 'playing';
+    if (playing) requireMatch(room, matchId(req));
+    if (!deps.voice) throw new ApiError(409, 'voice_disabled');
+    const scope = playing ? media.matchScope(room.access!) : media.roomScope(room);
+    try { await media.sync(scope, true); } catch { throw new ApiError(503, 'voice_unavailable'); }
+    res.json({ synced: true });
+  });
   router.post('/rooms/:code/voice/receipt', async (req, res) => {
     const s = intent(req); limited(req, 'voice-receipt', 60, 60_000);
     const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req));

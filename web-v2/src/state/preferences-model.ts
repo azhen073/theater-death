@@ -16,6 +16,8 @@ export interface DisplayPreferences {
   voiceMuted: boolean;
   /** 轮到自己发言时自动开麦（进对局自动加入语音）。 */
   autoMic: boolean;
+  /** 轮到自己发言、昼夜与阶段切换时播放一次本机提示音（需在页面上有过一次点击解锁）。 */
+  attentionSound: boolean;
 }
 
 export const defaultPreferences: DisplayPreferences = {
@@ -28,6 +30,7 @@ export const defaultPreferences: DisplayPreferences = {
   voiceInput: 100,
   voiceMuted: false,
   autoMic: true,
+  attentionSound: false,
 };
 
 export function parsePreferences(value: unknown): DisplayPreferences {
@@ -43,5 +46,6 @@ export function parsePreferences(value: unknown): DisplayPreferences {
     voiceInput: clampInputGain(input.voiceInput, defaultPreferences.voiceInput),
     voiceMuted: typeof input.voiceMuted === 'boolean' ? input.voiceMuted : false,
     autoMic: typeof input.autoMic === 'boolean' ? input.autoMic : true,
+    attentionSound: typeof input.attentionSound === 'boolean' ? input.attentionSound : false,
   };
 }

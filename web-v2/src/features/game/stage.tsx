@@ -2,9 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { RoomSnapshot, SeatDTO, TaskDTO } from '../../../../contracts/v2.ts';
 import { Avatar } from '../../components/ui.tsx';
+import { BadgeStrip } from '../../components/badge-strip.tsx';
 import { NightAtmosphere } from './night-atmosphere.tsx';
 import { presenceLabels } from '../../presentation/labels.ts';
 import { taskKey } from '../actions/model.ts';
+import { seatDyingMark } from './seat-dying.ts';
+import { seatBadges } from './seat-badges.ts';
 import { isDegenerateRect, ringFits, type Rect, type StageLayout } from './stage-layout.ts';
 import { usePreferences } from '../../state/preferences.ts';
 import { playerMarkTooltip } from '../../state/player-marks.ts';
@@ -21,6 +24,7 @@ export function Stage({
   active = true,
   onSelect,
   onInfo,
+  liveSpeakingPlayerIds = [],
 }: {
   view: RoomSnapshot;
   catalog: CatalogDTO;
@@ -29,19 +33,25 @@ export function Stage({
   locked: boolean;
   actionSlot?: ReactNode;
   active?: boolean;
-  onSelect: (playerId: string, change: 1 | -1) => void;
+  onSelect: (playerId: string) => void;
   onInfo: (seat: SeatDTO) => void;
+  /** 自由发言阶段：由本机远端电平判定的「正在说话」座位（其他阶段为空，由服务端 currentSpeakerId 决定）。 */
+  liveSpeakingPlayerIds?: readonly string[];
 }) {
   const seats = view.public?.seats ?? [];
+  const speaking = (seat: SeatDTO): boolean => view.public?.day?.currentSpeakerId === seat.playerId || liveSpeakingPlayerIds.includes(seat.playerId);
   const { preferences } = usePreferences();
   const selectable = task?.targets;
-  const knownSpirits = new Set(view.private?.knowledge?.spiritSeats ?? []);
   const playerMarks = usePlayerMarks(view);
-  const selfRoleId = !view.viewer.readOnly && view.private?.self.playerId === view.viewer.subjectPlayerId
-    ? view.private.self.roleId : null;
-  // 参选角标与侧栏上警名单同一公开数据源；夜间与竞选结束后不显示。
+  // 参选角标与侧栏竞选名单同一公开数据源；夜间与竞选结束后不显示。
   const election = view.room.phase === 'playing' && view.public?.phase !== 'night' && view.public?.day?.election?.phase !== 'done'
     ? view.public?.day?.election ?? null : null;
+  // 队伍方案草稿的目标（队友或自己已发布的版本）；只在提案窗口内高亮，避免其他阶段误读。
+  const draftTargets = new Set(
+    task && (task.action === 'EDIT_PROPOSAL' || task.action === 'CONFIRM_PROPOSAL')
+      ? view.private?.proposal?.targetPlayerIds ?? []
+      : [],
+  );
   // Taller task/observation content needs its own row rather than covering ring seats.
   const needsFlowLayout = view.viewer.readOnly || (!!task &&
     ['EDIT_PROPOSAL', 'CONFIRM_PROPOSAL', 'DESIGNATE_SPEECH'].includes(task.action));
@@ -59,7 +69,7 @@ export function Stage({
   const seatComposition = seats.map(seat => seat.playerId).join(',');
   const selectionSignature = selected.join(',');
   const toolSignature = selectable
-    ? `${selectable.allowRepeated}:${selectable.maxTargets}:${selectable.playerIds.join(',')}`
+    ? `${selectable.maxTargets}:${selectable.playerIds.join(',')}`
     : 'none';
   const lastCycleKey = useRef(`${currentTaskKey}:${seatComposition}:${view.viewer.readOnly}`);
   const lastStageWidth = useRef<number>(0);
@@ -81,7 +91,7 @@ export function Stage({
     }
 
     const seatNodes = seatsEl.querySelectorAll<HTMLElement>(
-      '.seat-main, .seat-tools, .seat-count, .seat-sheriff'
+      '.seat-main, .seat-tools, .seat-count, .badge-strip'
     );
     const seatRects: Rect[] = [];
     for (const node of seatNodes) {
@@ -153,7 +163,7 @@ export function Stage({
     if (seatsRef.current) {
       observer.observe(seatsRef.current);
       for (const node of seatsRef.current.querySelectorAll<HTMLElement>(
-        '.seat-main, .seat-tools, .seat-count, .seat-sheriff'
+        '.seat-main, .seat-tools, .seat-count, .badge-strip'
       )) observer.observe(node);
     }
     window.addEventListener('resize', scheduleEvaluation);
@@ -188,13 +198,13 @@ export function Stage({
       )}
       <div ref={seatsRef} className={`stage-seats ${ring ? 'stage-seats--ring' : 'stage-seats--grid'}`}>
         {seats.map((seat, index) => {
-          const count = selected.filter(id => id === seat.playerId).length;
+          const picked = selected.includes(seat.playerId);
           const eligible = !!selectable?.playerIds.includes(seat.playerId);
           const capacityBlocked =
             !!selectable &&
             selectable.maxTargets > 1 &&
             selected.length >= selectable.maxTargets &&
-            (selectable.allowRepeated || count === 0);
+            !picked;
           const angle = -Math.PI / 2 + (index / seats.length) * Math.PI * 2;
           // Reserve card half-width and focus/badge space at both stage edges.
           const position = ring
@@ -204,14 +214,12 @@ export function Stage({
               } as CSSProperties)
             : undefined;
           const subject = seat.playerId === view.viewer.subjectPlayerId;
+          const inDraft = draftTargets.has(seat.playerId);
+          const badges = seatBadges(view, seat, catalog);
+          const dying = seatDyingMark(view, seat);
           const revealed = seat.revealedRoleId
             ? catalog.roles.find(role => role.roleId === seat.revealedRoleId)?.name
             : null;
-          const badgeRole = revealed
-            ? { name: revealed, revealed: true }
-            : subject && selfRoleId
-              ? { name: catalog.roles.find(role => role.roleId === selfRoleId)?.name ?? null, revealed: false }
-              : null;
           const candidacy = election
             ? election.withdrawn.includes(seat.playerId) ? 'withdrawn'
               : election.candidates.includes(seat.playerId) ? 'candidate' : null
@@ -222,10 +230,12 @@ export function Stage({
               key={seat.playerId}
               data-player-id={seat.playerId}
               style={position}
-              className={`stage-seat ${count ? 'stage-seat--selected' : ''} ${
+              className={`stage-seat ${picked ? 'stage-seat--selected' : ''} ${
+                inDraft ? 'stage-seat--draft' : ''
+              } ${
                 selectable && !eligible ? 'stage-seat--unavailable' : ''
               } ${!seat.alive ? 'stage-seat--dead' : ''} ${
-                view.public?.day?.currentSpeakerId === seat.playerId ? 'stage-seat--speaking' : ''
+                speaking(seat) ? 'stage-seat--speaking' : ''
               }`}
             >
               <button
@@ -233,14 +243,14 @@ export function Stage({
                 className="seat-main"
                 disabled={!!selectable && (locked || !eligible || capacityBlocked)}
                 onClick={event => {
-                  if (selectable) onSelect(seat.playerId, 1);
+                  if (selectable) onSelect(seat.playerId);
                   else {
                     event.currentTarget.focus({ preventScroll: true });
                     onInfo(seat);
                   }
                 }}
-                aria-pressed={selectable ? count > 0 : undefined}
-                aria-label={`${seat.seat}号 ${seat.nickname}${
+                aria-pressed={selectable ? picked : undefined}
+                aria-label={`${seat.seat}号 ${seat.nickname}${subject && !view.viewer.readOnly ? '，你的座位' : ''}${dying ? '，濒死' : ''}${inDraft ? '，在队伍草稿中' : ''}${
                   selectable
                     ? !eligible
                       ? '，当前不可选'
@@ -252,20 +262,14 @@ export function Stage({
               >
                 <span className="seat-number">
                   {String(seat.seat).padStart(2, '0')}
-                  {subject && <small>{view.viewer.readOnly ? '视角' : '你'}</small>}
+                  {/* 本人座位不再标「你」：身份徽标本身就只出现在自己座位上；第二屏保留「视角」 */}
+                  {subject && view.viewer.readOnly && <small>视角</small>}
+                  <BadgeStrip items={badges}/>
                 </span>
                 <span className="seat-avatar-halo">
                   <span className="seat-avatar" data-death-seat={seat.seat} data-death-alive={String(seat.alive)}>
                     <Avatar url={seat.avatarUrl} name={seat.nickname} />
                     {!seat.alive && preferences.deathEffects && <DeathMark />}
-                    {badgeRole?.name && (
-                      <span
-                        className={`seat-role ${badgeRole.revealed ? 'seat-role--revealed' : 'seat-role--self'}`}
-                        role="img"
-                        title={badgeRole.revealed ? `公开身份：${badgeRole.name}` : `我的身份：${badgeRole.name}（仅自己可见）`}
-                        aria-label={badgeRole.revealed ? `公开身份：${badgeRole.name}` : `我的身份：${badgeRole.name}（仅自己可见）`}
-                      >{badgeRole.name.slice(0, 1)}</span>
-                    )}
                     {candidacy && (
                       <span
                         className={`seat-candidacy ${candidacy === 'withdrawn' ? 'seat-candidacy--withdrawn' : ''}`}
@@ -276,7 +280,7 @@ export function Stage({
                     )}
                   </span>
                 </span>
-                {view.public?.day?.currentSpeakerId === seat.playerId && <span className="seat-speaking">{view.public.day.speechPreparing ? '准备发言' : '正在发言'}</span>}
+                {speaking(seat) && <span className="seat-speaking">{view.public?.day?.speechPreparing ? '准备发言' : '正在发言'}</span>}
                 <strong title={`${seat.nickname} · UID ${seat.uid}`}>
                   <span className="seat-name-text">{seat.nickname}</span>
                   {mark && <span className={`seat-mark seat-mark--${mark.color ?? 'gold'}`} role="img" aria-label={playerMarkTooltip(mark)} title={playerMarkTooltip(mark)} />}
@@ -285,9 +289,10 @@ export function Stage({
                   {!seat.alive ? '已死亡' : revealed ?? '存活'}
                   {seat.presence !== 'online' ? ` · ${presenceLabels[seat.presence]}` : ''}
                 </span>
-                {view.public?.sheriff.holderId === seat.playerId && <span className="seat-sheriff">天理</span>}
-                {knownSpirits.has(seat.seat) && <span className="seat-known">魂灵</span>}
-                {count > 0 && <span className="seat-count">已选{selectable?.allowRepeated ? ` ×${count}` : ''}</span>}
+                {inDraft && <span className="seat-draft">草稿</span>}
+                {picked && <span className="seat-count">已选</span>}
+                {/* 本夜濒死（R-20/R-24）：仅对有名单视野的人可见，服务端已按授权裁剪 */}
+                {dying && <span className="seat-dying" aria-hidden="true">濒死</span>}
               </button>
               <div className="seat-tools">
                 <button
@@ -300,26 +305,6 @@ export function Stage({
                 >
                   详情
                 </button>
-                {selectable?.allowRepeated && eligible && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label={`减少${seat.seat}号目标次数`}
-                      disabled={locked || !count}
-                      onClick={() => onSelect(seat.playerId, -1)}
-                    >
-                      −
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`增加${seat.seat}号目标次数`}
-                      disabled={locked || selected.length >= selectable.maxTargets}
-                      onClick={() => onSelect(seat.playerId, 1)}
-                    >
-                      ＋
-                    </button>
-                  </>
-                )}
               </div>
             </div>
           );

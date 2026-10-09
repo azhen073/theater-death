@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { revealHudActions } from '../helpers-v2/rooms.ts';
 import { loadGameFixture, pushFixture, type GameHarnessFixture } from '../helpers-v2/game.ts';
 
 type SpeechKind = 'normal' | 'tie' | 'last-words';
@@ -105,15 +106,32 @@ test('准备、正式发言、切人、遗言和平票均聚焦发言者，准�
   await expect(page.getByRole('button', { name: '结束平票发言', exact: true })).toBeVisible();
 });
 
-test('提示音默认关闭，仅点击后解锁；阶段/本人发言各响一次，重复、重连和隐藏恢复不补响，刷新复位', async ({ page }) => {
+test('提示音开关在账户「显示与动画」；局内自动解锁，阶段/本人发言各响一次，重复、重连、隐藏与未解锁不补响，偏好跨刷新沿用', async ({ page }) => {
   await installAudioStub(page);
   const mounted = await mount(page, speechFixture({ speakerIndex: 1, windowId: 'speech:other' }));
-  const toggle = page.getByRole('button', { name: '阶段与本人发言提示音' });
-  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+  // 局内不再有提示音开关；默认关闭时不显示任何提示音控件、也不发声
+  await expect(page.getByRole('button', { name: '阶段与本人发言提示音' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '启用提示音' })).toHaveCount(0);
   expect(await audioStarts(page)).toBe(0);
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+  // 在局内「导航 → 显示设置」（与账户页同一设置组件）打开偏好
+  await revealHudActions(page); await page.getByRole('button', { name: '导航' }).click();
+  await page.getByRole('button', { name: '显示设置' }).click();
+  const settings = page.getByRole('region', { name: '显示与动画设置' });
+  await expect(settings).toBeVisible();
+  const toggle = settings.getByRole('checkbox', { name: '发言与阶段提示音', exact: true });
+  await expect(toggle).not.toBeChecked();
+  await toggle.check();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}').attentionSound)).toBe(true);
+  await page.getByRole('button', { name: '关闭' }).click();
+
+  // 关闭弹层的这次点击通常即用户手势；若它早于解锁监听挂载，兜底提示可一键解锁（确定性流程）
+  const fallback = page.getByRole('button', { name: '启用提示音' });
+  await expect.poll(async () => (await fallback.count()) === 0 || (await page.evaluate(() => (window as any).__attentionAudioCalls as string[])).includes('resume')).toBe(true);
+  if (await fallback.count()) await fallback.click();
   await expect.poll(() => page.evaluate(() => (window as any).__attentionAudioCalls)).toContain('resume');
+  await expect(fallback).toHaveCount(0);
   expect(await audioStarts(page)).toBe(0);
 
   const night = speechFixture({ speakerIndex: 1, windowId: 'night-transition' });
@@ -141,12 +159,16 @@ test('提示音默认关闭，仅点击后解锁；阶段/本人发言各响一�
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect.poll(() => audioStarts(page)).toBe(6);
 
+  // 刷新：偏好沿用（不再复位），但没有手势前不会自行解锁、也不会补响
   await page.reload();
-  await expect(page.getByRole('button', { name: '阶段与本人发言提示音' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('region', { name: '发言与提醒' })).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}').attentionSound)).toBe(true);
   expect(await audioStarts(page)).toBe(0);
+  expect(await page.evaluate(() => (window as any).__attentionAudioCalls)).not.toContain('resume');
 });
 
-test('音频解锁失败降级为文字提醒；公开观众和第二屏不显示“轮到你”，各断点无横向溢出且光环无遮挡', async ({ page }, testInfo) => {
+test('音频解锁失败降级为文字提醒（局内兜底提示保留）；公开观众和第二屏不显示“轮到你”，各断点无横向溢出且光环无遮挡', async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('theater-death-display-v1', JSON.stringify({ attentionSound: true })));
   await page.addInitScript(() => {
     class BlockedAudioContext { state = 'suspended'; async resume() { throw new Error('blocked'); } async close() {} }
     Object.defineProperty(window, 'AudioContext', { configurable: true, value: BlockedAudioContext });
@@ -154,9 +176,11 @@ test('音频解锁失败降级为文字提醒；公开观众和第二屏不显�
   const initial = speechFixture({ preparing: true });
   initial.view.public!.seats[0]!.avatarUrl = '/assets/avatar-sheet.png';
   const mounted = await mount(page, initial);
-  await page.getByRole('button', { name: '阶段与本人发言提示音' }).click();
-  await expect(page.getByRole('region', { name: '发言与提醒' }).getByRole('status')).toContainText('文字提醒仍然可用');
-  await expect(page.getByRole('button', { name: '阶段与本人发言提示音' })).toHaveAttribute('aria-pressed', 'false');
+  const attention = page.getByRole('region', { name: '发言与提醒' });
+  await expect(attention.getByRole('button', { name: '启用提示音' })).toBeVisible();
+  await attention.getByRole('button', { name: '启用提示音' }).click();
+  await expect(attention.getByRole('status')).toContainText('文字提醒仍然可用');
+  await expect(attention.getByRole('button', { name: '启用提示音' })).toBeVisible();
 
   for (const viewer of ['public', 'second-screen'] as const) {
     await mounted.set(speechFixture({ preparing: true, viewer }));

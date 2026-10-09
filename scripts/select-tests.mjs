@@ -40,6 +40,7 @@ const mappings = [
   [/^server\/v2\/(account-store|auth|passwords|errors|admin)\.ts$/, ['account-store', 'auth-v2', 'auth-race', 'passwords', 'v2-api']],
   [/^server\/v2\/(access|spectators|second-screen|view|realtime)\.ts$/, ['access-v2', 'knowledge', 'v2-realtime', 'v2-spectators-api', 'v2-api']],
   [/^server\/v2\/(config|maintenance|diagnostics|media|rate-limit)\.ts$/, ['v2-config', 'v2-maintenance', 'v2-media', 'voice-agora']],
+  [/^server\/v2\/room-voice\.ts$/, ['v2-media', 'v2-voice-api', 'voice-policy']],
   [/^server\/v2\/(app|index|parse-command)\.ts$/, ['auth-v2', 'v2-api', 'contract-http-lifecycle', 'contract-knowledge-api', 'v2-spectators-api', 'v2-media', 'v2-maintenance', 'room-operation-api', 'command-receipts-api', 'chat-receipts-api', 'avatars-api', 'client-catalog', 'contract-openapi', 'proposal-combined-api']],
   [/^server\/v2\/admin-router\.ts$/, ['admin-api']],
   [/^server\/v2\/frontend-app\.ts$/, ['frontend-v2-static']],
@@ -48,7 +49,7 @@ const mappings = [
   [/^web-v2\/src\/features\/game\/phase-transition(?:-model)?\.tsx?$|^web-v2\/src\/styles\/phase-transition\.css$/, ['frontend-v2-phase-transition', 'frontend-v2-identity-reveal']],
   [/^web-v2\/src\/features\/game\/identity-(?:entry-reveal\.tsx|reveal-model\.ts)$/, ['frontend-v2-identity-reveal']],
   [/^web-v2\/src\/features\/game\/phase-ability(?:-model)?\.tsx?$|^web-v2\/src\/styles\/phase-ability\.css$/, ['frontend-v2-phase-ability']],
-  [/^web-v2\//, ['frontend-v2-actions', 'frontend-v2-avatar', 'frontend-v2-chat-tracker', 'frontend-v2-command-tracker', 'frontend-v2-display-model', 'frontend-v2-draft-reconciliation', 'frontend-v2-http-deadline', 'frontend-v2-http', 'frontend-v2-ids', 'frontend-v2-room-model', 'frontend-v2-snapshot', 'frontend-v2-voice-session', 'frontend-v2-voice-levels']],
+  [/^web-v2\//, ['frontend-v2-actions', 'frontend-v2-avatar', 'frontend-v2-chat-tracker', 'frontend-v2-command-tracker', 'frontend-v2-display-model', 'frontend-v2-draft-reconciliation', 'frontend-v2-http-deadline', 'frontend-v2-http', 'frontend-v2-ids', 'frontend-v2-room-model', 'frontend-v2-snapshot', 'frontend-v2-voice-session', 'frontend-v2-voice-levels', 'frontend-v2-badges', 'frontend-v2-dying-mark', 'frontend-v2-election-vote-notes', 'frontend-v2-free-speech-note']],
   [/^(deploy\/|scripts\/|\.github\/|package.*json$|tsconfig.json$|vitest.config.ts$|vite(\.v2)?\.config\.ts$)/, ['smoke']],
 ];
 const files = process.argv.slice(2);

@@ -1,6 +1,6 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test';
 import { advanceAcceptanceClock, loadFullGameAccounts, roomCommand, roomView } from './full-game.ts';
-import { enterRoom, loginRoomAccount } from './rooms.ts';
+import { enterRoom, loginRoomAccount, selectPublicChat } from './rooms.ts';
 import type { FullGameAccount } from './account.ts';
 
 export const specialRoleBoard = {
@@ -16,7 +16,7 @@ export function loadSpecialAccounts(projectName: string): FullGameAccount[] {
 }
 
 export async function createSpecialRoomViaPage(page: Page): Promise<string> {
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
   const custom = page.getByRole('button', { name: '自定义角色组成' });
   await expect(custom).toBeVisible();
@@ -28,7 +28,7 @@ export async function createSpecialRoomViaPage(page: Page): Promise<string> {
   };
   for (const [role, count] of Object.entries(values)) await page.getByLabel(`${role}人数`).fill(count);
   const requestPromise = page.waitForRequest(request => request.url().endsWith('/api/v2/rooms') && request.method() === 'POST');
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   const body = await requestPromise;
   const payload = body.postDataJSON() as Record<string, unknown>;
   expect(payload.playerCount).toBe(7);

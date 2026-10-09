@@ -140,6 +140,30 @@ describe('交流权限（R-35 / T-31、T-33）', () => {
     expect(canPostPublic(overrideLife(day, 'p_7', 'dead'), 'p_7')).toBe(false);
     expect(roomMembership(day, 'p_11')?.canWrite).toBe(true);
   });
+
+  it('T-33（v2 房主档位）：全阶段可写，alive_only 死者只读、everyone 死者可写', () => {
+    const night = scenario();
+    const day = { ...scenario(), phase: 'day' as const };
+    const nightDead = overrideLife(night, 'p_7', 'dead');
+
+    // alive_only：阶段不再限制活人；死者仍只读（本人遗言窗口由 R-45 单独放行）
+    for (const state of [night, day]) {
+      expect(canPostPublic(state, 'p_6', 'alive_only')).toBe(true);
+      expect(canPostPublic(overrideLife(state, 'p_7', 'dead'), 'p_7', 'alive_only')).toBe(false);
+    }
+    // everyone：死者与活人在任何阶段都可写
+    for (const state of [night, day, nightDead]) {
+      expect(canPostPublic(state, 'p_6', 'everyone')).toBe(true);
+      expect(canPostPublic(state, 'p_7', 'everyone')).toBe(true);
+    }
+    // legacy（v1 入口）保持旧行为：夜间一律不可写，白天死者仍只读
+    expect(canPostPublic(night, 'p_6', 'legacy_day_only')).toBe(false);
+    expect(canPostPublic(night, 'p_7', 'legacy_day_only')).toBe(false);
+    expect(canPostPublic(day, 'p_6', 'legacy_day_only')).toBe(true);
+    expect(canPostPublic(overrideLife(day, 'p_7', 'dead'), 'p_7', 'legacy_day_only')).toBe(false);
+    // 档位默认值即 legacy，未显式传参的调用点（v1 路由）行为不变
+    expect(canPostPublic(night, 'p_6')).toBe(canPostPublic(night, 'p_6', 'legacy_day_only'));
+  });
 });
 
 describe('阵营房越权反例（R-34、R-52 / T-47）', () => {

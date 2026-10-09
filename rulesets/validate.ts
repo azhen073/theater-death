@@ -105,7 +105,7 @@ export function validateRuleset(input: unknown): ValidationResult {
         add('invalid_timer', `时限 "${key}" 必须为正数，收到 ${String(timers[key])}`);
       }
     }
-    for (const key of ['speechPrepare', 'speechOrder']) if (timers[key] !== undefined && !isPositiveNumber(timers[key])) add('invalid_timer', `时限 ${key} 必须为正数`);
+    for (const key of ['speechPrepare', 'speechOrder', 'freeSpeech']) if (timers[key] !== undefined && !isPositiveNumber(timers[key])) add('invalid_timer', `时限 ${key} 必须为正数`);
   }
 
   const sheriff = input.sheriff;
@@ -175,14 +175,26 @@ export function validateRuleset(input: unknown): ValidationResult {
     }
   }
 
-  if (input.mode === 'formal' && !deepEqual(input, input.version === '2.0' ? THEATER_DEATH_13_V2 : THEATER_DEATH_13)) {
+  // 正式模式必须与命名预设一致；唯一例外是房主在建房时选择的「白天自由发言」：
+  // 开启＝保留预设的 120 秒，关闭＝从冻结规则里移除该键。其余任何差异仍判为变体板。
+  const preset = input.version === '2.0' ? THEATER_DEATH_13_V2 : THEATER_DEATH_13;
+  if (input.mode === 'formal' && !deepEqual(withoutFreeSpeech(input), withoutFreeSpeech(preset))) {
     add(
       'formal_preset_mismatch',
       '正式模式仅允许默认 13 人命名预设（R-54）；变体配置请使用实验模式并在大厅醒目提示',
     );
+  } else if (input.mode === 'formal' && isRecord(timers) && timers.freeSpeech !== undefined && timers.freeSpeech !== preset.timersSeconds.freeSpeech) {
+    add('invalid_timer', '白天自由发言时长由命名预设固定，房主只能选择开启或关闭');
   }
 
   return { ok: issues.length === 0, issues };
+}
+
+/** 比较命名预设时忽略房主可选的「白天自由发言」时长键（入参是未校验的原始配置）。 */
+function withoutFreeSpeech(config: unknown): unknown {
+  if (!isRecord(config) || !isRecord(config.timersSeconds)) return config;
+  const { freeSpeech: _freeSpeech, ...timers } = config.timersSeconds;
+  return { ...config, timersSeconds: timers };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

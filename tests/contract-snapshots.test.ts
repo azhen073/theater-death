@@ -36,7 +36,7 @@ function account(accounts: AccountStore, profiles: Map<string, { userId: string;
 
 async function fullMatch(f: ReturnType<typeof setup>, prefix: string) {
   const host = account(f.accounts, f.profiles, `${prefix}_host`);
-  const room = await f.directory.create(host.session, THEATER_DEATH_13_V2);
+  const room = await f.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
   const players = [host];
   for (let i = 1; i < 13; i += 1) {
     const player = account(f.accounts, f.profiles, `${prefix}_${i}`);
@@ -52,10 +52,10 @@ describe('v2 RoomSnapshot contract', () => {
   it('returns a complete lobby snapshot with stable null/empty top-level fields and room permissions', async () => {
     const f = setup();
     const host = account(f.accounts, f.profiles, 'snapshot_lobby');
-    const room = await f.directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await f.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     const snapshot = f.snapshots.read(room, host.session);
-    expect(Object.keys(snapshot).sort()).toEqual(['capabilities', 'chat', 'contractVersion', 'gameId', 'private', 'public', 'room', 'roomId', 'rulesVersion', 'serverTime', 'submissionState', 'tasks', 'viewer', 'viewVersion', 'windows'].sort());
-    expect(snapshot).toMatchObject({ contractVersion: '2.2', gameId: null, public: null, private: null, tasks: [], windows: [], submissionState: [], chat: { public: [], faction: [] } });
+    expect(Object.keys(snapshot).sort()).toEqual(['capabilities', 'chat', 'contractVersion', 'gameId', 'private', 'public', 'room', 'roomId', 'rulesVersion', 'serverTime', 'submissionState', 'tasks', 'viewer', 'viewVersion', 'voice', 'windows'].sort());
+    expect(snapshot).toMatchObject({ contractVersion: '2.2', gameId: null, public: null, private: null, tasks: [], windows: [], submissionState: [], chat: { public: [], faction: [] }, voice: null });
     expect(snapshot.room.formalMembers).toHaveLength(1);
     expect(snapshot.viewer.isHost).toBe(true);
     expect(snapshot.capabilities.room.start).toMatchObject({ allowed: false, reason: 'room_not_full' });
@@ -97,7 +97,7 @@ describe('v2 RoomSnapshot contract', () => {
   it('increments viewVersion for visible member/profile changes but not serverTime-only changes', async () => {
     const f = setup();
     const host = account(f.accounts, f.profiles, 'snapshot_versions');
-    const room = await f.directory.create(host.session, THEATER_DEATH_13_V2);
+    const room = await f.directory.create(host.session, THEATER_DEATH_13_V2, 'alive_only');
     const first = f.snapshots.read(room, host.session);
     f.clock.elapse(500);
     const timeOnly = f.snapshots.read(room, host.session);

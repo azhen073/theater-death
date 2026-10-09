@@ -1,6 +1,6 @@
 import type { VoiceCredentials, VoiceService } from '../../voice/agora.ts';
-import type { AccountSession } from './account-store.ts';
 import type { RoomAccess } from './access.ts';
+import { roomVoiceChannel, roomVoiceMembers, type RoomVoiceSource } from './room-voice.ts';
 import { gameView } from './view.ts';
 import { ApiError } from './errors.ts';
 
@@ -11,10 +11,28 @@ export const DELIVERY_STATES: readonly DeliveryState[] = ['playing', 'blocked', 
 export interface DeliveryView {
   windowInstanceId: string; delivered: number; blocked: number; silentOutput: number; failed: number; listeners: number; updatedAt: number;
 }
-interface DeliveryWindow { windowInstanceId: string; speakerMediaId: string; startedAt: number; receipts: Map<string, DeliveryState>; lastPushAt: number }
+interface DeliveryWindow { windowInstanceId: string; speakerMediaIds: readonly string[]; startedAt: number; receipts: Map<string, DeliveryState>; lastPushAt: number }
 
-/** 拥有发布权的窗口（与客户端 `bar.tsx` 的判据保持一致） */
-const SPEAKING_WINDOWS = new Set(['election_speech', 'speech_round', 'last_words', 'tie_speech']);
+/**
+ * 一个语音范围（Q-12）：要么是**对局频道**（`channel = gameId`，权限来自 R-43/Q-11），
+ * 要么是**房间频道**（大厅 / 复盘，正式成员自由开麦）。媒体侧只认这个描述，
+ * 于是两种范围共用同一套签发 / 回收 / 对账实现，不再复制。
+ */
+export interface VoiceScope {
+  readonly channel: string;
+  /** 媒体身份 → 是否持有发布权（听众与第二屏也在表内，值为 false，避免被误踢）。 */
+  readonly members: ReadonlyMap<string, boolean>;
+  /** 范围已终结（对局结束 / 房间解散）→ `sync` 关闭频道。 */
+  readonly ended: boolean;
+  /** 仅对局频道提供：发言窗口与送达回执都只在对局内存在；房间频道为 null。 */
+  readonly match: RoomAccess | null;
+}
+
+/**
+ * 拥有发布权的窗口（与客户端 `bar.tsx` 的判据保持一致）。
+ * `free_speech` 是「存活玩家可开麦」的阶段：发布者可能有多人。
+ */
+const SPEAKING_WINDOWS = new Set(['election_speech', 'speech_round', 'last_words', 'tie_speech', 'free_speech']);
 /** D 组对账：每轮最多踢的人数，避免一次异常把频道清空 */
 const RECONCILE_KICK_LIMIT = 3;
 /**
@@ -59,6 +77,24 @@ export class V2Media {
     this.identities.set(gameId, known);
     return uid;
   }
+  /**
+   * 频道 uid → 语音主体的映射，供客户端把远端音量归属到座位 / 成员卡（显示「谁在说话」）。
+   * 身份形如 `v2:<channel>:<subject>:<epoch>`；对局频道里 subject 是 `p_`（playerId），
+   * 房间频道里是 `m_`（memberId，大厅/复盘还没有 playerId）。观众/第二屏的租约 id 不是主体，不暴露。
+   * 该映射不含隐藏信息：uid 本就是频道内可见的编号。
+   */
+  uidMap(channel: string): Record<string, string> {
+    const known = this.identities.get(channel);
+    if (!known) return {};
+    const map: Record<string, string> = {};
+    for (const [identity, uid] of known) {
+      const parts = identity.split(':');
+      const subject = parts.length >= 4 ? parts[2] : '';
+      if (subject === undefined || !(subject.startsWith('p_') || subject.startsWith('m_'))) continue;
+      map[String(uid)] = subject;
+    }
+    return map;
+  }
   revoke(gameId: string, identity: string) {
     return this.enqueue(gameId, async () => {
       const known = this.identities.get(gameId);
@@ -70,23 +106,28 @@ export class V2Media {
     });
   }
   /**
-   * 当前"有人有发布权"的窗口（窗口实例 + 该身份的媒体 id）。没有正在发言的人时返回 null。
-   * 只用来给送达聚合定 key：窗口实例变化即视为新一轮，旧计数作废。
+   * 当前"有人有发布权"的窗口（窗口实例 + **所有**有发布权的媒体身份）。没有正在发言的人时返回 null。
+   * 常规时段只有当前发言者一人有发布权；「自由发言」阶段存活玩家都有，因此这里按集合处理：
+   * 送达聚合只以窗口实例为 key，且任何发布者自己的回执都不算（那是自证）。
    */
-  private currentWindow(meta: RoomAccess): { windowInstanceId: string; speakerMediaId: string } | null {
+  private currentWindow(meta: RoomAccess): { windowInstanceId: string; speakerMediaIds: readonly string[] } | null {
     const state = meta.room.state;
     if (!state || state.win) return null;
     const view = gameView(meta.room, { subjectPlayerId: null, readOnly: true }, this.now());
     const window = view.windows.find((w) => SPEAKING_WINDOWS.has(w.id) && typeof w.instanceId === 'string' && w.instanceId !== '');
     if (!window || typeof window.instanceId !== 'string') return null;
-    for (const [identity, canPublish] of this.permissions(meta)) if (canPublish) return { windowInstanceId: window.instanceId, speakerMediaId: identity };
-    return null;
+    const speakers = [...this.permissions(meta)].filter(([, canPublish]) => canPublish).map(([identity]) => identity).sort();
+    if (!speakers.length) return null;
+    return { windowInstanceId: window.instanceId, speakerMediaIds: speakers };
+  }
+  private sameSpeakers(left: readonly string[], right: readonly string[]): boolean {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
   }
   private windowFor(gameId: string, meta: RoomAccess): DeliveryWindow | null {
     const current = this.currentWindow(meta);
     if (current === null) { this.deliveries.delete(gameId); return null; }
     const existing = this.deliveries.get(gameId);
-    if (existing && existing.windowInstanceId === current.windowInstanceId && existing.speakerMediaId === current.speakerMediaId) return existing;
+    if (existing && existing.windowInstanceId === current.windowInstanceId && this.sameSpeakers(existing.speakerMediaIds, current.speakerMediaIds)) return existing;
     const next: DeliveryWindow = { ...current, startedAt: this.now(), receipts: new Map(), lastPushAt: 0 };
     this.deliveries.set(gameId, next);
     return next;
@@ -110,7 +151,7 @@ export class V2Media {
     const gameId = meta.room.gameId;
     const window = this.windowFor(gameId, meta);
     if (window === null || window.windowInstanceId !== windowInstanceId) return { recorded: false, push: false, delivery: null };
-    if (receiverIdentity === window.speakerMediaId) return { recorded: false, push: false, delivery: this.deliveryView(window) };
+    if (window.speakerMediaIds.includes(receiverIdentity)) return { recorded: false, push: false, delivery: this.deliveryView(window) };
     if (!this.permissions(meta).has(receiverIdentity)) return { recorded: false, push: false, delivery: this.deliveryView(window) };
     const previous = window.receipts.get(receiverIdentity);
     window.receipts.set(receiverIdentity, state);
@@ -130,17 +171,17 @@ export class V2Media {
    *   ② 统计"该在却不在"的身份数（供诊断）。
    * 注意：不可据此踢"有身份但在线"的人——听众同样合法在线，踢了会把人踢出语音。
    */
-  reconcile(meta: RoomAccess): Promise<void> {
+  reconcile(scope: VoiceScope): Promise<void> {
     const voice = this.voice;
     const queryChannelUsers = voice?.queryChannelUsers?.bind(voice);
     if (voice === null || queryChannelUsers === undefined) { this.reconcileStats.skipped += 1; return Promise.resolve(); }
-    const gameId = meta.room.gameId;
-    const known = this.identities.get(gameId);
+    const channel = scope.channel;
+    const known = this.identities.get(channel);
     if (!known || known.size === 0) { this.reconcileStats.skipped += 1; return Promise.resolve(); }
-    return this.enqueue(gameId, async () => {
+    return this.enqueue(channel, async () => {
       let query;
       try {
-        query = await queryChannelUsers(gameId);
+        query = await queryChannelUsers(channel);
       } catch (error) {
         this.reconcileStats = { ...this.reconcileStats, failures: this.reconcileStats.failures + 1, lastAt: this.now() };
         // 以前这里只计数不留原因：真实环境对账失败时无法判断是凭据、区域地址还是响应形状问题
@@ -152,7 +193,7 @@ export class V2Media {
       let kicks = 0;
       for (const uid of present) {
         if (knownUids.has(uid) || kicks >= RECONCILE_KICK_LIMIT) continue;
-        try { await voice.removeParticipant(gameId, uid); kicks += 1; } catch { this.reconcileStats = { ...this.reconcileStats, failures: this.reconcileStats.failures + 1 }; }
+        try { await voice.removeParticipant(channel, uid); kicks += 1; } catch { this.reconcileStats = { ...this.reconcileStats, failures: this.reconcileStats.failures + 1 }; }
       }
       let missing = 0;
       for (const uid of known.values()) if (!present.has(uid)) missing += 1;
@@ -160,42 +201,56 @@ export class V2Media {
     });
   }
   reconcileSnapshot() { return { ...this.reconcileStats }; }
-  permissions(meta: RoomAccess): Map<string, boolean> {
-    const permissions = new Map<string, boolean>();
-    if (meta.room.state?.win) return permissions;
-    for (const [playerId, lease] of meta.seats) {
-      if (!lease.sessionId || !meta.accounts.sessionActive(lease.sessionId)) continue;
-      const canPublish = gameView(meta.room, { subjectPlayerId: playerId, readOnly: false }, this.now()).capabilities?.canPublishVoice ?? false;
-      permissions.set(meta.mediaId(playerId, lease.epoch), canPublish);
+  /**
+   * 对局频道范围：权限**逐字沿用既有对局口径**（`capabilities.canPublishVoice`，含
+   * 「窗口未开启即无发布权」的细化），大厅/复盘的房间频道才用 `roomVoicePermission`。
+   */
+  matchScope(meta: RoomAccess): VoiceScope {
+    const members = new Map<string, boolean>();
+    const ended = Boolean(meta.room.state?.win);
+    if (!ended) {
+      for (const [playerId, lease] of meta.seats) {
+        if (!lease.sessionId || !meta.accounts.sessionActive(lease.sessionId)) continue;
+        const canPublish = gameView(meta.room, { subjectPlayerId: playerId, readOnly: false }, this.now()).capabilities?.canPublishVoice ?? false;
+        members.set(meta.mediaId(playerId, lease.epoch), canPublish);
+      }
+      for (const watcher of meta.watchers.values()) if (meta.accounts.sessionActive(watcher.sessionId)) members.set(meta.mediaId(watcher.id, watcher.epoch), false);
     }
-    for (const watcher of meta.watchers.values()) if (meta.accounts.sessionActive(watcher.sessionId)) permissions.set(meta.mediaId(watcher.id, watcher.epoch), false);
-    return permissions;
+    return { channel: meta.room.gameId, members, ended, match: meta };
   }
+  /** 房间频道范围（大厅 / 复盘）：正式成员自由开麦，观众与第二屏只订阅。 */
+  roomScope(room: RoomVoiceSource): VoiceScope {
+    const channel = roomVoiceChannel(room.roomId);
+    return { channel, members: roomVoiceMembers(channel, room.members.values()), ended: false, match: null };
+  }
+  /** 兼容既有调用点：对局频道的身份表。 */
+  permissions(meta: RoomAccess): Map<string, boolean> { return new Map(this.matchScope(meta).members); }
+  scopePermissions(scope: VoiceScope): Map<string, boolean> { return new Map(scope.members); }
   /**
    * Agora encodes publish rights in the token and offers no live permission update,
-   * so alignment means: close the channel after the game ends, or kick identities
+   * so alignment means: close the channel after the scope ends, or kick identities
    * whose lease is no longer live.
    */
-  sync(meta: RoomAccess, required = false) {
+  sync(scope: VoiceScope, required = false) {
     if (!this.voice) return Promise.resolve();
-    return this.enqueue(meta.room.gameId, async () => {
-      const gameId = meta.room.gameId;
+    return this.enqueue(scope.channel, async () => {
+      const channel = scope.channel;
       // 没有正在发言的人（或对局已结束）→ 送达聚合作废；发言窗口换了 → 旧窗口计数同样作废
-      const current = this.currentWindow(meta);
-      const stale = this.deliveries.get(gameId);
-      if (meta.room.state?.win || current === null || (stale !== undefined && stale.windowInstanceId !== current.windowInstanceId)) this.deliveries.delete(gameId);
-      if (meta.room.state?.win) {
-        if (!this.closed.has(gameId)) { await this.voice!.closeRoom(gameId); this.closed.add(gameId); }
+      const current = scope.match === null ? null : this.currentWindow(scope.match);
+      const stale = this.deliveries.get(channel);
+      if (scope.ended || current === null || (stale !== undefined && stale.windowInstanceId !== current.windowInstanceId)) this.deliveries.delete(channel);
+      if (scope.ended) {
+        if (!this.closed.has(channel)) { await this.voice!.closeRoom(channel); this.closed.add(channel); }
         return;
       }
-      const allowed = this.permissions(meta);
-      const known = this.identities.get(gameId);
+      const allowed = scope.members;
+      const known = this.identities.get(channel);
       if (!known) return;
       let failures = 0;
       for (const [identity, uid] of [...known]) {
         if (allowed.has(identity)) continue;
         try {
-          await this.voice!.removeParticipant(gameId, uid);
+          await this.voice!.removeParticipant(channel, uid);
           known.delete(identity);
         } catch {
           // 保留映射，下一次 sync 重试；单个失败不影响其余身份的回收
@@ -205,35 +260,39 @@ export class V2Media {
       if (failures > 0) throw new Error(`voice_remove_failed:${failures}`);
     }, required);
   }
-  async issue(meta: RoomAccess, session: AccountSession): Promise<VoiceCredentials> {
+  /**
+   * 签发凭证：权限由范围给出。调用方负责解析身份（不信任载荷），
+   * 并在签发后复核身份是否仍然有效（`revalidate`）。
+   */
+  async issue(scope: VoiceScope, identity: string): Promise<VoiceCredentials> {
     if (!this.voice) throw new ApiError(409, 'voice_disabled');
-    const viewer = meta.resolve(session);
-    if (!viewer) throw new ApiError(403, 'room_access_required');
-    if (!meta.room.state || meta.room.state.win) throw new ApiError(409, 'voice_unavailable');
-    const gameId = meta.room.gameId;
-    const uid = this.uidFor(gameId, viewer.mediaIdentity);
-    const canPublish = this.permissions(meta).get(viewer.mediaIdentity) ?? false;
-    let credentials: VoiceCredentials;
+    if (scope.ended) throw new ApiError(409, 'voice_unavailable');
+    const channel = scope.channel;
+    const uid = this.uidFor(channel, identity);
+    const canPublish = scope.members.get(identity) ?? false;
     try {
-      const base = this.voice.issueCredentials({ roomName: gameId, uid });
-      credentials = {
+      const base = this.voice.issueCredentials({ roomName: channel, uid });
+      return {
         ...base,
         token: canPublish
-          ? this.voice.issuePublishGrant({ roomName: gameId, uid }).token
-          : this.voice.issueSubscriberGrant({ roomName: gameId, uid }).token,
+          ? this.voice.issuePublishGrant({ roomName: channel, uid }).token
+          : this.voice.issueSubscriberGrant({ roomName: channel, uid }).token,
       };
     } catch {
       throw new ApiError(503, 'voice_unavailable');
     }
-    if (meta.resolve(session)?.mediaIdentity !== viewer.mediaIdentity || meta.room.state.win) {
-      await this.revoke(gameId, viewer.mediaIdentity);
-      throw new ApiError(403, 'authorization_changed');
-    }
-    return credentials;
   }
-  async joined(meta: RoomAccess | undefined, gameId: string, identity: string) {
-    if (!meta || !this.permissions(meta).has(identity)) await this.revoke(gameId, identity);
+  /** 签发后复核：身份或范围发生变化（换座/接管/对局结束）→ 立即撤销并拒绝。 */
+  async revalidate(scope: VoiceScope, identity: string, stillValid: boolean): Promise<void> {
+    if (stillValid && !scope.ended) return;
+    await this.revoke(scope.channel, identity);
+    throw new ApiError(403, 'authorization_changed');
   }
+  async joined(scope: VoiceScope | undefined, identity: string) {
+    if (!scope || !scope.members.has(identity)) await this.revoke(scope?.channel ?? this.channelOf(identity), identity);
+  }
+  /** 兜底：从身份串里取回频道名（`v2:<channel>:<subject>:<epoch>`）。 */
+  private channelOf(identity: string): string { const parts = identity.split(':'); return parts.length >= 4 ? parts[1]! : identity; }
   closeRoom(gameId: string) {
     return this.enqueue(gameId, async () => {
       await this.voice?.closeRoom(gameId);

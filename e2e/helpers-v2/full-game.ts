@@ -1,5 +1,6 @@
 import { connect } from 'node:net';
 import type { APIRequestContext, Page } from '@playwright/test';
+import { selectPublicChat } from './rooms.ts';
 import { loadAccountCase, type FullGameAccount } from './account.ts';
 
 export function loadFullGameAccounts(projectName: string): FullGameAccount[] {
@@ -14,9 +15,9 @@ export async function loginApi(request: APIRequestContext, account: FullGameAcco
 }
 
 export async function createFormalRoomViaPage(page: Page): Promise<string> {
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   await page.getByRole('heading', { name: '开启一场演出' }).waitFor();
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   await page.getByRole('heading', { name: '房间大厅' }).waitFor({ timeout: 20_000 });
   return (await page.locator('.room-code strong').innerText()).trim();
 }

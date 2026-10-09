@@ -1,6 +1,6 @@
 import { expect, request as apiRequest, test, type APIRequestContext, type BrowserContext, type Page } from '@playwright/test';
 import { loadAccountCase, staticPng, type RoomAccount } from '../helpers-v2/account.ts';
-import { dismissIdentityEntryReveal, enterRoom, loginRoomAccount } from '../helpers-v2/rooms.ts';
+import { dismissIdentityEntryReveal, enterRoom, loginRoomAccount, selectPublicChat } from '../helpers-v2/rooms.ts';
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ART_ASSETS = [
@@ -136,13 +136,13 @@ test('release smoke：candidate同源静态产物、注册头像与真实五人S
 
     await page.getByRole('button', { name: '剧院首页' }).click();
     await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
-    await page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
     await expect(page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
     await page.getByRole('button', { name: '自定义角色组成' }).click();
     await page.getByLabel('玩家人数').fill('5');
     for (const [label, value] of [['莱莱可人数', '0'], ['门先生人数', '1'], ['水妖人数', '0'], ['降临者人数', '0'], ['科研员人数', '1'], ['平民人数', '1'], ['死神人数', '1'], ['魂灵人数', '1'], ['丧亲者人数', '0']] as const) await page.getByLabel(label).fill(value);
     const createRequest = page.waitForRequest(request => request.url().endsWith('/api/v2/rooms') && request.method() === 'POST');
-    await page.getByRole('button', { name: '创建房间', exact: true }).click();
+    await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
     const createBody = (await createRequest).postDataJSON() as Record<string, any>;
     expect(createBody.requestId).toMatch(UUID_V4);
     await expect(page.getByRole('heading', { name: '房间大厅' })).toBeVisible();

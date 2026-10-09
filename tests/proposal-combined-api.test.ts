@@ -4,7 +4,7 @@ import { closeHarnesses, enter, json, makeHarness, post, request, type HttpHarne
 afterEach(closeHarnesses);
 
 async function startRoom(h: HttpHarness) {
-  const created = await request(h, '/api/v2/rooms', post({ requestId: 'combined-create' }), h.users[0]);
+  const created = await request(h, '/api/v2/rooms', post({ requestId: 'combined-create', publicChat: 'alive_only', freeSpeech: false }), h.users[0]);
   const room = await created.json() as { roomId: string; roomCode: string };
   for (let index = 1; index < 13; index += 1) await enter(h, room.roomCode, h.users[index]!, `combined-enter-${index}`);
   for (let index = 0; index < 13; index += 1) await request(h, `/api/v2/rooms/${room.roomCode}/ready`, post({ requestId: `combined-ready-${index}`, ready: true }), h.users[index]);

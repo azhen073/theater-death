@@ -3,6 +3,7 @@
 .speech-attention__speaker strong { overflow-wrap: anywhere; font-size: 14px; }
 .speech-attention__speaker [role="timer"] { font-variant-numeric: tabular-nums; color: #725421; }
 .speech-attention small { display: block; font-size: 11px; line-height: 1.5; }
+.speech-attention__sound { flex: 1 1 220px; min-width: 0; text-align: left; overflow-wrap: anywhere; }
 .speech-attention--own { background: #fff5df; border: 1px solid #a88949; }
 .stage-seat.stage-seat--speaking .seat-main { outline: 3px solid #ad853d; outline-offset: 3px; box-shadow: 0 0 18px #cdaa5e55; }
 .seat-avatar-halo { position: relative; display: inline-flex; flex: none; }

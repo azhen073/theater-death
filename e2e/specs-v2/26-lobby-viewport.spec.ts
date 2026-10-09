@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loginRoomAccount, loadRoomAccounts, waitRoom, confirmModal } from '../helpers-v2/rooms.ts';
+import { loginRoomAccount, loadRoomAccounts, waitRoom, confirmModal, selectPublicChat } from '../helpers-v2/rooms.ts';
 
 async function geometry(page: Page) {
   return page.evaluate(() => {
@@ -42,9 +42,9 @@ async function expectFit(page: Page) {
 test('大厅连续跨大小视口与DPR保持铺满；缩放补偿满高且账户/规则不被拉宽', async ({ page, context, browserName }, testInfo) => {
   test.setTimeout(120_000);
   await loginRoomAccount(page, loadRoomAccounts(testInfo.project.name)[6]!);
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   await expect(page.getByRole('heading', { name: '开启一场演出' })).toBeVisible();
-  await page.getByRole('button', { name: '创建房间', exact: true }).click();
+  await selectPublicChat(page); await page.getByRole('button', { name: '创建房间', exact: true }).click();
   await waitRoom(page);
   const roomCode = await page.locator('.room-code strong').innerText();
 
