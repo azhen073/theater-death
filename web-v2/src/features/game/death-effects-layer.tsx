@@ -15,6 +15,9 @@ function drawRegion(ctx: CanvasRenderingContext2D, sheet: HTMLImageElement, regi
   if (alpha <= 0 || width <= 0) return;
   const height = width * region[3] / region[2];
   ctx.save();
+  // Each baked-white layer must blend with earlier art before the whole canvas blends with the stage.
+  // Keep this inside save/restore so the procedural fallback retains its source-over rendering.
+  ctx.globalCompositeOperation = 'multiply';
   ctx.translate(x, y);
   if (rotate) ctx.rotate(rotate);
   ctx.globalAlpha = Math.min(1, alpha);

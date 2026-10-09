@@ -3,12 +3,14 @@ import type { AdminAccountSummary, AdminPage, AdminSummary } from '../../../cont
 import { Avatar, Emblem, Field, Modal, Notice, PageHeading } from '../components/ui.tsx';
 import { ApiFailure, errorMessage, request } from '../transport/http.ts';
 import { newRequestId } from '../transport/ids.ts';
+import { useDisplayPreferences } from '../state/preferences.ts';
 
 type Editor = { kind: 'nickname' | 'password' | 'delete'; account: AdminAccountSummary } | null;
 const pageSize = 25, dateTime = (value: number | null) => value === null ? '—' : new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(value);
 const adminError = (error: unknown) => error instanceof ApiFailure && error.code === 'account_in_active_game' ? '账号仍关联进行中的对局，暂不能修改昵称或永久删除。' : errorMessage(error);
 
 export function AdminApp() {
+  useDisplayPreferences();
   const [mode, setMode] = useState<'loading'|'disabled'|'login'|'ready'>('loading'), [password, setPassword] = useState(''), [busy, setBusy] = useState(false), [failure, setFailure] = useState('');
   const [tab, setTab] = useState<'overview'|'accounts'|'settings'>('overview'), [summary, setSummary] = useState<AdminSummary|null>(null), [accounts, setAccounts] = useState<AdminPage<AdminAccountSummary>|null>(null);
   const [query, setQuery] = useState(''), [status, setStatus] = useState('all'), [page, setPage] = useState(1), [editor, setEditor] = useState<Editor>(null), [value, setValue] = useState(''), [confirmValue, setConfirmValue] = useState(''), [confirmation, setConfirmation] = useState<{title:string;description:string;path:string}|null>(null);

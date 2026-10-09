@@ -230,10 +230,12 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .stage-seats--grid { position: relative; display: grid; grid-template-columns: repeat(auto-fit,minmax(108px,1fr)); gap: 16px; padding: 23px; }
 .stage-seats--grid ~ .stage-center { display: none; }
 .theater-stage:has(.stage-seats--grid) .stage-center { display: none; }
-/* 生死卡框：border-image 套 frames/human.png（存活）/ frames/death.png（死亡），slice 72 恰把内部上下分隔线（y≈190/855）留在被丢弃的中心区，
-   四角菱形与双重描边完整保留；边框占位 10px（原 1px 边框 + 8px/5px 内边距改为 0 1px，总 inset 由 9/6px 变 10/11px）。
-   边框色保留为兜底：图片加载失败时退化为 10px 纯色边框，背景色与布局不崩。 */
-.seat-main { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0 1px; border: 10px solid #bac7d8; border-image: url('/assets/frames/human.png') 72 / 10px; border-radius: 8px; background: #f8fafde8; color: var(--ink); min-height: 116px; box-shadow: 0 3px 9px #28446609; }
+/* 装饰卡框独立绘制，保留主线的内容空间，避免挤压徽标或使选中前后卡片跳动。
+   slice 72 丢弃合图中心的分隔线；图片失败时仍有原有 1px 边框。 */
+.seat-main { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 5px; border: 1px solid #bac7d8; border-radius: 8px; background: #f8fafde8; color: var(--ink); min-height: 116px; box-shadow: 0 3px 9px #28446609; }
+.seat-main::before { content: ''; position: absolute; inset: -1px; border: 4px solid transparent; border-image: url('/assets/frames/human.png') 72 / 4px; pointer-events: none; }
+.stage-seat--dead .seat-main::before { border-image-source: url('/assets/frames/death.png'); }
+.stage-seat--selected .seat-main::before, .stage-seat--draft .seat-main::before { display: none; }
 .seat-main:disabled { cursor: default; opacity: 1; }
 /* 座位号行：徽标条恒定与号码同排（不再按数量换行）。
    8px 徽标 + 2px 3px 内边距后，最紧的「3 字身份 + 天理」行宽 76px / 可用 97px（webkit 94.7px），
@@ -268,11 +270,11 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .faction-tag--death { background: var(--faction-death); }
 .identity-known { padding: 6px 10px; border: 1px solid #d8c9de; border-radius: 6px; background: #f7f1fa; color: #5d4a66; font-size: 12px; }
 /* 用 .theater-stage 提升特异度：夜间只有 `.theater-stage--night .seat-main` 的底色覆盖，这里必须稳赢，昼夜同色；
-   border-image: none 摘掉卡框，保持 2px 选中/草稿描边的锐利可读（发言光圈用 outline，不受影响） */
-.theater-stage .stage-seat--selected .seat-main { border: 2px solid var(--seat-selected-line); border-image: none; padding: 5px 3px; background: var(--seat-selected-bg); box-shadow: 0 0 0 4px var(--seat-selected-ring); }
+   选中/草稿态隐藏装饰伪元素，保持 2px 描边的锐利可读（发言光圈用 outline，不受影响） */
+.theater-stage .stage-seat--selected .seat-main { border: 2px solid var(--seat-selected-line); padding: 7px 4px; background: var(--seat-selected-bg); box-shadow: 0 0 0 4px var(--seat-selected-ring); }
 /* 队伍草稿目标：青色虚线（与「我的选择」的浅蓝实线区分），边框+内边距与选中态同值以免布局跳动 */
-.theater-stage .stage-seat--draft .seat-main { border: 2px dashed var(--seat-draft-line); border-image: none; padding: 5px 3px; background: var(--seat-draft-bg); }
-.theater-stage .stage-seat--selected.stage-seat--draft .seat-main { border: 2px solid var(--seat-selected-line); border-image: none; padding: 5px 3px; background: var(--seat-selected-bg); box-shadow: 0 0 0 3px var(--seat-draft-ring), 0 0 0 6px var(--seat-selected-ring); }
+.theater-stage .stage-seat--draft .seat-main { border: 2px dashed var(--seat-draft-line); padding: 7px 4px; background: var(--seat-draft-bg); }
+.theater-stage .stage-seat--selected.stage-seat--draft .seat-main { border: 2px solid var(--seat-selected-line); padding: 7px 4px; background: var(--seat-selected-bg); box-shadow: 0 0 0 3px var(--seat-draft-ring), 0 0 0 6px var(--seat-selected-ring); }
 .seat-draft { position: absolute; left: -9px; top: -11px; background: var(--seat-draft); color: #fff; padding: 3px 7px; border-radius: 4px; font-size: 10px; line-height: 1; }
 /* 本夜濒死（R-20/R-24）：左下角、白底红字描边——不与「死神阵营」身份徽标的实心红撞色，也不与左上「草稿」/右上「已选」冲突。
    尺寸取 8px / padding 1px 4px（宽 26px）：实测 320px 卡宽 83px 时，10px（宽 34px）会与下方居中的「详情」按钮重叠 3.4px，收窄后不再重叠。 */
@@ -284,7 +286,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .seat-avatar { display: inline-grid; place-items: center; position: relative; isolation: isolate; line-height: 0; }
 .seat-death-mark { position: absolute; inset: -18%; width: 136%; height: 136%; pointer-events: none; mix-blend-mode: multiply; opacity: .92; mask-image: radial-gradient(ellipse at center, #000 30%, #000c 48%, transparent 72%); -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, #000c 48%, transparent 72%); }
 .seat-death-mark svg { display: block; width: 100%; height: 100%; }
-.stage-seat--dead .seat-main { background: #eee9edee; border-color: #ae8993; border-image-source: url('/assets/frames/death.png'); }
+.stage-seat--dead .seat-main { background: #eee9edee; border-color: #ae8993; }
 .stage-seat--dead .seat-status { font-weight: 600; }
 .seat-number, .seat-main > strong, .seat-status { position: relative; z-index: 1; }
 .death-particles { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; user-select: none; }
@@ -440,7 +442,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .game-scene--night .election-roster h2 > span, .game-scene--night .election-roster li > small { color: #bfa26a; }
 .game-scene--night .election-roster p { color: #93a4bd; }
 @media (min-width: 1181px) {
-  .stage-seats--ring .seat-main { min-height: 92px; padding: 0; gap: 3px; }
+  .stage-seats--ring .seat-main { min-height: 92px; padding: 5px; gap: 3px; }
   .stage-seats--ring .avatar { width: 32px; height: 32px; }
   .stage-seats--ring .seat-main > strong { line-height: 1.2; }
   .stage-seats--ring .seat-status { min-height: 12px; }
@@ -668,8 +670,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 /* 舞台与座位：夜间舞台氛围（night-atmosphere.css）不动；座位卡在暗色主题下用暗底（含夜间作用域） */
 :root[data-theme='dark'] .stage-action-card { background: #211c26ee; border-color: #453d52; }
 :root[data-theme='dark'] .stage-action-card--readonly { background: #1b1720e8; border-color: var(--line); }
-:root[data-theme='dark'] .task-switch button { background: #26202e; }
-:root[data-theme='dark'] .stage-action-card .task-switch button { background: #2b2434; border-color: #4a4154; }
+:root[data-theme='dark'] .task-switch button:not([aria-pressed='true']):not(.task-switch__withdraw) { background: #26202e; }
+:root[data-theme='dark'] .stage-action-card .task-switch button:not([aria-pressed='true']):not(.task-switch__withdraw) { background: #2b2434; border-color: #4a4154; }
 :root[data-theme='dark'] .stage-action-card .speech-preview { background: #252b3a; color: #a8b8d0; }
 :root[data-theme='dark'] .accepted-summary { color: #7fb3a3; }
 :root[data-theme='dark'] .seat-main { background: #221d29ee; border-color: #4a4154; }
@@ -677,6 +679,9 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 :root[data-theme='dark'] .stage-seat--dead .seat-main { background: #2a2126ee; border-color: #5d3a44; }
 :root[data-theme='dark'] .stage-seat--unavailable .seat-main,
 :root[data-theme='dark'] .theater-stage--night .stage-seat--unavailable .seat-main { background: #1b1720; color: #8d8296; }
+:root[data-theme='dark'] .theater-stage .stage-seat--selected .seat-main { background: var(--seat-selected-bg); border-color: var(--seat-selected-line); }
+:root[data-theme='dark'] .theater-stage .stage-seat--draft .seat-main { background: var(--seat-draft-bg); border-color: var(--seat-draft-line); }
+:root[data-theme='dark'] .theater-stage .stage-seat--selected.stage-seat--draft .seat-main { background: var(--seat-selected-bg); border-color: var(--seat-selected-line); }
 :root[data-theme='dark'] .seat-number { color: #9a8fb0; }
 :root[data-theme='dark'] .seat-tools button { background: #2b2434d9; color: #b9aecb; }
 :root[data-theme='dark'] .seat-dying { background: #2a1e24; border-color: var(--danger); color: #e3a7b1; }
@@ -694,6 +699,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 :root[data-theme='dark'] .phase-ability .phase-ability__boundary, :root[data-theme='dark'] .phase-ability details, :root[data-theme='dark'] .phase-ability > small { color: #9a91a3; }
 :root[data-theme='dark'] .phase-ability details { border-top-color: #453d52; }
 :root[data-theme='dark'] .private-label { color: #b39a80; }
+:root[data-theme='dark'] .player-marks__labels button:not([aria-pressed='true']), :root[data-theme='dark'] .player-marks__note input { background: #26202e; color: var(--ink); border-color: var(--line); }
+:root[data-theme='dark'] .player-marks__colors .seat-mark--active { outline-color: var(--ink); }
 
 /* 票型与投票进度（卡片主体随 --paper/--ink 自动变暗） */
 :root[data-theme='dark'] .vote-tally__card { border-color: #453d52; }

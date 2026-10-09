@@ -1,12 +1,20 @@
 # theater_death 进度与交接
 
-更新时间：2026-10-09 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-10-10 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
 
-### P1：分层死亡特效素材化 / 生死卡框 / 全局暗色主题（2026-10-09）
+### P1：分层死亡特效素材化 / 生死卡框 / 全局暗色主题（2026-10-09；2026-10-10 审核）
 
-分支 `feat/ui-p1-theme`（基于 `feat/ui-p0-clarity` 整合 main 后的 `8456769`；仅本地提交，**未合并 main**）。纯 web-v2 前端与 presentation 层，不改引擎/服务端/规则/契约/语音，无新依赖、无新位图素材（全部复用已入库素材）。①**死亡特效改用美术合图分层**：`death-effects-layer.tsx` 保留 canvas 锚定（`data-death-seat`）、DPR、粒子预算、3.2s 时序与降级逻辑，程序绘制烟雾/碎片替换为按四相位绘制 `avatar-sheet.png` 区域——主星芒闪现（0–0.9s，`[48,110,490,675]`）、碎片环双份旋转外扩（0.15–2.2s，`[554,408,249,229]`）、黑雾双份漂移上升（0.4–2.6s，`[501,122,347,225]`）、消散拖尾（1.0–3.2s，`[516,697,330,105]`）；区域坐标经 PIL 像素级检测（按白底距离阈值取内容包围盒）确认，合图为**白底烘焙**（RGB≈247、alpha≈250），素材模式画布挂 `data-art` 走 `mix-blend-mode: multiply`（与 DeathMark 同策略），合图 `useRef` 单次加载、失败/未就绪静默回退原程序绘制（兜底代码保留）。②**生死卡框**：`.seat-main` 改 `border-image`（slice 72——恰好把卡框内部 y≈190/855 分隔线留在被丢弃的中心区，四角菱形与双重描边完整；边框 10px，原 1px 边框+8px/5px 内边距改 0 1px，总 inset 由 9/6px 变 10/11px；slice/宽度经 112×140 座位卡模拟渲染图定稿），存活 `frames/human.png`、死亡 `frames/death.png`；选中/草稿态 `border-image:none` 保持 2px 描边锐利（内边距同步补偿防跳动），发言光圈 outline 不受影响；复盘/大厅成员卡不套框。③**全局暗色主题**：偏好新增 `theme: 'system'|'light'|'dark'`（默认 system，旧存档缺字段回落 system），`useDisplayPreferences` 并列监听 prefers-color-scheme、解析结果写 `documentElement.dataset.theme`，账户「显示与动画」顶部加「界面主题」select（跟随系统/浅色纸面/深色剧院，沿用「保存在当前浏览器」提示）；main.css 新增 `:root[data-theme='dark']` 93 条覆盖（:root 变量整组 + 高频硬编码按组件补规则），覆盖根背景文字/导航/面板/按钮（含 primary/danger）/表单/notice/modal/侧栏四面板与聊天气泡/HUD/大厅成员卡/复盘/登录/账户页/舞台行动卡/座位卡（含夜间作用域暗底微调）/语音条/票型卡；浅色主题像素级不变（暗色规则全部作用域隔离），index.html 的 theme-color 不动。素材登记：sources.json 的 avatar-sheet 条目补 `deathParticles/deathShards/deathFade` 三区域，新增 `frames/death.png`/`frames/human.png` 两条（sha256 已核与 `Art Materials/IdentityCards/frames/` 源文件逐字节一致）。实测：`npx vitest run` 相关 6 文件 **41 例全过**（display-model 10 含新增主题解析 1 例、death-effects 8 含新增「区域与 sources.json 同步」1 例、static 4、test-selection 12、stage-layout 3、vote-tally 4）；`typecheck`/`typecheck:web:v2`/`typecheck:web:v2-tests` 与 `build:web:v2` 全过。**E2E 未实际运行**（本机 Docker daemon 不可用）；已同步 `08-display`（偏好键集合 +`theme`）、`01-account`（设置区 `.select-field` 位置索引 fields[0..1]→[1..2] 防间距断言取错元素，并补「界面主题」默认值断言）；全 e2e 无 colorScheme 模拟（Playwright 默认浅色），既有视觉断言保持浅色主题。视觉自查：分层区域裁图与 multiply 合成、卡框 10px/12px 两档模拟均经图像确认（临时脚本与裁图用后已删）。未部署。
+分支 `feat/ui-p1-theme`，原实现 `393e3e6`，基于 PR #19 的 `8456769`；依赖 PR #19 先整合，尚未合并 main、未部署。纯前端与 presentation 层，复用已入库素材，无新依赖，不改游戏规则、服务端或契约。
+
+死亡特效复用 `avatar-sheet.png` 的主星芒、碎片、黑雾、消散四区域，保留 3.2s 生命周期、公开事件过滤与图片失败/未就绪的程序粒子兜底。审核修正画布内部各层使用 `multiply`，与外层 CSS 混合配合，避免白底裁片洗白先前图层。素材坐标和三个文件 SHA256 均已核对登记。
+
+生死卡框使用 `frames/human.png` / `frames/death.png`。审核发现原 10px 实体边框挤压徽标并使状态切换布局变化，改为不占布局、不接收指针事件的 4px 装饰伪元素，恢复主线座位边框/内边距；选中/草稿态隐藏装饰，继续显示语义描边。
+
+主题偏好 `theme: system/light/dark` 默认跟随系统、旧存档安全迁移，账户显示设置可切换，玩家及管理员独立入口均应用偏好。审核修正暗色通用座位样式覆盖选中/草稿提示色、任务高亮被覆盖、玩家标记输入及标签的暗底可读性。
+
+验证（2026-10-09–10，Docker）：相关 6 文件单测 41/41；四项应用 typecheck、`build:web:v2`、新增 E2E 的独立 typecheck 通过。01 账户双浏览器 4/4；05/08/20-death-effects 修正后 42/42；新增 33-theme 与 34-death-art 最终 14/14，共 60 个唯一相关浏览器用例取得通过结果（含修正/复跑，保留初次失败报告）。新增覆盖系统/手动主题与刷新迁移、玩家/管理员登录、暗色操作提示和标记对比度、真实素材像素叠加、加载失败、双人死亡及生死框。四相位用例使用虚拟时钟隔离加载耗时，其余死亡兜底与同批用例保留真实时钟。关键整页截图已检查，产物保存在本地工作区 `artifacts/p1-review-20261009/`。未运行全量单测/全量 E2E。
 
 ### PR #19：UI 清晰度 P0 与 main 整合（2026-10-09）
 
