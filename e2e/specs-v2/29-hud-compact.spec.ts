@@ -49,6 +49,16 @@ test('窄屏滚动后 HUD 收成细条并把操作收进「更多」，桌面不
   await expect(menu).toBeVisible();
   await expect(menu.getByRole('button', { name: '我的身份', exact: true })).toBeVisible();
   await page.screenshot({ path: `/results/hud-compact-${testInfo.project.name}-menu.png`, fullPage: false });
+  // Esc 关闭菜单；重新打开后点击菜单外（HUD 标题）同样关闭
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await expect(menu).toBeVisible();
+  await hud.locator('h1').click();
+  await expect(menu).toHaveCount(0);
+  await more.click();
+  await expect(menu).toBeVisible();
   await menu.getByRole('button', { name: '导航', exact: true }).click();
   await expect(page.getByRole('dialog', { name: '剧院导航' })).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: '关闭' }).click();

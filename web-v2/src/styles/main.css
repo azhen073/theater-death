@@ -227,9 +227,9 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .stage-center > small { font-size: 10px; color: #6d7c93; }
 .stage-seats--ring { position: relative; height: var(--ring-height,676px); }
 .stage-seats--ring .stage-seat { position: absolute; width: 112px; left: var(--seat-x); top: var(--seat-y); transform: translate(-50%,-50%); }
-.stage-seats--grid { position: relative; display: grid; grid-template-columns: repeat(auto-fit,minmax(108px,1fr)); gap: 16px; padding: 23px; }
-.stage-seats--grid ~ .stage-center { display: none; }
-.theater-stage:has(.stage-seats--grid) .stage-center { display: none; }
+.stage-seats--grid, .stage-seats--arc { position: relative; display: grid; grid-template-columns: repeat(auto-fit,minmax(108px,1fr)); gap: 16px; padding: 23px; }
+.stage-seats--grid ~ .stage-center, .stage-seats--arc ~ .stage-center { display: none; }
+.theater-stage:has(.stage-seats--grid) .stage-center, .theater-stage:has(.stage-seats--arc) .stage-center { display: none; }
 /* 装饰卡框独立绘制，保留主线的内容空间，避免挤压徽标或使选中前后卡片跳动。
    slice 72 丢弃合图中心的分隔线；图片失败时仍有原有 1px 边框。 */
 .seat-main { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 5px; border: 1px solid #bac7d8; border-radius: 8px; background: #f8fafde8; color: var(--ink); min-height: 116px; box-shadow: 0 3px 9px #28446609; }
@@ -268,6 +268,42 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .faction-tag { display: inline-block; padding: 1px 6px; border-radius: 4px; color: #fff; font-size: 11px; font-weight: 600; line-height: 1.6; }
 .faction-tag--human { background: var(--faction-human); }
 .faction-tag--death { background: var(--faction-death); }
+/* 复盘：谢幕座位图（只读环形总览，≤900px 在媒体块里退化为网格） */
+.review-seating { margin: 18px 0 6px; }
+.review-seating__stage { position: relative; height: 460px; max-width: 900px; margin: 0 auto; }
+.review-seat { position: absolute; left: var(--seat-x); top: var(--seat-y); transform: translate(-50%,-50%); width: 78px; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.review-seat .avatar { width: 34px; height: 34px; }
+.review-seat--dead .avatar { filter: grayscale(1); opacity: .6; }
+.review-seat__no { font-family: ui-monospace,monospace; font-size: 10px; color: var(--muted); line-height: 1; }
+.review-seat__role { font-size: 9px; line-height: 1.5; padding: 0 5px; border-radius: 3px; color: #fff; background: var(--muted); }
+.review-seat__role--human { background: var(--faction-human); }
+.review-seat__role--death { background: var(--faction-death); }
+.review-seat__name { font-size: 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.review-seat__me { position: absolute; top: -7px; right: 2px; font-size: 11px; color: #b99b68; }
+.review-seating__caption { text-align: center; font-size: 10px; margin: 8px 0 0; }
+/* 复盘：身份卡网格（保留 .member-card 结构与文案，仅改为卡片栅格 + 身份卡大图） */
+.review-roster { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 14px; margin: 14px 0; }
+.review-roster .member-card { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; border: 1px solid #e1e6ec; border-radius: 10px; background: #fff; }
+.review-roster .member-card:last-child { border-bottom: 1px solid #e1e6ec; }
+.member-card__art { display: block; width: 100%; height: auto; border-radius: 6px; background: #f1f4f8; }
+/* 复盘时间线：轮次跳转 chip 与死亡座位徽标横排 */
+.review-day-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.review-day-nav .text-button { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 11px; }
+.event-row { scroll-margin-top: 12px; }
+.event-row .event-deaths { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.event-row .event-deaths__seat { padding: 2px 8px; border-radius: 999px; border: 1px solid #ae8993; background: #eee9ed; color: #874c57; font-size: 11px; font-weight: 600; }
+/* 大厅：入座预览条（纯视觉，不代表开局座位） */
+.lobby-seating { margin: 4px 0 12px; padding: 12px 6px 8px; border: 1px dashed var(--line); border-radius: 10px; }
+.lobby-seating__row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 4px; }
+.lobby-seating__slot { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 36px; }
+.lobby-seating__seat { position: relative; width: 26px; height: 26px; border-radius: 50%; border: 1px dashed #b9c3d2; display: grid; place-items: center; }
+.lobby-seating__seat .avatar { width: 24px; height: 24px; }
+.lobby-seating__slot--online .lobby-seating__seat { border-style: solid; border-color: #96a0af; opacity: .72; }
+.lobby-seating__slot--ready .lobby-seating__seat { border: 2px solid #b99b68; box-shadow: 0 0 0 2px #d8c79a66; }
+.lobby-seating__slot--ready .lobby-seating__seat .avatar { width: 22px; height: 22px; }
+.lobby-seating__slot--self .lobby-seating__seat::after { content: '★'; position: absolute; top: -9px; right: -7px; font-size: 10px; color: #b99b68; }
+.lobby-seating__name { font-size: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); line-height: 1.3; }
+.lobby-seating__caption { text-align: center; font-size: 10px; color: var(--muted); margin: 8px 0 0; }
 .identity-known { padding: 6px 10px; border: 1px solid #d8c9de; border-radius: 6px; background: #f7f1fa; color: #5d4a66; font-size: 12px; }
 /* 用 .theater-stage 提升特异度：夜间只有 `.theater-stage--night .seat-main` 的底色覆盖，这里必须稳赢，昼夜同色；
    选中/草稿态隐藏装饰伪元素，保持 2px 描边的锐利可读（发言光圈用 outline，不受影响） */
@@ -470,8 +506,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
     transform: none;
     margin: 14px;
   }
-  .stage-seats--ring, .stage-seats--grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); height: auto; gap: 18px 12px; padding: 25px; }
-  .stage-seats--ring .stage-seat, .stage-seats--grid .stage-seat { position: relative; width: auto; left: auto; top: auto; transform: none; }
+  .stage-seats--ring, .stage-seats--grid, .stage-seats--arc { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); height: auto; gap: 18px 12px; padding: 25px; }
+  .stage-seats--ring .stage-seat, .stage-seats--grid .stage-seat, .stage-seats--arc .stage-seat { position: relative; width: auto; left: auto; top: auto; transform: none; }
   .stage-center { display: none; }
 }
 @media (max-width: 900px) {
@@ -489,6 +525,17 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .game-columns { grid-template-columns: minmax(0,1fr); }
   .game-sidebar { position: relative; top: auto; }
   .info-panel { max-height: 430px; }
+  /* 底部 tab 栏：信息页签固定到视口底部（不复制 DOM），页面与内部滚动区留出等量底部空间；
+     软键盘弹出时（useKeyboardViewport 置 data-keyboard-open）暂时收起，避免遮挡输入框。 */
+  .info-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; border-top: 1px solid var(--line); border-bottom: 0; background: #f7f9fb; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 14px #1d2b4414; }
+  .info-tabs button { min-height: 52px; }
+  .game-scene { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  :root { scroll-padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  .info-panel, .chat-history, .event-history { scroll-padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  :root[data-keyboard-open='true'] .info-tabs { display: none; }
+  /* 复盘谢幕座位图：窄屏退化为网格 */
+  .review-seating__stage { height: auto; display: grid; grid-template-columns: repeat(auto-fill,minmax(72px,1fr)); gap: 10px; }
+  .review-seat { position: static; transform: none; width: auto; }
 }
 @media (max-width: 680px) {
   .auth-layout { display: block; }
@@ -586,13 +633,30 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .seat-main { min-height: 113px; }
   .seat-tools button { min-height: 34px; padding: 7px 9px; }
   .seat-count { right: -4px; }
-  .info-tabs { position: sticky; top: 0; background: #f7f9fb; z-index: 1; }
+  .lobby-seating__slot { width: 30px; }
   .game-sidebar { margin-top: 5px; }
 }
 /* ≤359px：座位改两列网格。320px 下三列每卡可用宽只有约 71px，「号码 + 8px 徽标」必然折行；
    两列约 118px 可用宽，余量 39–50px，两引擎都能保持单排（与 ≥390px 的口径一致）。 */
 @media (max-width: 359px) {
   .stage-seats--ring, .stage-seats--grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px 10px; padding: 16px 10px; }
+}
+/* 601–900px 竖屏半环：本人座位固定底部中央稍大，其余座位沿前后两排浅弧分布
+   （坐标由 stage-layout.ts 的 arcSeatPosition 计算，行动卡在文档流中位于座位区上方、不遮挡座位）。
+   座位区 500px 高，为公开状态行和卡片下方详情按钮保留空间；紧凑卡 64px（本人 92px）。 */
+@media (min-width: 601px) and (max-width: 900px) {
+  .stage-seats--arc { display: block; height: var(--arc-height, 500px); padding: 0; }
+  .stage-seats--arc .stage-seat { position: absolute; width: 64px; left: var(--seat-x); top: var(--seat-y); transform: translate(-50%,-50%); }
+  .stage-seats--arc .stage-seat--self { width: 92px; }
+  .stage-seats--arc .seat-main { min-height: 0; padding: 6px 3px; gap: 2px; }
+  .stage-seats--arc .avatar { width: 30px; height: 30px; }
+  .stage-seats--arc .stage-seat--self .avatar { width: 40px; height: 40px; }
+  .stage-seats--arc .seat-number { font-size: 10px; gap: 3px; }
+  .stage-seats--arc .seat-main > strong { font-size: 9px; }
+  .stage-seats--arc .seat-status { font-size: 9px; line-height: 1.4; }
+  .stage-seats--arc .seat-tools { position: absolute; right: 0; bottom: -20px; margin-top: 0; }
+  .stage-seats--arc .seat-tools button { min-height: 22px; padding: 2px 6px; font-size: 9px; }
+  .theater-stage--arc .stage-center { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
@@ -714,3 +778,16 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 :root[data-theme='dark'] .voice-bar__device select { background: #26202e; }
 :root[data-theme='dark'] .voice-bar__agc { color: #d3b578; border-color: #5d4d2e; background: #33291a; }
 :root[data-theme='dark'] .level-meter__segment { background: #453d52; }
+
+/* P2：复盘可视化 / 大厅入座条 / 底部 tab 栏（竖屏半环只改尺寸与定位，颜色沿用上方座位规则） */
+:root[data-theme='dark'] .review-roster .member-card { background: #211c26; border-color: var(--line); }
+:root[data-theme='dark'] .review-roster .member-card:last-child { border-bottom-color: var(--line); }
+:root[data-theme='dark'] .member-card__art { background: #26202e; }
+:root[data-theme='dark'] .event-row .event-deaths__seat { background: #2a2126; border-color: #5d3a44; color: #d9a7b1; }
+:root[data-theme='dark'] .review-day-nav .text-button { border-color: var(--line); }
+:root[data-theme='dark'] .lobby-seating { border-color: var(--line); }
+:root[data-theme='dark'] .lobby-seating__seat { border-color: #4a4154; }
+:root[data-theme='dark'] .lobby-seating__slot--online .lobby-seating__seat { border-color: #6f6880; }
+:root[data-theme='dark'] .lobby-seating__slot--ready .lobby-seating__seat { border-color: #bfa87c; box-shadow: 0 0 0 2px #bfa87c33; }
+:root[data-theme='dark'] .lobby-seating__slot--self .lobby-seating__seat::after { color: #bfa87c; }
+:root[data-theme='dark'] .info-tabs { box-shadow: 0 -4px 14px #00000066; }
