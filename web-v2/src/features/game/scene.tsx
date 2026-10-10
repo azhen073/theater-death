@@ -110,6 +110,21 @@ export function GameScene({
     };
   }, []);
   useEffect(() => { if (!compact) setHudMenu(false); }, [compact]);
+  // 「更多」菜单：Esc 或点击菜单/按钮之外的任意处关闭。
+  useEffect(() => {
+    if (!hudMenu) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setHudMenu(false); };
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && !target.closest('.hud-menu') && !target.closest('.hud-more')) setHudMenu(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [hudMenu]);
 
   // 死亡公告等固定横幅按 HUD 实际下沿定位（HUD 是 sticky：高度随宽度/显示缩放变化，
   // 未滚动时还带有场景的顶部内边距，写死 top 会压住工具行）。

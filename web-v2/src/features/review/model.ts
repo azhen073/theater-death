@@ -3,6 +3,7 @@ import type { JsonValue, RoomSnapshot } from '../../../../contracts/v2.ts';
 import type { RoleId } from '../../../../rulesets/types.ts';
 import { describeEvent } from '../../presentation/events.ts';
 import type { EventText } from '../../presentation/events.ts';
+import { parseVoteTally, type VoteTally } from '../../presentation/vote-tally.ts';
 
 export interface ReviewPlayer { playerId: string; uid: string; seat: number; roleId: RoleId; life: 'alive' | 'dead'; revealed: boolean; nickname: string; avatarUrl: string | null }
 export interface ReviewEvent { dayNumber: number; stage: 1 | 2; type: string; payload: JsonValue }
@@ -13,6 +14,40 @@ export interface ReviewDTO {
   startedAt: number; endedAt: number; durationMs: number;
 }
 export const reviewScope = (view: RoomSnapshot) => JSON.stringify([view.viewer.userId, view.roomId, view.gameId, view.viewer.memberId, view.viewer.kind, view.viewer.subjectPlayerId, view.room.phase]);
+
+const seatNumber = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : null;
+
+/** 复盘时间线携带原始引擎 payload（visibility/review.ts 不过滤），与公共票型事件同构；补 cursor 0 复用公共解析。 */
+export function reviewVoteTally(event: ReviewEvent): VoteTally | null {
+  return parseVoteTally({ type: event.type, payload: event.payload, cursor: 0, dayNumber: event.dayNumber, stage: event.stage });
+}
+
+/** 死亡类事件的座位号列表（渲染座位徽标横排）；非死亡事件返回 null，空名单返回 []（保留原文字行如「无人」）。 */
+export function reviewDeathSeats(event: ReviewEvent, review: ReviewDTO): number[] | null {
+  const p = event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload) ? event.payload as Record<string, JsonValue> : {};
+  switch (event.type) {
+    case 'deaths_announced':
+      return (Array.isArray(p.seats) ? p.seats : []).map(seatNumber).filter((seat): seat is number => seat !== null);
+    case 'elimination_announced': {
+      const seat = seatNumber(p.seat);
+      return seat === null ? [] : [seat];
+    }
+    case 'night_deaths_confirmed':
+      return (Array.isArray(p.deaths) ? p.deaths : []).map(item => {
+        const row = item && typeof item === 'object' && !Array.isArray(item) ? item as Record<string, JsonValue> : {};
+        return review.players.find(player => player.playerId === row.playerId)?.seat ?? null;
+      }).filter((seat): seat is number => seat !== null);
+    default: return null;
+  }
+}
+
+/** 时间线轮次锚点：按首次出现顺序的去重 dayNumber（用于「第 N 轮」跳转 chip）。 */
+export function reviewDayAnchors(timeline: readonly ReviewEvent[]): number[] {
+  const days: number[] = [];
+  for (const event of timeline) if (!days.includes(event.dayNumber)) days.push(event.dayNumber);
+  return days;
+}
 
 /** Server-only events become visible only through the authorized end-game review. */
 export function reviewEventText(event: ReviewEvent, review: ReviewDTO, view: RoomSnapshot, catalog: CatalogDTO): EventText {

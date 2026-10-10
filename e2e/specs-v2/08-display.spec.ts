@@ -44,6 +44,22 @@ async function expectActionClearOfSeatsAndTools(page: Page) {
     }), { timeout: 5_000 }).toBeNull();
 }
 
+/** 竖屏半环（601–900px）：所有座位互不重叠（几何由 stage-layout 单测锁定，这里验证真实渲染）。 */
+async function expectArcSeatsClear(page: Page) {
+  await expect.poll(async () => page.evaluate(() => {
+    const seats = [...document.querySelectorAll('.stage-seat')].map(element => element.getBoundingClientRect());
+    for (let a = 0; a < seats.length; a += 1) {
+      for (let b = a + 1; b < seats.length; b += 1) {
+        const first = seats[a]!, second = seats[b]!;
+        if (first.left - 1 < second.right && first.right + 1 > second.left && first.top - 1 < second.bottom && first.bottom + 1 > second.top) {
+          return `seats ${a}/${b} overlap: ${JSON.stringify([first, second])}`;
+        }
+      }
+    }
+    return null;
+  }), { timeout: 5_000 }).toBeNull();
+}
+
 function deathFixture(base: GameHarnessFixture, type: 'deaths_announced' | 'elimination_announced', cursor: number): GameHarnessFixture {
   const next = structuredClone(base);
   next.view.public!.events = [...next.view.public!.events, {
@@ -155,17 +171,18 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   await page.getByRole('button', { name: '关闭' }).click();
 
   // Sequential viewport resizing across key breakpoints
-  const sizes = [
+  // 681/844 落在竖屏半环（601–900px）区间：不再断言网格列数，改为断言半环类与座位互不重叠。
+  const sizes: { width: number; height: number; cols?: number; arc?: boolean }[] = [
     { width: 1440, height: 900, cols: 0 },
     { width: 1280, height: 800, cols: 0 },
     { width: 1240, height: 800, cols: 0 },
     { width: 1181, height: 900, cols: 0 },
     { width: 1180, height: 800, cols: 4 },
-    { width: 681, height: 800, cols: 4 },
+    { width: 681, height: 800, arc: true },
     { width: 680, height: 750, cols: 3 },
     { width: 390, height: 844, cols: 3 },
     { width: 320, height: 740, cols: 2 },
-    { width: 844, height: 390, cols: 4 },
+    { width: 844, height: 390, arc: true },
     { width: 1440, height: 900, cols: 0 },
   ];
 
@@ -176,7 +193,10 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
     await expect(selectedSummary).toContainText(`1号 ${firstSeat.nickname}`);
     await expect(page.getByRole('region', { name: '舞台行动', exact: true })).toHaveCount(1);
     await expectActionClearOfSeatsAndTools(page);
-    if (size.cols > 0) {
+    if (size.arc) {
+      await expect(page.locator('.theater-stage')).toHaveClass(/theater-stage--arc/);
+      await expectArcSeatsClear(page);
+    } else if ((size.cols ?? 0) > 0) {
       const colCount = await page.locator('.stage-seats').evaluate(el => window.getComputedStyle(el).gridTemplateColumns.split(' ').length);
       expect(colCount).toBe(size.cols);
     }

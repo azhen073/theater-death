@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { RoomSnapshot } from '../../../../contracts/v2.ts';
-import { Avatar, Modal, Notice } from '../../components/ui.tsx';
+import { Modal, Notice } from '../../components/ui.tsx';
 import { factionKey, factionLabel } from '../../presentation/faction.ts';
 import { ApiFailure, errorMessage, get } from '../../transport/http.ts';
 import { useIntent } from '../../transport/intent.ts';
 import { Lobby } from '../room/lobby.tsx';
 import { roomExitMessage, roomExitPresentation } from '../room/policy.ts';
-import { reviewEventText, reviewScope } from './model.ts';
+import { reviewDayAnchors, reviewDeathSeats, reviewEventText, reviewScope, reviewVoteTally } from './model.ts';
 import type { ReviewDTO } from './model.ts';
+import { ReviewSeatingChart } from './seating-chart.tsx';
+import { VoteTallyCard } from '../game/vote-tally.tsx';
 import { navigateTabs } from '../../components/tab-navigation.ts';
+import { usePreferences } from '../../state/preferences.ts';
 import { playerMarkKey, playerMarkTooltip, readPlayerMark, type PlayerMark } from '../../state/player-marks.ts';
 
 /** 复盘只读展示本机标记；localStorage 不可用时静默缺省。 */
@@ -27,6 +30,7 @@ export function ReviewPage({ view, catalog, online, active = true, refresh, rema
   const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [tab, setTab] = useState<'players' | 'timeline' | 'public' | 'faction'>('players');
   const [limit, setLimit] = useState(100);
+  const { reducedMotion } = usePreferences();
   useEffect(() => { if (!active) { setConfirm(false); setLeaveConfirm(false); } }, [active]);
   const scope = reviewScope(view), latest = useRef(view); latest.current = view;
   useEffect(() => {
@@ -61,19 +65,32 @@ export function ReviewPage({ view, catalog, online, active = true, refresh, rema
     <p>房间 {view.room.code} · 第 {result?.dayNumber ?? review?.endedAtDay ?? '—'} 轮结束</p>
     <p>{result?.reason ?? review?.reason}</p>
     {review && <p className="muted">本局用时 {Math.floor(review.durationMs / 60_000)} 分 {Math.floor(review.durationMs / 1000) % 60} 秒 · {review.players.length} 位玩家</p>}
+    {review && <ReviewSeatingChart players={review.players} catalog={catalog} selfPlayerId={view.viewer.subjectPlayerId}/>}
     {error && <Notice error>{error}<button className="button" onClick={() => setRetry(value => value + 1)}>重新读取复盘</button><button className="text-button" onClick={() => void refresh()}>同步当前房间</button></Notice>}
     {!review && !error && <p role="status">正在读取完整复盘，结局概览已保留。</p>}
     {review && <><div className="button-row" role="tablist" aria-label="复盘内容">{([['players', '全部身份'], ['timeline', '完整时间线'], ['public', '全部公屏'], ['faction', '全部阵营交流']] as const).map(([key, label]) => <button className="button" key={key} role="tab" id={`review-tab-${key}`} aria-controls="review-panel" aria-selected={tab === key} tabIndex={tab === key ? 0 : -1} onKeyDown={navigateTabs} onClick={() => { setTab(key); setLimit(100); }}>{label}</button>)}</div><div role="tabpanel" id="review-panel" aria-labelledby={`review-tab-${tab}`}>
-      {tab === 'players' && <div className="members-list">{[...review.players].sort((a, b) => a.seat - b.seat).map(player => {
+      {tab === 'players' && <div className="review-roster">{[...review.players].sort((a, b) => a.seat - b.seat).map(player => {
         const role = catalog.roles.find(item => item.roleId === player.roleId);
         const key = factionKey(role?.faction);
         const mark = view.gameId ? readPlayerMarkSafe(view.roomId, view.gameId, player.playerId) : null;
-        return <article className="member-card" key={player.playerId}><Avatar name={player.nickname} url={player.avatarUrl}/><div className="member-card__info"><strong>{player.seat}号 {player.nickname}{mark && <span className={`seat-mark seat-mark--${mark.color ?? 'gold'}`} role="img" aria-label={playerMarkTooltip(mark)} title={playerMarkTooltip(mark)} />}</strong><p className="muted">UID {player.uid}</p><p>{key && <span className={`faction-tag faction-tag--${key}`}>{factionLabel(role?.faction)}</span>} {role?.name ?? '未提供身份'} · {player.life === 'alive' ? '最终存活' : '最终死亡'}</p>{mark && <p className="muted">我的标记：{[mark.label, mark.note].filter(Boolean).join(' · ') || '仅色点'}（仅保存在本机）</p>}</div></article>;
+        return <article className="member-card" key={player.playerId}>{role && <img className="member-card__art" src={`/assets/cards/${role.roleId}.png`} loading="lazy" alt=""/>}<div className="member-card__info"><strong>{player.seat}号 {player.nickname}{mark && <span className={`seat-mark seat-mark--${mark.color ?? 'gold'}`} role="img" aria-label={playerMarkTooltip(mark)} title={playerMarkTooltip(mark)} />}</strong><p className="muted">UID {player.uid}</p><p>{key && <span className={`faction-tag faction-tag--${key}`}>{factionLabel(role?.faction)}</span>} {role?.name ?? '未提供身份'} · {player.life === 'alive' ? '最终存活' : '最终死亡'}</p>{mark && <p className="muted">我的标记：{[mark.label, mark.note].filter(Boolean).join(' · ') || '仅色点'}（仅保存在本机）</p>}</div></article>;
       })}</div>}
-      {tab === 'timeline' && <div className="event-list">{review.timeline.slice(0, limit).map((event, index) => {
-        const text = reviewEventText(event, review, view, catalog);
-        return <article className="event-row" key={index}><small>第 {event.dayNumber} 轮 · 阶段 {event.stage}</small><strong>{text.title}</strong>{text.details.map((line, lineIndex) => <p key={lineIndex}>{line}</p>)}</article>;
-      })}{review.timeline.length > limit && <button className="button" onClick={() => setLimit(value => value + 100)}>显示后续事件</button>}</div>}
+      {tab === 'timeline' && (() => {
+        const events = review.timeline.slice(0, limit);
+        const days = reviewDayAnchors(events);
+        return <>
+          {days.length > 1 && <div className="review-day-nav" role="group" aria-label="按轮次跳转">{days.map(day => <button type="button" className="text-button" key={day} onClick={() => {
+            document.getElementById(`review-day-${day}`)?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+          }}>第 {day} 轮</button>)}</div>}
+          <div className="event-list">{events.map((event, index) => {
+            const text = reviewEventText(event, review, view, catalog);
+            const tally = reviewVoteTally(event);
+            const deaths = reviewDeathSeats(event, review);
+            const anchor = index === 0 || event.dayNumber !== events[index - 1]!.dayNumber;
+            return <article className="event-row" key={index} id={anchor ? `review-day-${event.dayNumber}` : undefined}><small>第 {event.dayNumber} 轮 · 阶段 {event.stage}</small><strong>{text.title}</strong>{tally ? <VoteTallyCard tally={tally}/> : deaths !== null && deaths.length > 0 ? <p className="event-deaths" aria-label={`死亡座位：${deaths.map(seat => `${seat}号`).join('、')}`}>{deaths.map(seat => <span className="event-deaths__seat" key={seat}>{seat}号</span>)}</p> : text.details.map((line, lineIndex) => <p key={lineIndex}>{line}</p>)}</article>;
+          })}{review.timeline.length > limit && <button className="button" onClick={() => setLimit(value => value + 100)}>显示后续事件</button>}</div>
+        </>;
+      })()}
       {(tab === 'public' || tab === 'faction') && <section aria-label={tab === 'public' ? '完整公屏记录' : '完整阵营记录'}>{messages.slice(0, limit).map(message => <article className="chat-message" key={message.messageId ?? message.id}><strong>{message.senderSeat ?? '—'}号 {review.players.find(player => player.playerId === message.senderId)?.nickname ?? '玩家'}</strong><p>{message.text}</p></article>)}{!messages.length && <p className="muted">本频道没有消息。</p>}{messages.length > limit && <button className="button" onClick={() => setLimit(value => value + 100)}>显示后续消息</button>}</section>}
     </div></>}
     {finish.intent?.error && <Notice error>{finish.intent.error}{finish.unresolved && <button className="button" disabled={!canFinish} onClick={() => void finish.retry()}>确认原结束操作</button>}</Notice>}

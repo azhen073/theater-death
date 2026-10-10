@@ -4,6 +4,20 @@
 
 ## 当前状态
 
+### P2：复盘可视化 / 大厅入座 / 移动端体验（2026-10-10）
+
+分支 `feat/ui-p2-experience`，自 P1 分支 tip `97ff8ba` 拉出（P1 尚未合并 main，本批依赖其主题层与素材约定）；未合并、未部署。纯 web-v2 前端与测试/spec 同步，不改引擎、服务端与契约。
+
+P2-A 复盘可视化：复盘页顶部新增谢幕座位环形图（`review/seating-chart.tsx`，身份徽标按阵营色、死者灰度、本人 ★；座位号补零并与昵称分置，避免与既有 spec 的文本断言冲突）；「全部身份」页签改卡片网格并挂九身份卡图（`member-card__art`，保留 `member-card` 类与「N号 昵称 / 阵营 · 身份 / 我的标记」逐字结构）；「完整时间线」新增「第 N 轮」锚点 chips（尊重减少动画偏好）、票型事件渲染公共 `VoteTallyCard`、死亡事件渲染座位徽标横排（适配层在 `review/model.ts`：复盘 timeline 携带原始引擎 payload、与公共事件同构，补 `cursor:0` 复用 `parseVoteTally`；非票型/非死亡事件与空名单保持原文字行）。
+
+P2-B 大厅入座条：大厅「正式玩家」卡新增弧形入座预览（`lobby.tsx` 的 `LobbySeating`）：槽位＝所需人数，ready 金环 / online / away / 空位虚线、本人 ★；容器 aria-label 与可见文案均注明「入座为视觉效果，不代表开局座位」，可见昵称行整体 aria-hidden，槽位语义走 title/aria-label。
+
+P2-C 移动端：601–900px 竖屏舞台新增双排浅弧布局（`stage-layout.ts` 的 `arc` 模式，2–14 座启用，奇偶交替分前后两排抛物线浅弧，本人卡放大沉底居中；单排椭圆在 601px 下 12 座纵向间距不足必然重叠，双排几何由单测锁定两两不重叠；ring 重入条件同步放开 arc）；≤900px 情报页签改固定底部栏（纯 CSS 不复制 DOM，特异度低于夜间/暗色背景规则故主题自动生效，`scroll-padding-bottom` 保护 scrollIntoView 与点击，软键盘弹出时隐藏）；HUD 窄屏收纳补 Esc / 外点关闭（`scene.tsx`）。所有新 UI 已同步 `:root[data-theme='dark']` 适配。
+
+E2E spec 同步：`08-display` 的 681/844 两档由四列断言改为弧型断言（`theater-stage--arc` 类 + 座位两两不重叠，属本特性的有意行为变更）；`29-hud-compact` 补 Esc 关闭与外点关闭断言。其余相关 spec 逐条核对无需改动：07 复盘（结构逐字兼容）、05/06（390/320 仍为网格＋底部栏）、20（844px 26 座超 arc 上限回退网格）、21/22/24/19（844 断言不涉及座位几何或仅断言可见性）、26（大厅条带随宽度换行不破坏视口约束）、03（默认视口在 arc 区间外）。
+
+验证（2026-10-10，本机无 Docker）：增量单测 22 文件 203/203（`select-tests.mjs` 选集，含新增 `frontend-v2-review-timeline` 3 例与 stage-layout 弧型几何 2 例）；`typecheck` / `typecheck:web:v2` / `typecheck:web:v2-tests` 与 `build:web:v2` 全过。E2E typecheck 在本机补装 e2e 依赖后实测 10 条错误，全部位于未修改的 20-death-effects / 20-phase-transition / 31-dying-mark，与 PR #19 记录的 main 基线完全一致，本次修改的 08/29 两 spec 零类型错误。**E2E 未运行**（Docker 不可用；曾尝试本机起 API＋vite 跑真实对局截图，登录入口的 origin 校验与 /join 直链两处受阻后中止）。**关键界面全屏截图未产出**，遗留：待 Docker 恢复后跑 08/29 及受影响 spec（05/06/07/20/22/26）并补截图；固定底部页签对 390px WebKit 点击的遮挡仅靠 scroll-padding 缓解，未实测；601–640px 极窄端弧型卡距余量小。本机已装 `e2e/node_modules` 与 Playwright 浏览器（chromium/webkit），后续可在本机直接跑 specs-v2（需先 seed 一次性账号，注意登录页 origin 需 `PUBLIC_BASE_URL=http://localhost:5173`）。
+
 ### P1：分层死亡特效素材化 / 生死卡框 / 全局暗色主题（2026-10-09；2026-10-10 审核）
 
 分支 `feat/ui-p1-theme`，原实现 `393e3e6`，基于 PR #19 的 `8456769`；依赖 PR #19 先整合，尚未合并 main、未部署。纯前端与 presentation 层，复用已入库素材，无新依赖，不改游戏规则、服务端或契约。

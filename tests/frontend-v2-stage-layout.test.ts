@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ARC_SELF_POSITION,
+  arcSeatPosition,
   isDegenerateRect,
   rectsIntersect,
   ringFits,
@@ -54,5 +56,57 @@ describe('stage layout geometric safety checks', () => {
     // Degenerate card or stage is rejected
     const degenerateCard: Rect = { left: 0, top: 0, right: 0, bottom: 0 };
     expect(ringFits(degenerateCard, seats, stage, 8)).toBe(false);
+  });
+});
+
+describe('arc layout (portrait half-ring, 601–900px)', () => {
+  // 与 main.css 的 arc 媒体块同源的几何预算：座位区高 460px，紧凑卡 64×96，本人卡 92×120。
+  const HEIGHT = 460;
+  const CARD = { width: 64, height: 96 };
+  const SELF = { width: 92, height: 120 };
+  const overlap = (a: Rect, b: Rect) =>
+    a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const box = (point: { x: number; y: number }, width: number, size: { width: number; height: number }): Rect => ({
+    left: (point.x / 100) * width - size.width / 2,
+    right: (point.x / 100) * width + size.width / 2,
+    top: (point.y / 100) * HEIGHT - size.height / 2,
+    bottom: (point.y / 100) * HEIGHT + size.height / 2,
+  });
+
+  it('centers a single seat and keeps endpoints on the upper arcs', () => {
+    expect(arcSeatPosition(0, 1)).toEqual({ x: 50, y: 42 });
+    const seats = Array.from({ length: 12 }, (_, index) => arcSeatPosition(index, 12));
+    for (const [index, point] of seats.entries()) {
+      expect(point.x).toBeGreaterThanOrEqual(10);
+      expect(point.x).toBeLessThanOrEqual(90);
+      expect(point.y).toBeGreaterThanOrEqual(30);
+      expect(point.y).toBeLessThanOrEqual(72);
+      // 偶数 index 在后排弧（y ≤ 44），奇数在前排弧（y ≥ 60）
+      if (index % 2 === 0) expect(point.y).toBeLessThanOrEqual(44);
+      else expect(point.y).toBeGreaterThanOrEqual(60);
+    }
+    // 弧顶朝上：每排正中最高（y 最小），两端对称下沉
+    expect(seats[6]!.y).toBeLessThan(seats[0]!.y);
+    expect(seats[0]!.y).toBeCloseTo(seats[10]!.y, 5);
+  });
+
+  it('keeps every seat plus the self seat clear of overlaps at both band edges', () => {
+    // 601px 视口：座位区净宽 ≈ 575px；900px：≈ 844px
+    for (const width of [575, 844]) {
+      const seats = Array.from({ length: 12 }, (_, index) => box(arcSeatPosition(index, 12), width, CARD));
+      for (let a = 0; a < seats.length; a += 1) {
+        for (let b = a + 1; b < seats.length; b += 1) {
+          expect(overlap(seats[a]!, seats[b]!), `seats ${a}/${b} overlap at ${width}px`).toBe(false);
+        }
+        expect(overlap(seats[a]!, box(ARC_SELF_POSITION, width, SELF)), `seat ${a} hits self at ${width}px`).toBe(false);
+      }
+      // 所有座位完整落在座位区内
+      for (const seat of [...seats, box(ARC_SELF_POSITION, width, SELF)]) {
+        expect(seat.left).toBeGreaterThanOrEqual(0);
+        expect(seat.right).toBeLessThanOrEqual(width);
+        expect(seat.top).toBeGreaterThanOrEqual(0);
+        expect(seat.bottom).toBeLessThanOrEqual(HEIGHT);
+      }
+    }
   });
 });
