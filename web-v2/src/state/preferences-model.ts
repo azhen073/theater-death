@@ -2,6 +2,8 @@ import { clampInputGain, clampVoiceLevel } from '../presentation/voice-levels.ts
 
 export interface DisplayPreferences {
   motion: 'system' | 'reduced' | 'full';
+  /** 界面主题：system 跟随系统 prefers-color-scheme；light 浅色纸面；dark 深色剧院。 */
+  theme: 'system' | 'light' | 'dark';
   deathEffects: boolean;
   scale: 90 | 100 | 110;
   /** Only the stage scenery, never text, avatars, or action controls. */
@@ -22,6 +24,7 @@ export interface DisplayPreferences {
 
 export const defaultPreferences: DisplayPreferences = {
   motion: 'system',
+  theme: 'system',
   deathEffects: true,
   scale: 100,
   stageBrightness: 100,
@@ -37,6 +40,8 @@ export function parsePreferences(value: unknown): DisplayPreferences {
   const input = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   return {
     motion: input.motion === 'reduced' || input.motion === 'full' ? input.motion : 'system',
+    // 旧存档没有 theme 字段：回退 system（跟随系统）
+    theme: input.theme === 'light' || input.theme === 'dark' ? input.theme : 'system',
     deathEffects: typeof input.deathEffects === 'boolean' ? input.deathEffects : true,
     scale: input.scale === 90 || input.scale === 110 ? input.scale : 100,
     stageBrightness: typeof input.stageBrightness === 'number' && Number.isFinite(input.stageBrightness)

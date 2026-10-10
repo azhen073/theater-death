@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { RoomSnapshot } from '../contracts/v2.ts';
-import { DeathEffectsTracker, DEATH_EFFECT_MS, particleCount, makeParticles } from '../web-v2/src/presentation/death-effects.ts';
+import { DeathEffectsTracker, DEATH_ART_REGIONS, DEATH_EFFECT_MS, particleCount, makeParticles } from '../web-v2/src/presentation/death-effects.ts';
 
 function baseline(): RoomSnapshot {
   const view = JSON.parse(readFileSync('tests/fixtures/contract-2.1/night-door-full.json', 'utf8')) as RoomSnapshot;
@@ -106,5 +106,22 @@ describe('public death effects lifecycle', () => {
     expect(particles).not.toEqual(makeParticles(18, 10));
     expect(particles).toHaveLength(10);
     expect(particles.every(p => p.life + p.delay < DEATH_EFFECT_MS / 1000)).toBe(true);
+  });
+
+  it('keeps layered art regions inside the 1774×887 sheet and in sync with sources.json', () => {
+    const sources = JSON.parse(readFileSync('web-v2/public/assets/sources.json', 'utf8')) as Array<{ file: string; regions?: Record<string, number[]> }>;
+    const sheet = sources.find(entry => entry.file === 'avatar-sheet.png');
+    expect(sheet).toBeDefined();
+    expect(sheet!.regions).toMatchObject({
+      deathMark: [...DEATH_ART_REGIONS.main],
+      deathParticles: [...DEATH_ART_REGIONS.particles],
+      deathShards: [...DEATH_ART_REGIONS.shards],
+      deathFade: [...DEATH_ART_REGIONS.fade],
+    });
+    for (const [name, [x, y, w, h]] of Object.entries(DEATH_ART_REGIONS)) {
+      expect(Number.isInteger(x) && Number.isInteger(y) && Number.isInteger(w) && Number.isInteger(h), name).toBe(true);
+      expect(x >= 0 && y >= 0 && w > 0 && h > 0, name).toBe(true);
+      expect(x + w <= 1774 && y + h <= 887, name).toBe(true);
+    }
   });
 });

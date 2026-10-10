@@ -3,7 +3,7 @@
     "file": "avatar-sheet.png",
     "source": "Art Materials/死亡特效和默认头像.png",
     "sha256": "fafd03685d7dd377dc86ec2f60d238edf8be7802d886542f51d1f6831e17d73b",
-    "regions": { "defaultAvatar": [928, 213, 472, 472], "deathMark": [48, 110, 490, 675] }
+    "regions": { "defaultAvatar": [928, 213, 472, 472], "deathMark": [48, 110, 490, 675], "deathParticles": [501, 122, 347, 225], "deathShards": [554, 408, 249, 229], "deathFade": [516, 697, 330, 105] }
   },
   {
     "roleId": "researcher",
@@ -68,5 +68,15 @@
     "file": "theater.png",
     "source": "7.0 Wraith_s Nocturne/UI_Img_ZDAQBookPhotoDialog_PhotoBg.png",
     "sha256": "af309ed76255db42355d7482819253fe889e5cc684ee36cb5c373f6fc01cec0d"
+  },
+  {
+    "file": "frames/death.png",
+    "source": "Art Materials/IdentityCards/frames/frame_death.png",
+    "sha256": "0d4bf34a28bad6814f459b1c20d74a910d7f02b7a0228cb6dafb2f46d66af940"
+  },
+  {
+    "file": "frames/human.png",
+    "source": "Art Materials/IdentityCards/frames/frame_human.png",
+    "sha256": "c6911beb74a8c3fe00f35c621dc7f1edd10e02cc43403ddddd46e34ff470782c"
   }
 ]
