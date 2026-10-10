@@ -66,30 +66,30 @@ test('实时公开入夜、天亮和第二阶段均短暂展示，且不含私�
 
   const dawn = nextView(night, { phase: 'morning' });
   await mounted.set(dawn);
-  await expect(transition(page)).toContainText('天光初现');
+  await expect(transition(page)).toContainText('天亮了');
   await expect(transition(page)).toContainText(`第 ${dawn.view.public!.dayNumber} 轮 · 第 ${dawn.view.public!.stage} 阶段`);
   await expect(transition(page)).not.toContainText(dawn.view.private!.self.roleId);
   const privateRole = dawn.catalog.roles.find(role => role.roleId === dawn.view.private!.self.roleId)!;
   await expect(transition(page)).not.toContainText(privateRole.name);
   await expect(transition(page)).not.toContainText(privateRole.faction === 'human' ? '人类阵营' : '死神阵营');
-  expect(await transition(page).evaluate(node => getComputedStyle(node).animationDuration)).toBe('2.2s');
+  expect(await transition(page).evaluate(node => getComputedStyle(node).animationDuration)).toBe('3s');
   if (testInfo.project.name === 'chromium') {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.screenshot({ path: '/results/phase-transition-1440.png' });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: '/results/phase-transition-390.png' });
   }
-  await expect(transition(page)).toHaveCount(0, { timeout: 2_600 });
+  await expect(transition(page)).toHaveCount(0, { timeout: 3_400 });
 
   const stageTwo = nextView(dawn, { phase: 'day', stage: 2 });
   await mounted.set(stageTwo);
   await expect(transition(page)).toContainText('第二阶段开启');
-  await expect(transition(page)).toHaveCount(0, { timeout: 2_600 });
+  await expect(transition(page)).toHaveCount(0, { timeout: 3_400 });
 
   const nextNight = nextView(stageTwo, { phase: 'night', day: stageTwo.view.public!.dayNumber + 1 });
   await mounted.set(nextNight);
   await expect(transition(page)).toContainText('夜幕降临');
-  await expect(transition(page)).toHaveCount(0, { timeout: 2_600 });
+  await expect(transition(page)).toHaveCount(0, { timeout: 3_400 });
 });
 
 test('刷新、离线重连和隐藏页恢复都不补播', async ({ page }) => {
@@ -160,8 +160,8 @@ test('公开死讯优先，同批天亮与阶段二在优先窗口后正常展�
   await expect(page.locator('.death-notice')).toContainText('1号已死亡');
   await expect(transition(page)).toHaveCount(0);
   await expect(page.locator('.death-notice')).toHaveCount(0, { timeout: 4_000 });
-  await expect(transition(page)).toContainText('天光初现', { timeout: 3_000 });
-  await expect(transition(page)).toHaveCount(0, { timeout: 2_600 });
+  await expect(transition(page)).toContainText('天亮了', { timeout: 3_000 });
+  await expect(transition(page)).toHaveCount(0, { timeout: 3_400 });
 
   const stageTwo = withDeathEvent(nextView(dawn, { phase: 'day', stage: 2 }), 'deaths_announced', 31);
   await mounted.set(stageTwo);

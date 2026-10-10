@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { errors, expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { dismissIdentityEntryReveal, loadRoomAccounts, enterRoom, leaveRoom, loginRoomAccount, roomView, waitRoom, selectPublicChat, revealHudActions } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
 
@@ -81,7 +81,7 @@ test('真实阵营交流与第二屏授权撤销：只读公开/私人视角边�
     const token = await spirit.getByLabel('私人邀请码').inputValue();
     expect(token.length).toBeGreaterThan(10);
     await spirit.getByRole('button', { name: '关闭' }).click();
-    await spirit.screenshot({ path: `/results/real-screen-invite-${testInfo.project.name}.png` });
+    await spirit.screenshot({ path: `/results/real-screen-invite-${testInfo.project.name}.png`, fullPage: true });
     await revealHudActions(observer); await observer.getByRole('button', { name: '第二屏', exact: true }).click();
     await observer.getByLabel('输入私人邀请').fill(token);
     await observer.getByRole('button', { name: '兑换第二屏邀请' }).click();
@@ -116,6 +116,8 @@ test('真实转日公屏：授权后两玩家交换一次消息并验证 Socket 
     expect(writers.length).toBeGreaterThanOrEqual(2);
     const sender = contexts[writers[0]!]!.page;
     const receiver = contexts[writers[1]!]!.page;
+    await sender.getByRole('tab', { name: '公屏' }).click();
+    await receiver.getByRole('tab', { name: '公屏' }).click();
     const text = '<strong>真实公屏原文</strong>';
     let aborted = false;
     const senderBodies: string[] = [];
@@ -132,18 +134,37 @@ test('真实转日公屏：授权后两玩家交换一次消息并验证 Socket 
     await expect.poll(() => senderBodies.length).toBeGreaterThanOrEqual(1);
     const body = JSON.parse(senderBodies[0]!) as Record<string, any>;
     expect(body).toMatchObject({ gameId: current[writers[0]!]!.gameId, channel: 'public', text });
-    const retry = sender.getByRole('button', { name: '重试原消息' });
-    if (await retry.isVisible().catch(() => false)) await retry.click();
+    const publicChannel = sender.getByRole('region', { name: '公屏交流', exact: true });
+    const delivered = publicChannel.getByLabel('公屏历史', { exact: true }).getByText(text, { exact: true });
+    const pending = publicChannel.locator('.chat-outgoing');
+    const retry = publicChannel.getByRole('button', { name: '重试原消息', exact: true });
+    await expect(delivered.or(retry).first()).toBeVisible();
+    if (!(await delivered.isVisible())) {
+      try {
+        await retry.click({ timeout: 5_000 });
+      } catch (error) {
+        if (!(error instanceof errors.TimeoutError)) throw error;
+        // Socket 确认可能在检查后移除重试按钮；只有历史已确认且待发送记录消失才接受。
+        await expect(delivered).toBeVisible();
+        await expect(pending).toHaveCount(0);
+      }
+    }
+    await expect(delivered).toHaveCount(1);
+    await expect(delivered).toBeVisible();
+    await expect(pending).toHaveCount(0);
+    for (const attempt of senderBodies.slice(1)) expect(JSON.parse(attempt)).toEqual(body);
     await expect.poll(async () => (await roomView(receiver, code)).chat.public.filter((message: Record<string, any>) => message.text === text).length).toBe(1);
     await expect(receiver.getByText(text, { exact: true })).toBeVisible();
-    expect((await roomView(receiver, code)).chat.public.filter((message: Record<string, any>) => message.text === text)).toHaveLength(1);
+    const received = (await roomView(receiver, code)).chat.public.filter((message: Record<string, any>) => message.text === text);
+    expect(received).toHaveLength(1);
+    expect(received[0]).toMatchObject({ clientMessageId: body.clientMessageId, senderId: current[writers[0]!]!.viewer.subjectPlayerId });
     const reply = '真实公屏回复';
     await receiver.getByLabel('公屏消息').fill(reply);
     await receiver.getByRole('button', { name: '发送公屏消息' }).click();
     await expect.poll(async () => (await roomView(sender, code)).chat.public.filter((message: Record<string, any>) => message.text === reply).length).toBe(1);
     await expect(sender.getByText(reply, { exact: true })).toBeVisible();
     await sender.evaluate(() => window.scrollTo(0, 0));
-    await sender.screenshot({ path: `/results/real-chat-day-${testInfo.project.name}.png` });
+    await sender.screenshot({ path: `/results/real-chat-day-${testInfo.project.name}.png`, fullPage: true });
     void views;
   } finally {
     for (const item of contexts) await leaveRoom(item.page);

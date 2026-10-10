@@ -164,7 +164,7 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
     { width: 681, height: 800, cols: 4 },
     { width: 680, height: 750, cols: 3 },
     { width: 390, height: 844, cols: 3 },
-    { width: 320, height: 740, cols: 3 },
+    { width: 320, height: 740, cols: 2 },
     { width: 844, height: 390, cols: 4 },
     { width: 1440, height: 900, cols: 0 },
   ];
@@ -183,9 +183,9 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   }
 
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: `/results/display-desktop-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ path: `/results/display-desktop-${testInfo.project.name}.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: `/results/display-mobile-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ path: `/results/display-mobile-${testInfo.project.name}.png`, fullPage: true });
 
   for (const count of [5, 13, 26, 64]) {
     const resized = resizeSeats(base.view, count);
@@ -257,6 +257,7 @@ test('模拟软键盘缩小视口时聊天输入可见且焦点不被抢走，�
   const fixture = loadGameFixture('night-door-full.json');
   fixture.view.capabilities.canPostPublic = true;
   const mounted = await mountPlaying(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   const input = page.getByLabel('公屏消息');
   await input.focus();

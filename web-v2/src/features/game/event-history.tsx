@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { EventDTO, RoomSnapshot } from '../../../../contracts/v2.ts';
 import { describeEvent } from '../../presentation/events.ts';
+import { isVoteTallyEvent } from '../../presentation/vote-tally.ts';
 
 /** Each authorized event stream owns its cursors and reading position. */
-export function EventHistory({ events, view, catalog, active, label, onDetail, onUnread }: {
+export function EventHistory({ events, view, catalog, active, label, onDetail, onUnread, onTally }: {
   events: EventDTO[]; view: RoomSnapshot; catalog: CatalogDTO; active: boolean; label: string;
-  onDetail: (event: EventDTO) => void; onUnread: (count: number) => void;
+  onDetail: (event: EventDTO) => void; onUnread: (count: number) => void; onTally?: (event: EventDTO) => void;
 }) {
   const ordered = [...new Map(events.map(event => [event.cursor, event])).values()].sort((a, b) => a.cursor - b.cursor);
   const [start, setStart] = useState(() => Math.max(0, ordered.length - 60));
@@ -37,7 +38,10 @@ export function EventHistory({ events, view, catalog, active, label, onDetail, o
       }}>显示更早的事件</button>}
       <div className="event-list">{ordered.slice(start).map(event => {
         const content = describeEvent(event, view, catalog);
-        return <button className="event-row" key={event.cursor} onClick={() => onDetail(event)}><small>第 {event.dayNumber} 轮 · 阶段 {event.stage}</small><strong>{content.title}</strong><span>{content.details.slice(0, 2).join(' · ')}</span></button>;
+        return <div className="event-item" key={event.cursor}>
+          <button className="event-row" onClick={() => onDetail(event)}><small>第 {event.dayNumber} 轮 · 阶段 {event.stage}</small><strong>{content.title}</strong><span>{content.details.slice(0, 2).join(' · ')}</span></button>
+          {onTally && isVoteTallyEvent(event.type) && <button type="button" className="text-button event-item__tally" onClick={() => onTally(event)}>查看票型</button>}
+        </div>;
       })}</div>
       {!ordered.length && <p className="muted">暂时没有可查看的记录。</p>}
     </div>

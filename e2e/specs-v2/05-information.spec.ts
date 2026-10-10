@@ -29,6 +29,7 @@ test('聊天 composer：精确 payload、纯文本、Enter/IME/ShiftEnter 与 UT
   fixture.view.capabilities.canPostFaction = true;
   fixture.view.private!.factionRoom = { roomId: 'faction-room', readOnly: false, canWrite: true, members: [] };
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   const publicInput = page.getByLabel('公屏消息');
   await publicInput.fill('<b>纯文本</b>');
   await publicInput.press('Shift+Enter');
@@ -73,6 +74,7 @@ test('readonly、能力禁写与 scope 变化：草稿保持后跨局清空', as
   const fixture = loadGameFixture();
   fixture.view.capabilities.canPostPublic = true;
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   const input = page.getByLabel('公屏消息');
   await input.fill('待发送草稿');
   const noWrite = structuredClone(fixture.view);
@@ -104,6 +106,7 @@ test('聊天/事件历史：分段早历史、滚动未读、cursor 独立与公
   fixture.view.public!.events = Array.from({ length: 120 }, (_, index) => ({ cursor: index + 1, type: index === 0 ? 'game_started' : 'night_started', dayNumber: 1, stage: 1 as const, payload: index === 0 ? {} : { nightNumber: index + 1 } })) as any;
   fixture.view.chat.faction = [{ messageId: 'faction-1', clientMessageId: 'faction-client-1', cursor: 1, senderId: fixture.view.viewer.subjectPlayerId!, text: '阵营独立游标', at: 1 }];
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   const history = page.getByRole('tabpanel', { name: '公屏' }).getByLabel('公屏历史');
   await expect(page.getByRole('button', { name: /条新消息/ })).toHaveCount(0);
   await expect(history.getByText('聊天记录 159')).toBeVisible();
@@ -180,7 +183,7 @@ test('规则入口：关键词、空结果、当前角色与当前阶段跳转',
   await page.getByRole('button', { name: '当前阶段规则' }).click();
   await expect(page.getByRole('dialog').getByRole('heading', { name: /03 开局与夜间流程/ }).first()).toBeVisible();
   await expectNoOverflow(page);
-  await page.screenshot({ path: '/results/information-' + test.info().project.name + '.png' });
+  await page.screenshot({ path: '/results/information-' + test.info().project.name + '.png', fullPage: true });
   void mounted;
 });
 
@@ -198,7 +201,7 @@ test('死神/魂灵知识：已知魂灵在座位卡与身份弹窗中可见，�
     await expect(strip).toHaveAttribute('aria-label', '魂灵');
     expect((await strip.boundingBox())!.height).toBeGreaterThan(8);
   }
-  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText(`已知身份 · 魂灵：${spiritSeats.map(seat => `${seat}号`).join('、')}`);
   await page.getByRole('button', { name: '关闭' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -221,7 +224,7 @@ test('死神/魂灵知识：已知魂灵在座位卡与身份弹窗中可见，�
   await expect(page.locator('[data-badge="spirit"]')).toHaveCount(0);
   await expect(page.locator('[data-badge="sheriff"]')).toHaveCount(0);
   await expect(page.locator('[data-badge="identity"]')).toHaveCount(1);
-  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toContainText('已知身份');
   void mounted;
 });
@@ -330,7 +333,7 @@ test('本人座位身份徽标：只出现在自己的座位上，第二屏同�
   await expect(page.locator(`[data-player-id="${selfId}"] .seat-main`)).toHaveAttribute('aria-label', /你的座位/);
   await expect(page.locator('[data-badge="identity"]')).toHaveCount(1);
   // 统一配色：身份弹窗里的阵营标签与座位徽标同色
-  await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
+  await revealHudActions(page); await page.getByRole('button', { name: '我的身份', exact: true }).click();
   const tagColor = await page.locator('.identity-view .faction-tag').evaluate(node => getComputedStyle(node).backgroundColor);
   const badgeColor = await page.locator(`[data-player-id="${selfId}"] [data-badge="identity"]`).evaluate(node => getComputedStyle(node).backgroundColor);
   expect(tagColor).toBe(badgeColor);
@@ -504,6 +507,7 @@ test('房间管理视图保持聊天非零滚动位置与草稿', async ({ page 
   fixture.view.capabilities.canPostPublic = true;
   fixture.view.chat.public = Array.from({ length: 120 }, (_, index) => ({ messageId: 'manage-chat-' + index, clientMessageId: 'manage-client-' + index, cursor: index + 1, senderId: fixture.view.viewer.subjectPlayerId!, text: '管理视图消息 ' + index, at: index }));
   const mounted = await mount(page, fixture);
+  await page.getByRole('tab', { name: '公屏', exact: true }).click();
   const history = page.getByLabel('公屏历史');
   const input = page.getByLabel('公屏消息');
   await input.fill('管理视图草稿');

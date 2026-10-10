@@ -12,7 +12,7 @@ describe('public phase transitions', () => {
   });
   it('announces dawn, night, and stage two with stage two taking priority', () => {
     const day = { ...night, light: 'day' as const };
-    expect(phaseTransitionTitle(night, day)).toBe('天光初现');
+    expect(phaseTransitionTitle(night, day)).toBe('天亮了');
     expect(phaseTransitionTitle(day, { ...night, day: 2 })).toBe('夜幕降临');
     expect(phaseTransitionTitle(night, { ...day, stage: 2 })).toBe('第二阶段开启');
     expect(phaseTransitionTitle({ ...night, day: 2 }, day)).toBeNull();
