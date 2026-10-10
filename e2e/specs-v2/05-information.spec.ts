@@ -113,6 +113,9 @@ test('聊天/事件历史：分段早历史、滚动未读、cursor 独立与公
   await history.getByRole('button', { name: '显示更早的本局记录' }).click();
   await expect(history.getByText('聊天记录 0')).toBeVisible();
   await expect(history.getByText('聊天记录 159')).toHaveCount(1);
+  // Loading earlier records restores the reading anchor on rAF. Let that finish before
+  // simulating a separate user scroll, which must not race the pagination adjustment.
+  await history.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   await history.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll', { bubbles: true })); });
   const scrollTopBeforeMessage = await history.evaluate(element => element.scrollTop);
   await page.getByLabel('公屏消息').fill('历史滚动期间的草稿');

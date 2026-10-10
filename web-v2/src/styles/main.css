@@ -643,9 +643,9 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 }
 /* 601–900px 竖屏半环：本人座位固定底部中央稍大，其余座位沿前后两排浅弧分布
    （坐标由 stage-layout.ts 的 arcSeatPosition 计算，行动卡在文档流中位于座位区上方、不遮挡座位）。
-   几何预算是 460px 高座位区 + 64px 紧凑卡（本人 92px），不重叠由 stage-layout 单测锁定。 */
+   座位区 500px 高，为公开状态行和卡片下方详情按钮保留空间；紧凑卡 64px（本人 92px）。 */
 @media (min-width: 601px) and (max-width: 900px) {
-  .stage-seats--arc { display: block; height: var(--arc-height, 460px); padding: 0; }
+  .stage-seats--arc { display: block; height: var(--arc-height, 500px); padding: 0; }
   .stage-seats--arc .stage-seat { position: absolute; width: 64px; left: var(--seat-x); top: var(--seat-y); transform: translate(-50%,-50%); }
   .stage-seats--arc .stage-seat--self { width: 92px; }
   .stage-seats--arc .seat-main { min-height: 0; padding: 6px 3px; gap: 2px; }
@@ -653,8 +653,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .stage-seats--arc .stage-seat--self .avatar { width: 40px; height: 40px; }
   .stage-seats--arc .seat-number { font-size: 10px; gap: 3px; }
   .stage-seats--arc .seat-main > strong { font-size: 9px; }
-  .stage-seats--arc .seat-status { display: none; }
-  .stage-seats--arc .seat-tools { position: absolute; right: -6px; bottom: -8px; margin-top: 0; }
+  .stage-seats--arc .seat-status { font-size: 9px; line-height: 1.4; }
+  .stage-seats--arc .seat-tools { position: absolute; right: 0; bottom: -20px; margin-top: 0; }
   .stage-seats--arc .seat-tools button { min-height: 22px; padding: 2px 6px; font-size: 9px; }
   .theater-stage--arc .stage-center { display: none; }
 }

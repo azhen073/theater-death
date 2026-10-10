@@ -60,8 +60,8 @@ describe('stage layout geometric safety checks', () => {
 });
 
 describe('arc layout (portrait half-ring, 601–900px)', () => {
-  // 与 main.css 的 arc 媒体块同源的几何预算：座位区高 460px，紧凑卡 64×96，本人卡 92×120。
-  const HEIGHT = 460;
+  // 与 main.css 的 arc 媒体块同源的卡片预算；详情按钮的实际边界另由 35-p2-usability E2E 验证。
+  const HEIGHT = 500;
   const CARD = { width: 64, height: 96 };
   const SELF = { width: 92, height: 120 };
   const overlap = (a: Rect, b: Rect) =>

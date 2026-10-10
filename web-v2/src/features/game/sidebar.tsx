@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { EventDTO, RoomSnapshot } from '../../../../contracts/v2.ts';
 import { authorizedPrivate } from './identity.tsx';
@@ -12,10 +12,26 @@ import { ElectionRoster } from './election-roster.tsx';
 export function GameSidebar({ view, catalog, online, readingPaused, refresh, onIdentity, onRules, onEvent, onTally }: { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; readingPaused: boolean; refresh: () => Promise<void>; onIdentity: () => void; onRules: () => void; onEvent: (event: EventDTO) => void; onTally: (event: EventDTO) => void }) {
   const [tab, setTab] = useState<'public' | 'intel' | 'records' | 'rules'>(() => authorizedPrivate(view) ? 'intel' : 'public');
   const [unread, setUnread] = useState({ public: 0, faction: 0, intel: 0, records: 0 });
+  const sidebar = useRef<HTMLElement>(null);
+  const scrollRequested = useRef(false);
+  const [tabActivation, setTabActivation] = useState(0);
+  // Scroll only after explicit activation, including clicking the already selected tab.
+  // Snapshots/unread updates and returning from room management must retain the reader's position.
+  useLayoutEffect(() => {
+    if (!scrollRequested.current) return;
+    scrollRequested.current = false;
+    if (!window.matchMedia('(max-width: 900px)').matches) return;
+    const panel = sidebar.current?.querySelector<HTMLElement>(`#panel-${tab}`);
+    if (!panel) return;
+    const hudBottom = sidebar.current?.closest('.game-scene')?.querySelector('.game-hud')?.getBoundingClientRect().bottom ?? 112;
+    // Move only the page, preserving nested chat/event scroll positions. Immediate navigation
+    // also respects reduced motion and avoids competing animations during rapid tab switching.
+    window.scrollTo({ top: Math.max(0, window.scrollY + panel.getBoundingClientRect().top - Math.max(0, hudBottom) - 12), behavior: 'instant' });
+  }, [tab, tabActivation]);
   const privateView = authorizedPrivate(view);
   const counts = { public: unread.public + unread.faction, intel: unread.intel, records: unread.records };
   const markUnread = (key: keyof typeof unread, count: number) => setUnread(old => old[key] === count ? old : { ...old, [key]: count });
-  return <aside className="game-sidebar" aria-label="信息侧栏"><div className="info-tabs" role="tablist" aria-label="对局信息">{([['public', '公屏'], ['intel', '情报'], ['records', '记录'], ['rules', '规则']] as const).map(([key, label]) => <button role="tab" type="button" key={key} aria-selected={tab === key} tabIndex={tab === key ? 0 : -1} onKeyDown={navigateTabs} aria-controls={`panel-${key}`} id={`tab-${key}`} onClick={() => setTab(key)}>{label}{key !== 'rules' && counts[key] > 0 && <span className="unread-badge" role="note" aria-label={`${counts[key]} 条新内容`}><b aria-hidden="true">{counts[key] > 99 ? '99+' : counts[key]}</b></span>}</button>)}</div>
+  return <aside ref={sidebar} className="game-sidebar" aria-label="信息侧栏"><div className="info-tabs" role="tablist" aria-label="对局信息">{([['public', '公屏'], ['intel', '情报'], ['records', '记录'], ['rules', '规则']] as const).map(([key, label]) => <button role="tab" type="button" key={key} aria-selected={tab === key} tabIndex={tab === key ? 0 : -1} onKeyDown={navigateTabs} aria-controls={`panel-${key}`} id={`tab-${key}`} onClick={() => { scrollRequested.current = true; setTab(key); setTabActivation(value => value + 1); }}>{label}{key !== 'rules' && counts[key] > 0 && <span className="unread-badge" role="note" aria-label={`${counts[key]} 条新内容`}><b aria-hidden="true">{counts[key] > 99 ? '99+' : counts[key]}</b></span>}</button>)}</div>
     <ElectionRoster view={view} />
     <div className="info-panel" id="panel-public" role="tabpanel" aria-labelledby="tab-public" hidden={tab !== 'public'}><h2>公屏记录</h2><p className="muted">公屏权限：{publicChatLabel[view.room.publicChat]}（对局内全阶段可发言）</p><ChatChannelView view={view} channel="public" online={online} active={tab === 'public' && !readingPaused} refresh={refresh} onUnread={count => markUnread('public', count)}/>
       {privateView?.factionRoom && <section><h3>阵营交流记录{privateView.factionRoom.readOnly ? ' · 只读' : ''}</h3><ChatChannelView view={view} channel="faction" online={online} active={tab === 'public' && !readingPaused} refresh={refresh} onUnread={count => markUnread('faction', count)}/></section>}</div>
