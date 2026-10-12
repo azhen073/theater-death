@@ -44,6 +44,22 @@ async function expectActionClearOfSeatsAndTools(page: Page) {
     }), { timeout: 5_000 }).toBeNull();
 }
 
+/** 竖屏半环（601–900px）：所有座位互不重叠（几何由 stage-layout 单测锁定，这里验证真实渲染）。 */
+async function expectArcSeatsClear(page: Page) {
+  await expect.poll(async () => page.evaluate(() => {
+    const seats = [...document.querySelectorAll('.stage-seat')].map(element => element.getBoundingClientRect());
+    for (let a = 0; a < seats.length; a += 1) {
+      for (let b = a + 1; b < seats.length; b += 1) {
+        const first = seats[a]!, second = seats[b]!;
+        if (first.left - 1 < second.right && first.right + 1 > second.left && first.top - 1 < second.bottom && first.bottom + 1 > second.top) {
+          return `seats ${a}/${b} overlap: ${JSON.stringify([first, second])}`;
+        }
+      }
+    }
+    return null;
+  }), { timeout: 5_000 }).toBeNull();
+}
+
 function deathFixture(base: GameHarnessFixture, type: 'deaths_announced' | 'elimination_announced', cursor: number): GameHarnessFixture {
   const next = structuredClone(base);
   next.view.public!.events = [...next.view.public!.events, {
@@ -72,7 +88,7 @@ test('显示设置通过UI更新三项非敏感偏好，实际缩放/动画状�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
   await dialog.getByLabel('动画偏好').selectOption('system');
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('theater-death-display-v1') ?? '{}') as Record<string, unknown>);
-  expect(Object.keys(stored).sort()).toEqual(['attentionSound', 'autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
+  expect(Object.keys(stored).sort()).toEqual(['attentionSound', 'autoMic', 'deathEffects', 'motion', 'scale', 'stageBrightness', 'theme', 'voiceInput', 'voiceLevels', 'voiceMuted', 'voiceOutput']);
   expect(stored).toMatchObject({ deathEffects: true, motion: 'system', scale: 110 });
 
   await page.getByRole('button', { name: '关闭' }).click();
@@ -155,17 +171,20 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   await page.getByRole('button', { name: '关闭' }).click();
 
   // Sequential viewport resizing across key breakpoints
-  const sizes = [
+  // 601–900px 均为半环：断言实际布局与座位间距，退出半环时等待 resize 布局更新。
+  const sizes: { width: number; height: number; cols?: number; arc?: boolean }[] = [
     { width: 1440, height: 900, cols: 0 },
     { width: 1280, height: 800, cols: 0 },
     { width: 1240, height: 800, cols: 0 },
     { width: 1181, height: 900, cols: 0 },
     { width: 1180, height: 800, cols: 4 },
-    { width: 681, height: 800, cols: 4 },
-    { width: 680, height: 750, cols: 3 },
+    { width: 681, height: 800, arc: true },
+    { width: 680, height: 750, arc: true },
+    { width: 601, height: 900, arc: true },
+    { width: 600, height: 900, cols: 3 },
     { width: 390, height: 844, cols: 3 },
-    { width: 320, height: 740, cols: 3 },
-    { width: 844, height: 390, cols: 4 },
+    { width: 320, height: 740, cols: 2 },
+    { width: 844, height: 390, arc: true },
     { width: 1440, height: 900, cols: 0 },
   ];
 
@@ -176,16 +195,19 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
     await expect(selectedSummary).toContainText(`1号 ${firstSeat.nickname}`);
     await expect(page.getByRole('region', { name: '舞台行动', exact: true })).toHaveCount(1);
     await expectActionClearOfSeatsAndTools(page);
-    if (size.cols > 0) {
-      const colCount = await page.locator('.stage-seats').evaluate(el => window.getComputedStyle(el).gridTemplateColumns.split(' ').length);
-      expect(colCount).toBe(size.cols);
+    if (size.arc) {
+      await expect(page.locator('.theater-stage')).toHaveClass(/theater-stage--arc/);
+      await expectArcSeatsClear(page);
+    } else if ((size.cols ?? 0) > 0) {
+      await expect(page.locator('.theater-stage')).not.toHaveClass(/theater-stage--arc/);
+      await expect.poll(() => page.locator('.stage-seats').evaluate(el => window.getComputedStyle(el).gridTemplateColumns.split(' ').length)).toBe(size.cols);
     }
   }
 
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: `/results/display-desktop-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ path: `/results/display-desktop-${testInfo.project.name}.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: `/results/display-mobile-${testInfo.project.name}.png`, fullPage: false });
+  await page.screenshot({ path: `/results/display-mobile-${testInfo.project.name}.png`, fullPage: true });
 
   for (const count of [5, 13, 26, 64]) {
     const resized = resizeSeats(base.view, count);
@@ -257,6 +279,7 @@ test('模拟软键盘缩小视口时聊天输入可见且焦点不被抢走，�
   const fixture = loadGameFixture('night-door-full.json');
   fixture.view.capabilities.canPostPublic = true;
   const mounted = await mountPlaying(page, fixture);
+  await page.getByRole('tab', { name: '公屏' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   const input = page.getByLabel('公屏消息');
   await input.focus();

@@ -10,6 +10,32 @@ import { useSpeakingSeats } from '../voice/speaking-seats.ts';
 import { canManageMember, hostExitDissolves, memberLabel, roomExitMessage, roomExitPresentation } from './policy.ts';
 
 type Confirmation = { action: 'kick' | 'transfer-host'; memberId: string; name: string } | { action: 'leave' | 'dissolve' };
+
+/** 入座预览条（纯视觉）：requiredPlayers 个槽位沿浅弧排开，正式成员按列表顺序入座；不代表开局座位。 */
+function LobbySeating({ view }: { view: RoomSnapshot }) {
+  const total = view.room.requiredPlayers;
+  const members = view.room.formalMembers;
+  const lift = (index: number) => total <= 1 ? 0 : -Math.sin(Math.PI * (index / (total - 1))) * 8;
+  return <div className="lobby-seating" role="group" aria-label={`入座预览：已入座 ${members.length} / ${total} 人。入座为视觉效果，不代表开局座位。`}>
+    <div className="lobby-seating__row" aria-hidden="true">
+      {Array.from({ length: total }, (_, index) => {
+        const member = members[index] ?? null;
+        const self = member !== null && member.memberId === view.viewer.memberId;
+        const state = member === null ? 'empty' : member.ready ? 'ready' : member.presence === 'online' ? 'online' : 'away';
+        return <span
+          key={member?.memberId ?? `empty-${index}`}
+          className={`lobby-seating__slot lobby-seating__slot--${state}${self ? ' lobby-seating__slot--self' : ''}`}
+          style={{ transform: `translateY(${lift(index)}px)` }}
+          title={member ? `${member.nickname} · ${member.ready ? '已准备' : '未准备'}` : '空位'}
+        >
+          <span className="lobby-seating__seat">{member && <Avatar url={member.avatarUrl} name={member.nickname} size="small"/>}</span>
+          <span className="lobby-seating__name">{member ? member.nickname : '空位'}</span>
+        </span>;
+      })}
+    </div>
+    <p className="lobby-seating__caption">入座预览为视觉效果，不代表开局座位</p>
+  </div>;
+}
 export function Lobby({ view, catalog, online, active = true, remaining, refresh, onExit, onExpired }: {
   view: RoomSnapshot; catalog: CatalogDTO; online: boolean; remaining: (deadline: number) => number | null;
   refresh: () => Promise<void>; onExit: (message: string) => void; onExpired: () => void; active?: boolean;
@@ -55,7 +81,7 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
     {!view.room.hostMemberId && <Notice>当前暂无房主。在线正式成员的房主归属由服务端同步。</Notice>}
     {operation.intent?.error && <Notice error>{operation.intent.error}{operation.unresolved && <div className="button-row"><button className="button" onClick={() => void refresh()}>读取最新状态</button><button className="button" disabled={!online || operation.busy} onClick={() => void operation.retry()}>确认原操作结果</button></div>}</Notice>}
     {!isLobby && view.public && <section className="panel"><h2>第 {view.public.dayNumber} 轮 · {view.public.phase === 'night' ? '夜晚' : '白天'}</h2><p>公开存活 {view.public.seats.filter(seat => seat.alive).length} 人 · 共 {view.public.seats.length} 个席位</p>{view.tasks.map(task => <p key={`${task.action}/${task.windowInstanceId}`}>当前任务：{actionLabels[task.action]}</p>)}</section>}
-    <div className="lobby-grid"><div><section className="panel"><div className="section-title"><h2>正式玩家</h2><span>{view.room.formalMembers.length} / {view.room.requiredPlayers} 人</span></div>{isLobby && <p className="muted">已准备 {readyCount} / {view.room.requiredPlayers}。开局后重新随机座位与角色。</p>}<div className="members-list">{view.room.formalMembers.map(target)}</div></section>
+    <div className="lobby-grid"><div><section className="panel"><div className="section-title"><h2>正式玩家</h2><span>{view.room.formalMembers.length} / {view.room.requiredPlayers} 人</span></div>{isLobby && <LobbySeating view={view}/>}{isLobby && <p className="muted">已准备 {readyCount} / {view.room.requiredPlayers}。开局后重新随机座位与角色。</p>}<div className="members-list">{view.room.formalMembers.map(target)}</div></section>
       <section className="panel"><div className="section-title"><h2>观战者</h2><span>{view.room.spectators.length} 人</span></div>{view.room.spectators.length ? <div className="members-list">{view.room.spectators.map(target)}</div> : <p className="muted">暂时没有观众。</p>}
         {view.viewer.readOnly && isLobby && <><button className="button" disabled={locked || !caps.promote.allowed} onClick={() => run('promote')}>加入对局</button>{!caps.promote.allowed && <p className="muted">{roomPermissionReasons[caps.promote.reason ?? ''] ?? '当前无法转为正式玩家。'}</p>}</>}
       </section></div>

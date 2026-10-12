@@ -24,6 +24,9 @@ import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
 import { PhaseTransition } from './phase-transition.tsx';
 import { SnowfallLayer } from './snowfall-layer.tsx';
+import { VoteTallyCard, VoteTallyLive, VoteProgress } from './vote-tally.tsx';
+import { parseVoteTally } from '../../presentation/vote-tally.ts';
+import { PlayerMarkEditor } from './player-marks.tsx';
 import { IdentityEntryReveal } from './identity-entry-reveal.tsx';
 import { claimIdentityReveal, identityRevealHasUrgentAction, identityRevealKey } from './identity-reveal-model.ts';
 import { reconcileDraft } from '../actions/draft-reconciliation.ts';
@@ -33,6 +36,7 @@ type Overlay =
   | { kind: 'identity' | 'rules' | 'navigation' | 'second-screen' | 'settings' }
   | { kind: 'player'; playerId: string }
   | { kind: 'event'; event: EventDTO }
+  | { kind: 'vote-tally'; event: EventDTO }
   | null;
 
 export function GameScene({
@@ -107,6 +111,21 @@ export function GameScene({
     };
   }, []);
   useEffect(() => { if (!compact) setHudMenu(false); }, [compact]);
+  // 「更多」菜单：Esc 或点击菜单/按钮之外的任意处关闭。
+  useEffect(() => {
+    if (!hudMenu) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setHudMenu(false); };
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && !target.closest('.hud-menu') && !target.closest('.hud-more')) setHudMenu(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [hudMenu]);
 
   // 死亡公告等固定横幅按 HUD 实际下沿定位（HUD 是 sticky：高度随宽度/显示缩放变化，
   // 未滚动时还带有场景的顶部内边距，写死 top 会压住工具行）。
@@ -433,6 +452,7 @@ export function GameScene({
   const details =
     overlay?.kind === 'player' ? view.public?.seats.find(seat => seat.playerId === overlay.playerId) : null;
   const eventText = overlay?.kind === 'event' ? describeEvent(overlay.event, view, catalog) : null;
+  const overlayTally = overlay?.kind === 'vote-tally' ? parseVoteTally(overlay.event) : null;
 
   const actionSlot =
     view.viewer.readOnly &&
@@ -509,9 +529,10 @@ export function GameScene({
           />
         </div>
       )}
-      <div className="game-scene" hidden={!active || manage}>
+      <div className={`game-scene ${view.room.phase === 'playing' && view.public?.phase === 'night' ? 'game-scene--night' : ''}`} hidden={!active || manage}>
         <SnowfallLayer view={view} active={active && online} />
         <PhaseTransition view={view} enabled={online && active} urgent={revealUrgent} occupied={identityEntryReveal || overlay !== null || manage} />
+        <VoteTallyLive view={view} enabled={online && active} hasTask={!!task} occupied={identityEntryReveal || overlay !== null || manage} />
         {active && identityEntryReveal && (
           <IdentityEntryReveal view={view} catalog={catalog} onEnter={() => setIdentityEntryReveal(false)} />
         )}
@@ -566,14 +587,18 @@ export function GameScene({
         )}
         <SpeechAttention view={view} active={active && online} window={publicWindow} remaining={remaining} />
         {view.public?.day?.election && ['vote', 'revote'].includes(view.public.day.election.phase) && (
-          <p className="speaker-banner">
-            天理投票进度：{view.public.day.election.votedCount} / {view.public.day.election.eligibleCount}。结算后公开票型。
-          </p>
+          <VoteProgress
+            label="天理投票"
+            voted={view.public.day.election.votedCount}
+            eligible={view.public.day.election.eligibleCount}
+          />
         )}
         {view.public?.day?.ballot && ['vote', 'revote'].includes(view.public.day.ballot.phase) && (
-          <p className="speaker-banner">
-            放逐投票进度：{view.public.day.ballot.votedCount} / {view.public.day.ballot.eligibleCount}。结算后公开票型。
-          </p>
+          <VoteProgress
+            label="放逐投票"
+            voted={view.public.day.ballot.votedCount}
+            eligible={view.public.day.ballot.eligibleCount}
+          />
         )}
 
         <div className="game-columns">
@@ -600,6 +625,7 @@ export function GameScene({
             onIdentity={() => setOverlay({ kind: 'identity' })}
             onRules={() => setOverlay({ kind: 'rules' })}
             onEvent={event => setOverlay({ kind: 'event', event })}
+            onTally={event => setOverlay({ kind: 'vote-tally', event })}
           />
         </div>
 
@@ -639,6 +665,7 @@ export function GameScene({
                 {view.public?.sheriff.holderId === details.playerId && <p>沉睡的天理</p>}
               </div>
             </div>
+            <PlayerMarkEditor view={view} playerId={details.playerId} readOnly={view.room.phase !== 'playing'} />
           </Modal>
         )}
         {active && overlay?.kind === 'event' && eventText && (
@@ -649,6 +676,15 @@ export function GameScene({
             {eventText.details.map((line, index) => (
               <p key={index}>{line}</p>
             ))}
+          </Modal>
+        )}
+        {active && overlay?.kind === 'vote-tally' && overlayTally && (
+          <Modal
+            title={overlayTally.kind === 'election' ? '天理竞选票型' : '放逐投票票型'}
+            context={context}
+            onClose={() => setOverlay(null)}
+          >
+            <VoteTallyCard tally={overlayTally} />
           </Modal>
         )}
         {active && overlay?.kind === 'navigation' && (

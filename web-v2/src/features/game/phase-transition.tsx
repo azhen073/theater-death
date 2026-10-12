@@ -8,17 +8,22 @@ import '../../styles/phase-transition.css';
 // Covers the 3.2s public death treatment in the separate death-effects PR as well
 // as main's shorter notice, without depending on that unmerged implementation.
 const DEATH_PRIORITY_MS = 3200;
+const TRANSITION_MS = 3000;
+
+type Tone = 'night' | 'dawn' | 'stage';
+
+interface Announcement { title: string; subtitle: string | null; tone: Tone; key: string }
 
 export function PhaseTransition({ view, enabled, urgent, occupied }: {
   view: RoomSnapshot; enabled: boolean; urgent: boolean; occupied: boolean;
 }) {
   const { reducedMotion } = usePreferences();
   const [visible, setVisible] = useState(() => document.visibilityState === 'visible');
-  const [announcement, setAnnouncement] = useState<{ title: string; key: string } | null>(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const previous = useRef<{ stamp: PublicPhaseStamp | null; ready: boolean; cursor: number } | null>(null);
   const deathUntil = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<{ title: string; key: string } | null>(null);
+  const pending = useRef<Announcement | null>(null);
   const stamp = publicPhaseStamp(view);
   const key = JSON.stringify(stamp);
   const ready = enabled && visible;
@@ -43,11 +48,11 @@ export function PhaseTransition({ view, enabled, urgent, occupied }: {
       pending.current = null;
       setAnnouncement(null);
     };
-    const schedule = (item: { title: string; key: string }) => {
+    const schedule = (item: Announcement) => {
       const show = () => {
         pending.current = null;
         setAnnouncement(item);
-        timer.current = setTimeout(() => { setAnnouncement(null); timer.current = null; }, 2200);
+        timer.current = setTimeout(() => { setAnnouncement(null); timer.current = null; }, TRANSITION_MS);
       };
       const delay = Math.max(0, deathUntil.current - Date.now());
       // Live sequencing only: refresh/reconnect never restores this in-memory pending cue.
@@ -70,17 +75,27 @@ export function PhaseTransition({ view, enabled, urgent, occupied }: {
     try { fresh = claimPublicPhase(window.sessionStorage, stamp); } catch { /* disabled storage */ }
     const title = phaseTransitionTitle(last?.stamp ?? null, stamp);
     if (!fresh || !title || !last?.ready || blocked) return;
-    schedule({ title, key });
+    // 天亮副行只读本批公开死讯：有死亡报名单，无死亡报平安夜。
+    const tone: Tone = title === '夜幕降临' ? 'night' : title === '天亮了' ? 'dawn' : 'stage';
+    const dawnDeaths = tone === 'dawn' ? publicDeathSeats(events, last.cursor).sort((a, b) => a - b) : [];
+    const subtitle = tone === 'dawn'
+      ? dawnDeaths.length ? `${dawnDeaths.map(seat => `${seat}号`).join('、')} 死亡` : '平安夜'
+      : null;
+    schedule({ title, subtitle, tone, key });
   }, [key, cursor, ready, urgent, occupied, reducedMotion]);
 
   useEffect(() => () => { if (timer.current !== null) clearTimeout(timer.current); }, []);
   if (!announcement || !ready || urgent || occupied || reducedMotion) return null;
-  return <div className="phase-transition" key={announcement.key} role="status" aria-live="polite" aria-atomic="true">
+  return <div className={`phase-transition phase-transition--${announcement.tone}`} key={announcement.key} role="status" aria-live="polite" aria-atomic="true">
     <div className="phase-transition__art" aria-hidden="true">
       <svg className="phase-transition__curtain" viewBox="10 110 660 340"><image href="/assets/ui-phase/curtain-atlas.png" width="1024" height="1024"/></svg>
       <svg className="phase-transition__curtain phase-transition__curtain--right" viewBox="10 110 660 340"><image href="/assets/ui-phase/curtain-atlas.png" width="1024" height="1024"/></svg>
       <svg className="phase-transition__clock" viewBox="24 359 640 624"><image href="/assets/ui-phase/clock-atlas.png" width="1024" height="1024"/></svg>
     </div>
-    <p><span>第 {stamp?.day} 轮 · 第 {stamp?.stage} 阶段</span><strong>{announcement.title}</strong></p>
+    <p>
+      <span>第 {stamp?.day} 轮 · 第 {stamp?.stage} 阶段</span>
+      <strong>{announcement.title}</strong>
+      {announcement.subtitle && <em>{announcement.subtitle}</em>}
+    </p>
   </div>;
 }

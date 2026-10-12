@@ -3,6 +3,21 @@ import { publicDeathSeats } from './death-events.ts';
 
 export const DEATH_EFFECT_MS = 3200;
 export interface DeathBurst { seat: number; cursor: number; startedAt: number }
+
+/** 死亡特效合图分层区域（avatar-sheet.png，1774×887，白底烘焙 RGB≈247/alpha≈250）：
+   坐标经像素级核对并登记于 web-v2/public/assets/sources.json；
+   画布绘制走 CSS mix-blend-mode: multiply（与 DeathMark 同策略），白底近似不可见。 */
+export const DEATH_ART_SHEET = '/assets/avatar-sheet.png';
+export const DEATH_ART_REGIONS = {
+  /** 主星芒（覆盖）：与 DeathMark 同一区域。 */
+  main: [48, 110, 490, 675],
+  /** 粒子/黑雾（局部）。 */
+  particles: [501, 122, 347, 225],
+  /** 碎片环（可叠加）。 */
+  shards: [554, 408, 249, 229],
+  /** 消散拖尾（可选）。 */
+  fade: [516, 697, 330, 105],
+} as const;
 export function deathScope(view: RoomSnapshot): string {
   return JSON.stringify([view.viewer.userId, view.roomId, view.gameId, view.viewer.memberId,
     view.viewer.kind, view.viewer.subjectPlayerId, view.viewer.readOnly]);
