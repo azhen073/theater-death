@@ -53,4 +53,4 @@
 - `specs-v2/02-rooms.spec.ts` 的「实验房间」用例仍是既有 presence `offline` 断言失败（v2.0.5-alpha 期间已记录）。
 - `everyone` 档位在真实浏览器里的**死者夜间发言**未做 E2E：需要先造出已公告的死亡并再次入夜，成本高；该路径由 `canPostPublic` / `capabilities` 单测与 `chat-receipts-api` 的服务端用例覆盖。
 - v1 入口未改（仍「仅白天」），因此 `tests/server-api.test.ts` 与 `e2e/specs/03-security.spec.ts` 的夜间 403 反例保持原样。
-- 未跑全量 Vitest / 全量 E2E，未重建镜像，未部署；分支未推送。
+- 未跑全量 Vitest / 全量 E2E，未重建镜像，未部署；分支 `2.0.7-alpha` 已于 2026-10-02 推送到 `origin/2.0.7-alpha`（tip `8f255ee`，已合并进 `main` `8560a51`）。
