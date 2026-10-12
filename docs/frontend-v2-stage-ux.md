@@ -105,7 +105,7 @@
   8px 时「天理 + 4 字」行宽 97px > 96.95px（1440）与 94.66px（390）会折行；7px + 35px 盒 + `gap` 4px 后两枚徽标行宽 86px，
   四档视口均单排、卡片高度不变（95→123 由环形/网格布局决定，徽标不再改变高度）。
 - **验证（2026-10-03，容器内）**：单测 `tests/frontend-v2-check-marks.test.ts` **8 例** +
-  `tests/frontend-v2-badges.test.ts` 补 4 例（合计 **32/32 通过**）；E2E `specs-v2/34-check-marks.spec.ts`
+  `tests/frontend-v2-badges.test.ts` 补 4 例（合计 **32/32 通过**）；E2E `specs-v2/37-check-marks.spec.ts`
   chromium + webkit **8/8 通过**（四类文案与底色、同座位取最近一次、未查验座位无徽标、本人座位抑制身份徽标、
   公开观众无私有徽标、四档视口单排 / 卡片不变高 / 无横向溢出；截图 `check-marks-{chromium,webkit}.png`）；
   `typecheck:web:v2`、`typecheck:web:v2-tests`、`build:web:v2` 退出码 0。未跑全量 Vitest / 全量 v2 E2E / v1 E2E。
