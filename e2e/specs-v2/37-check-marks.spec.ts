@@ -141,7 +141,9 @@ test('排版：四档视口下查验徽标保持单排、卡片不变高、无�
           labels: Array.from(card.querySelectorAll('.badge-strip__item')).map(item => item.textContent ?? ''),
           rowHeight: Number(row.getBoundingClientRect().height.toFixed(2)),
           cardHeight: Number(card.getBoundingClientRect().height.toFixed(2)),
-          overflow: card.scrollWidth - card.clientWidth,
+          // 只量徽标行自身：main 的 P1 给 .seat-main 加了 inset:-1px 的 ::before 装饰卡框（不占布局、pointer-events:none），
+          // 会让整卡恒有 1px 装饰性溢出——实测所有座位、四档视口均为 1px，含没有任何徽标的对照座位，与徽标排版无关。
+          rowOverflow: row.scrollWidth - row.clientWidth,
         };
       };
       return { own: read(seats.own)!, plain: read(seats.plain)!, checked: seats.checked.map(read) };
@@ -150,7 +152,7 @@ test('排版：四档视口下查验徽标保持单排、卡片不变高、无�
     expect(facts.own.labels).toEqual(['天理', '人类阵营']); // 身份徽标被抑制，4 字查验徽标 + 天理同排
     for (const item of facts.checked) {
       expect(item!.rowHeight).toBeLessThanOrEqual(facts.plain.rowHeight + 1);
-      expect(item!.overflow).toBeLessThanOrEqual(0);
+      expect(item!.rowOverflow).toBeLessThanOrEqual(0);
     }
     expect(facts.checked.filter(item => item!.cardHeight !== facts.plain.cardHeight)).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

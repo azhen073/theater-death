@@ -44,6 +44,8 @@ E2E spec 同步：`08-display` 的 601/680/681/844 档按半环断言、600px �
 
 **版本 / 分支**：`2.0.8-alpha`（自 `2.0.7-alpha` 的 tip `8f255ee` 拉出；已推送到 `origin/2.0.8-alpha`（tip `22b9d2c`），并已并入 `origin/main` 的 `05bb219`；**尚未合并进 main**）；上一版 `2.0.7-alpha` 已于 2026-10-02 合并进 `main` `8560a51`（保留贡献提交 `8f255ee`）；UI 优化批次 #9–#16 与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。**UI 清晰度 P0–P2（#19–#21）已于 2026-10-11 合并进 main `bea75fa`**（stacked 顺序 `034397e` → `b0ebf95` → `bea75fa`，保留贡献提交 tip `823f5d5`）。**未部署**。
 
+- **合并后验证（2026-10-12，容器内）**：4 个 typecheck 全过（exit 0）；新 spec `specs-v2/36-snowfall.spec.ts`、`specs-v2/37-check-marks.spec.ts` 双浏览器 **16/16 通过**（20.6s；截图 `test-results-frontend-v2/snowfall-*.png`、`check-marks-*.png`）；受影响回归 05/08/20-death-effects/20-phase-transition/24/29/33-theme/34-death-art 双浏览器 **79 passed / 1 failed**——唯一失败 `[webkit] 20-phase-transition:62` 为批量负载下转场未在 3.4s 内消失，单跑该 spec **16/16 全过**，判为计时偶发。**集成发现并已修**：`37-check-marks` 排版用例原以「整卡 scrollWidth」代替「徽标行溢出」，被 main 的 P1 装饰卡框 `.seat-main::before`（`inset:-1px`、不占布局、`pointer-events:none`）恒定计入 1px 而误报；实测所有座位/四档视口/双引擎均为 1px（含无徽标的对照座位 6 号），关掉该伪元素即归零 → 已改为度量徽标行本身 `row.scrollWidth - row.clientWidth`，原意图（单排、卡片不变高、整页无横向溢出）未放松。**未跑**：全量单测、全量 v2 E2E、v1 E2E、镜像重建、部署；本机 `node_modules` 缺 `sharp`/`ajv`/`agora-rtc-sdk-ng`，typecheck 与测试一律在容器内跑。
+
 ### 已合并特性（功能 + 实现路径）
 
 - **公开死亡粒子与头像常驻星芒**（`feat/public-death-effects` → main `9b94a65`）：公开死亡座位粒子 + 头像常驻星芒，纯前端、复用原合图、公开事件驱动；保留私密边界与重连基线，末次死亡公告可跨到复盘。详见 `docs/frontend-v2-death-effects-verification.md`。
