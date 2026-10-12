@@ -71,6 +71,22 @@ describe('incremental test selector', () => {
     expect(selected('web-v2/src/features/game/identity-reveal-model.ts')).toEqual(['tests/frontend-v2-identity-reveal.test.ts']);
   });
 
+  it('selects the snow layer and descender check-mark suites for their focused modules', () => {
+    for (const path of ['web-v2/src/presentation/snowfall.ts', 'web-v2/src/features/game/snowfall-layer.tsx', 'web-v2/src/styles/snowfall.css']) {
+      expect(selected(path)).toEqual(['tests/frontend-v2-snowfall.test.ts']);
+    }
+    expect(selected('web-v2/src/features/game/seat-check-marks.ts')).toEqual(['tests/frontend-v2-check-marks.test.ts']);
+  });
+
+  it('keeps the shared web-v2 fallback covering the seat badge and check-mark suites', () => {
+    for (const path of ['web-v2/src/features/game/seat-badges.ts', 'web-v2/src/components/badge-strip.tsx']) {
+      const suites = selected(path);
+      expect(suites).toContain('tests/frontend-v2-badges.test.ts');
+      expect(suites).toContain('tests/frontend-v2-check-marks.test.ts');
+      expect(suites).toContain('tests/frontend-v2-snowfall.test.ts');
+    }
+  });
+
   it('maps remaining entry, admin, and infra files to their reviewed suites', () => {
     expect(selected('server/v2/frontend-app.ts')).toEqual(['tests/frontend-v2-static.test.ts']);
     expect(selected('server/v2/admin-router.ts')).toEqual(['tests/admin-api.test.ts']);
