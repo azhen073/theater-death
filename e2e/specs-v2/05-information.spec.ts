@@ -23,6 +23,13 @@ async function mount(page: Page, fixture: GameHarnessFixture) {
   return { chats, setMode: (mode: 'accepted' | 'unknown') => { chatMode = mode; chatAttempts = 0; }, setFixture: async (next: GameHarnessFixture) => { current = next; await pushFixture(page, next); } };
 }
 
+// 视口尺寸变化后紧接着整页截图，chromium 会捕获到还没按新布局重排的那一帧：
+// 390 宽实测 DOM 与命中测试都正常，但存档整页图里徽标整枚缺失（webkit 无此问题）。
+// 等两级 rAF 让重排落定再截图，保证存档截图可以作为验收证据。
+async function settleLayout(page: Page) {
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
+
 test('聊天 composer：精确 payload、纯文本、Enter/IME/ShiftEnter 与 UTF16 限制', async ({ page }) => {
   const fixture = loadGameFixture();
   fixture.view.capabilities.canPostPublic = true;
@@ -303,6 +310,7 @@ test('座位徽标：天理与魂灵共用一个底色框、左半天理右半�
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(`[data-player-id="${peerId}"] [data-badge="sheriff"]`)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await settleLayout(page);
   await page.screenshot({ path: '/results/seat-badges-mobile-' + test.info().project.name + '.png', fullPage: true });
 
   // 320 宽：≤359px 走两列网格 → 双徽标仍与号码同排、卡内有余量、卡片不加高
@@ -453,6 +461,7 @@ test('多个徽标同时存在：身份+天理 一个底色框等分，且不与
     const box = node.getBoundingClientRect();
     return box.left >= card.left - 0.5 && box.right <= card.right + 0.5;
   })).toBe(true);
+  await settleLayout(page);
   await page.screenshot({ path: '/results/seat-badges-multi-390-' + test.info().project.name + '.png', fullPage: true });
   await page.setViewportSize({ width: 1440, height: 900 });
 
