@@ -71,18 +71,44 @@
 | --- | --- | --- |
 | 模型 / 注册表 | `web-v2/src/presentation/badges.ts` | `BadgeTone` 联合类型、`BADGE_TONES`（色调 → 默认文案）、`badge(tone, overrides)`、`isSplitStrip`、`badgeStripLabel`。纯函数、无 React、可单测 |
 | 组件 | `web-v2/src/components/badge-strip.tsx` | `BadgeStrip({ items, size = 'sm', className?, ariaLabel? })`。只认识「色调 + 文案」，不关心业务来源；`items` 为空时不渲染 |
-| 业务派生 | `web-v2/src/features/game/seat-badges.ts` | `seatBadges(view, seat, catalog?)`——身份（本人）+ 天理（公开 `public.sheriff.holderId`）+ 魂灵（私有 `private.knowledge.spiritSeats`），**顺序固定 身份 → 天理 → 魂灵** |
+| 业务派生 | `web-v2/src/features/game/seat-badges.ts` | `seatBadges(view, seat, catalog?)`——身份（本人）+ 天理（公开 `public.sheriff.holderId`）+ 魂灵（私有 `private.knowledge.spiritSeats`）+ 查验结果（私有 `private.events`，见 `seat-check-marks.ts`），**顺序固定 身份 → 天理 → 魂灵 → 查验结果** |
+| 业务派生（查验） | `web-v2/src/features/game/seat-check-marks.ts` | `checkMarks(view)`——降临者查验事件 → `座位 → 徽标`，**一个座位只保留最近一次** |
 | 样式 | `web-v2/src/styles/main.css` | `.badge-strip` / `.badge-strip__item` / `.badge-strip__item--{tone}`（底色）/ `.badge-strip--split` |
 
-**三种色调**
+**六种色调**
 
 | 色调 | 文案来源 | 可见范围 | 底色 |
 | --- | --- | --- | --- |
 | `identity` 身份 | `private.self.roleId` → `catalog.roles[].name` | **只在本人座位**；第二屏（只读绑定视角）同样显示（座位号行标「视角」）；公开观众无私有视图 → 不显示 | **按阵营**：人类 `--faction-human #3d6b9c`（白字 5.6）/ 死神阵营 `--faction-death #8f3b48`（白字 7.3） |
 | `sheriff` 天理 | 固定「天理」 | 公开信息，所有视角 | `#81704c`（白字 4.8） |
-| `spirit` 魂灵 | 固定「魂灵」 | 私有知识：死神 / 丧亲者看全部魂灵，魂灵只看同伴（服务端已排除自己） | `#6b4c78`（白字 7.2） |
+| `spirit` 魂灵 | 固定「魂灵」 | 私有知识：死神 / 丧亲者看全部魂灵，魂灵只看同伴（服务端已排除自己） | `--faction-death #8f3b48`（白字 7.3；2026-10-04 起与死神阵营统一） |
+| `checked-not-spirit` 非魂灵 | 固定「非魂灵」 | 私有知识：降临者一阶段查验返回「不是魂灵」的目标（只发给查验者本人） | `#66717f`（白字 4.96） |
+| `checked-human` 人类阵营 | 固定「人类阵营」 | 私有知识：降临者二阶段查验返回「不属于死神阵营」的目标 | `--faction-human #3d6b9c`（与身份徽标的人类阵营同源） |
+| `checked-death` 死神阵营 | 固定「死神阵营」 | 私有知识：降临者二阶段查验返回「属于死神阵营」的目标 | `--faction-death #8f3b48`（与身份徽标的死神阵营同源；用户裁定 2026-10-04，魂灵与死神阵营统一取色） |
 
 > 身份徽标的名称查不到（catalog 缺该项或不传 catalog）时**不显示**，不露出 `roleId` 原文——与「公开翻牌」同口径。
+
+### 4.1 降临者查验徽标（2026-10-03 用户裁定）
+
+- **口径**（R-24）：一阶段问「是否魂灵」→ 魂灵 / 非魂灵；二阶段问「是否属于死神阵营」→ 死神阵营 / 人类阵营。
+  颜色按用户裁定（2026-10-04 定稿）：**魂灵（私有知识徽标与一阶段查验徽标同一色调）与死神阵营统一取死神阵营色 `--faction-death #8f3b48`**（替代 2026-10-03 的「统一为魂灵紫」）、人类阵营用身份徽标的人类阵营色 `--faction-human`、非魂灵用灰。
+- **数据来源＝纯前端派生**：`presentation`/`features` 只读 `private.events` 里的 `descender_check_result`
+  （`engine/night.ts` 的 `resolveDescenderCheck` 本就只把该事件发给查验者本人，服务端已完成裁剪），
+  因此**不改契约 / 服务端 / 引擎**，也不新增 `private.knowledge` 字段；公开观众 `private === null` → 不显示，
+  第二屏（读绑定玩家的私有视图）与身份徽标同口径可见。
+- **一个座位只显示一枚**：取最近一次查验结果（先比 `nightNumber`，同夜按事件顺序取后者，用户裁定）。
+- **本人座位抑制身份徽标**（用户裁定）：降临者（也就是唯一会拿到查验结果的人）查验过自己座位时，
+  号码行不再渲染身份徽标——实测网格布局座位卡内容宽仅 96.95px（1440）/ 94.66px（390），
+  「3 字身份 + 天理 + 4 字查验」必然折行；抑制后该座位只显示「天理 + 查验」。
+- **字号**：**2 / 3 / 4 字一律 7px**（用户裁定 2026-10-04「统一 2/3/4 字的徽标大小」）。
+  统一盒宽按最宽的 4 字文案（人类阵营 / 死神阵营）定：`min-width: 35px`，4 字内容 28px + 内边距 6px = 34px 落在盒内；
+  8px 时「天理 + 4 字」行宽 97px > 96.95px（1440）与 94.66px（390）会折行；7px + 35px 盒 + `gap` 4px 后两枚徽标行宽 86px，
+  四档视口均单排、卡片高度不变（95→123 由环形/网格布局决定，徽标不再改变高度）。
+- **验证（2026-10-03，容器内）**：单测 `tests/frontend-v2-check-marks.test.ts` **8 例** +
+  `tests/frontend-v2-badges.test.ts` 补 4 例（合计 **32/32 通过**）；E2E `specs-v2/37-check-marks.spec.ts`
+  chromium + webkit **8/8 通过**（四类文案与底色、同座位取最近一次、未查验座位无徽标、本人座位抑制身份徽标、
+  公开观众无私有徽标、四档视口单排 / 卡片不变高 / 无横向溢出；截图 `check-marks-{chromium,webkit}.png`）；
+  `typecheck:web:v2`、`typecheck:web:v2-tests`、`build:web:v2` 退出码 0。未跑全量 Vitest / 全量 v2 E2E / v1 E2E。
 
 **阵营统一配色**（`presentation/faction.ts` + `main.css` 的 `--faction-human` / `--faction-death`）：座位身份徽标、`我的身份` 弹窗、开局身份卡、复盘「全部身份」行里的阵营标签**共用同一对变量**（`.faction-tag--human|death` 与 `.badge-strip__item--faction-human|death`），因此同一身份在任何位置颜色一致；未知阵营不渲染标签、不猜。
 
@@ -92,18 +118,17 @@
 
 - 落点＝**座位号行内**（`.seat-number`），**恒定与号码同排**（用户裁定 2026-09-27「不用换行」）：1 枚徽标 `11 [门先生]`、两枚 `13 [天理|魂灵]`，**不改变座位卡高度**（E2E 断言：与无徽标座位 `.seat-main` 高度差 < 1px）。
 - **本人座位不再显示「你」标记**（同日裁定）：身份徽标本身就只出现在自己座位上，`你` 属重复信息。第二屏仍保留「视角」标记；无障碍名补「你的座位」，读屏信息不丢。
-- **徽标尺寸：字号 10 → 8px、内边距 `3px 5px → 2px 3px`**（`min-width` 保持 30px，`line-height: 1`）。这是「不换行」的关键：等分底框宽 ≈ 2 ×（最长文案 × 字号 + padding 6px）——8px 下 3 字身份 + 天理 = **60px**（10px 时为 80px，正好顶满 97px 可用宽而被迫换行）。徽标块高度 16 → **12px**。
-- **几何矩阵实测**（4 组徽标组合 × 视口 {320, 390, 768, 1440} × 显示缩放 {90, 100, 110}% × 两引擎）：
+- **徽标尺寸（用户裁定 2026-10-04 统一）**：2 / 3 / 4 字一律 **7px 字号 + 35 × 12px 盒**（`.badge-strip--sm` 7px、`.badge-strip__item` `min-width: 35px; min-height: 12px`、内边距 `2px 3px`、`line-height: 1`），历史上「4 字 7px、2/3 字 8px」的按文案长度分档已删除；2 字徽标左右留白更宽，但同排徽标严格同宽同高（等分底色框每格 35px），4 字那枚也不再矮 1px。同时把 `.seat-number` 的 `gap` 由 7px 收到 **4px**，给 35px 宽盒让出余量。
+- **几何矩阵实测**（2026-10-04 统一尺寸后，chromium 100%；行宽 = 号码 12px + `gap` 4px + 35px × 枚数）：
 
-| 视口 | 最紧组合（3 字身份 + 天理）行宽 / 可用 | 余量（chromium / webkit） | 行高 |
+| 视口 | 最紧组合（两枚 35px 盒：天理+魂灵 / 门先生+天理 / 天理+4 字）行宽 / 可用 | 余量 | 行高 |
 | --- | --- | --- | --- |
-| 1440 | 79 / 97px | **18 / 18** | 单行 17px |
-| 768 | 79 / 97px | 18 / 18 | 单行 17px |
-| 390 | 79 / 94.7px | **15.7 / 15.7** | 单行 17px |
-| 320 | 79 / **118px**（≤359px 两列网格） | **39 / 39** | 单行 17px |
+| 1440 | 86 / 96.95px | **10.95** | 单行 17px |
+| 390 | 86 / 94.66px | **8.66** | 单行 17px |
+| 320 | 86 / **120px**（≤359px 两列网格） | **34** | 单行 17px |
 
-  对照（改前 10px）：390 与 1440 就已经是 80/94.7≈97px、**行高 40px（两行）**；320 余量为负。即本次改动把「≥390px 全部单行」做成了。
-- **320px 窄档（用户裁定 2026-09-27「方案 ②」）**：320 视口下三列网格每卡只有 ≈71px 可用宽，两枚徽标必然折行；新增 `@media (max-width: 359px)` 把座位改**两列网格**（`grid-template-columns: repeat(2,minmax(0,1fr))`、`gap: 14px 10px`、`padding: 16px 10px`）→ 可用宽 ≈118px、余量 **39px**，两引擎均保持单排、卡片不加高。对照实测：① `min-width: 24px` → 余量 0–3px（仍折行）；② 字号回 9px → 更差（−2px）；故取两列网格。两列只作用于 ≤359px，390 及以上仍是三列（用户可见的档位切换仅发生在最窄机型）。
+  768 / 844 与 webkit 由 E2E 视口循环覆盖（四档视口单排、卡片不变高、无横向溢出，双引擎通过）。历史对照（改前：4 字 7px、2/3 字 8px、`min-width` 30px）：两枚 2 字徽标行宽 79px、余量 17.95 / 15.66px，但同一行里 2 字 12px 高、4 字 11px 高，字号与盒宽都不统一——本次一并收口。
+- **320px 窄档（用户裁定 2026-09-27「方案 ②」）**：320 视口下三列网格每卡只有 ≈71px 可用宽，两枚徽标必然折行；新增 `@media (max-width: 359px)` 把座位改**两列网格**（`grid-template-columns: repeat(2,minmax(0,1fr))`、`gap: 14px 10px`、`padding: 16px 10px`）→ 可用宽 120px、余量 **34px**（统一 35px 盒 + `gap` 4px 后重算），两引擎均保持单排、卡片不加高。对照实测：① `min-width: 24px` → 余量 0–3px（仍折行）；② 字号回 9px → 更差（−2px）；故取两列网格。两列只作用于 ≤359px，390 及以上仍是三列（用户可见的档位切换仅发生在最窄机型）。
 - 单徽标＝一个圆角底色块；**多徽标＝共用一个底色框、按色调等分**（`inline-grid` + `grid-auto-columns: 1fr`；用 flex + 边框会差 1px，已实测），半块之间 1px 白色分隔线。
 - 白字 / `font-weight: 600`；`aria-label` 用顿号连接（「身份、天理、魂灵」），内部半块 `aria-hidden`：读屏不会连读，视觉文本仍可被 `toHaveText` 断言。
 - **角标（草稿 / 已选）与徽标的间距**：角标原 `padding: 4px 7px`（高 22px）时其下沿会探进卡片 11px，压到徽标条上沿（9.5px）**重叠 3.5px**（实测 rect 21×3.5px）；改为 `padding: 3px 7px; line-height: 1`（高 16px）后下沿仅进卡 5px，**重叠 0**。

@@ -1,9 +1,10 @@
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { RoomSnapshot, SeatDTO } from '../../../../contracts/v2.ts';
 import { badge, type BadgeItem } from '../../presentation/badges.ts';
+import { checkMarks } from './seat-check-marks.ts';
 
 /**
- * 座位卡徽标，**左→右顺序固定为：身份（本人）→ 天理 → 魂灵**（用户裁定）。
+ * 座位卡徽标，**左→右顺序固定为：身份（本人）→ 天理 → 魂灵 → 查验结果**（用户裁定）。
  *
  * - 身份：**只出现在本人座位上**，文案取 `private.self.roleId` → `catalog.roles[].name`，
  *   底色**按该身份的阵营**（`role.faction`，人类 / 死神阵营，配色与身份弹窗、复盘的阵营标签统一）；
@@ -12,17 +13,22 @@ import { badge, type BadgeItem } from '../../presentation/badges.ts';
  * - 天理：公开信息（`public.sheriff.holderId`），所有视角可见；
  * - 魂灵：私有知识（`private.knowledge.spiritSeats`）——服务端只对死神 / 丧亲者（全部魂灵）与魂灵（不含自己）下发，
  *   其余身份与观众拿到空数组，因此这里不需要再做权限判断。
+ * - 查验结果：降临者的私有知识（`private.events` 的 `descender_check_result`，见 `seat-check-marks.ts`），
+ *   **一个座位只显示最近一次**；**降临者查验过自己座位时抑制身份徽标**——一枚 4 字查验徽标 + 天理已占满
+ *   112px 环形座位卡号码行（实测），再加 3 字身份徽标会在 1440 / 390 折行（用户裁定 2026-10-03）。
  *
  * 只读推导，无副作用、不读时间。catalog 查不到该身份名时不显示（与「公开翻牌」同口径，不显示原始 roleId）。
  */
 export function seatBadges(view: RoomSnapshot, seat: SeatDTO, catalog?: CatalogDTO | null): BadgeItem[] {
   const items: BadgeItem[] = [];
+  const mark = checkMarks(view).get(seat.playerId) ?? null;
   const self = view.private?.self ?? null;
-  if (self && self.playerId === seat.playerId) {
+  if (self && self.playerId === seat.playerId && mark === null) {
     const role = catalog?.roles.find(item => item.roleId === self.roleId);
     if (role) items.push(badge('identity', { label: role.name, faction: role.faction }));
   }
   if (view.public?.sheriff.holderId === seat.playerId) items.push(badge('sheriff'));
   if ((view.private?.knowledge?.spiritSeats ?? []).includes(seat.seat)) items.push(badge('spirit'));
+  if (mark !== null) items.push(mark);
   return items;
 }

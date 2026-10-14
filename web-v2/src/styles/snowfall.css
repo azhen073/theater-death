@@ -1,0 +1,22 @@
+/* 二阶段整页飘雪：极简小颗粒 + 低密度，只做 transform 动画，不参与布局与命中测试。
+   层级固定为 4：盖住舞台与页面底色，但始终在 sticky HUD(5) / 语音条(8) / 死亡公告(20) 之下，
+   弹窗是 <dialog> 顶层，不会被雪花覆盖。 */
+.snowfall { position: fixed; inset: 0; z-index: 4; overflow: hidden; pointer-events: none; user-select: none; }
+.snowfall i {
+  position: absolute; top: 0; left: var(--snow-x);
+  width: var(--snow-size); height: var(--snow-size); border-radius: 50%;
+  opacity: var(--snow-opacity);
+  animation: snow-fall var(--snow-duration) linear var(--snow-delay) infinite;
+}
+/* 白天浅底：雪粒本体改近白冷调（用户 2026-10-02 追加裁定：白天颜色改白一些），
+   靠白色外缘给出轮廓；亮度不足处由夜/深色舞台底色提供对比 */
+.snowfall--day i { background: #eef4fc; box-shadow: 0 0 2px #ffffffe6; }
+/* 夜晚深底：冷白 + 淡蓝光晕 */
+.snowfall--night i { background: #eaf3ff; box-shadow: 0 0 3px #9fc4ff8c; }
+@keyframes snow-fall {
+  from { transform: translate3d(0, -12px, 0); }
+  50% { transform: translate3d(var(--snow-sway), var(--snow-mid), 0); }
+  to { transform: translate3d(var(--snow-drift), var(--snow-fall), 0); }
+}
+@media (prefers-reduced-motion: reduce) { .snowfall { display: none; } }
+:root[data-reduced-motion="true"] .snowfall { display: none; }

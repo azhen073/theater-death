@@ -42,7 +42,10 @@ E2E spec 同步：`08-display` 的 601/680/681/844 档按半环断言、600px �
 
 复用 P0 的公开中央开票卡与汇总进度条、3 秒全屏昼夜转场、夜间暗色、公开参选/退选角标、本地玩家标记、默认情报页与数字未读提示、退选按钮分组。05/06 测试合并主线新徽标、HUD 与夜间公屏规则，保留精确定位、公屏切换和 Socket 确认/重试竞态修正。验证（2026-10-09，Docker）：相关单测 8 文件 77/77；四项应用 typecheck 与 build:web:v2 通过；05/06 双浏览器 22/22；其余界面回归首轮 63/66，08 的 320px 三列旧断言对齐 main 两列设计后独立 12/12，24 的 WebKit 页签切换一例原样单独复跑通过；三项整合验收 3/3（徽标/本机标记与刷新、复盘阵营与标记同卡、票型与全屏转场），最终去重 91 项均取得通过结果，保留首次失败记录。整页截图与原始报告在工作区 artifacts/pr19-main-integration-20261009/。额外全 E2E typecheck 存在 10 条错误（20-death-effects、20-phase-transition、31-dying-mark），在未修改 main d8ad278 快照上复现同样错误；未在本轮扩改。未跑全量单测/全量 E2E，未部署。
 
-**版本 / 分支**：`2.0.7-alpha`（自 `816f904` = `origin/main` 拉出，已于 2026-10-02 推送到 `origin/2.0.7-alpha`，含 `94e9d57` 断言修复与 `3033b07` 记录同步；**已合并进 main `8560a51`，保留贡献提交 `8f255ee`**）；UI 优化批次 #9–#16（8 个 PR）与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。**全量单测 98 文件 730 例全过**（2026-10-02 镜像构建链内 + 2026-10-03 维护方复核：15.9s、4 typecheck 全过、新 spec 双浏览器 24/24、受影响 spec chromium 16/16）、**镜像已在本地重建（`ghcr.io/azhen073/theater-death:2.0.7-alpha`，未推送注册表）**、**未部署**；**未跑全量 E2E / v1 E2E**。**UI 清晰度 P0–P2（#19–#21）已于 2026-10-11 合并进 main `bea75fa`**（stacked 顺序 `034397e` → `b0ebf95` → `bea75fa`，保留贡献提交 tip `823f5d5`）。
+**版本 / 分支**：`2.0.8-alpha`（自 `2.0.7-alpha` 的 tip `8f255ee` 拉出；已推送到 `origin/2.0.8-alpha`（tip `22b9d2c`），并已并入 `origin/main` 的 `05bb219`；**尚未合并进 main**）；上一版 `2.0.7-alpha` 已于 2026-10-02 合并进 `main` `8560a51`（保留贡献提交 `8f255ee`）；UI 优化批次 #9–#16 与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。**UI 清晰度 P0–P2（#19–#21）已于 2026-10-11 合并进 main `bea75fa`**（stacked 顺序 `034397e` → `b0ebf95` → `bea75fa`，保留贡献提交 tip `823f5d5`）。**未部署**。本分支本地 **领先 `origin/2.0.8-alpha`（tip `22b9d2c`）18 笔提交未推送**（2026-10-13 核查），推送与 PR 待用户明确指令。
+
+- **合并后验证（2026-10-12，容器内）**：4 个 typecheck 全过（exit 0）；新 spec `specs-v2/36-snowfall.spec.ts`、`specs-v2/37-check-marks.spec.ts` 双浏览器 **16/16 通过**（20.6s；截图 `test-results-frontend-v2/snowfall-*.png`、`check-marks-*.png`）；受影响回归 05/08/20-death-effects/20-phase-transition/24/29/33-theme/34-death-art 双浏览器 **79 passed / 1 failed**——唯一失败 `[webkit] 20-phase-transition:62` 为批量负载下转场未在 3.4s 内消失，单跑该 spec **16/16 全过**，判为计时偶发。**集成发现并已修**：`37-check-marks` 排版用例原以「整卡 scrollWidth」代替「徽标行溢出」，被 main 的 P1 装饰卡框 `.seat-main::before`（`inset:-1px`、不占布局、`pointer-events:none`）恒定计入 1px 而误报；实测所有座位/四档视口/双引擎均为 1px（含无徽标的对照座位 6 号），关掉该伪元素即归零 → 已改为度量徽标行本身 `row.scrollWidth - row.clientWidth`，原意图（单排、卡片不变高、整页无横向溢出）未放松。**未跑**：全量单测、全量 v2 E2E、v1 E2E、镜像重建、部署；本机 `node_modules` 缺 `sharp`/`ajv`/`agora-rtc-sdk-ng`，typecheck 与测试一律在容器内跑。
+- **390 宽整页截图时序修复（2026-10-13，容器内）**：`e2e/specs-v2/05-information.spec.ts` 的 `seat-badges-mobile-*` 与 `seat-badges-multi-390-*` 两处 390 宽截图紧跟 `setViewportSize` 之后，chromium 的 `fullPage` 捕获会拿到尚未按新布局重排的那一帧（存档图里徽标整枚缺失；webkit 无此问题，DOM 与命中测试始终正常）。新增本地 `settleLayout(page)`（等两级 rAF）并在两处截图前调用；产品代码、断言与其余逻辑未改。**验证**：容器内本 spec 双浏览器 **18/18 通过**（31.2s）；像素计数复验（天理 `#81704C` / 死神 `#8F3B48`）——`seat-badges-mobile-chromium` **0/0 → 329/620**、`seat-badges-multi-390-chromium` **0/0 → 313/635**，与同批 1440 chromium（328/626）及 webkit（1431/2728、1383/2776）同量级。**另核实**：`tsc -p e2e/tsconfig.v2.json`（E2E 镜像内）报 **12 条既有错误**（20-death-effects 7 / 37-check-marks 2 / 20-phase-transition 2 / 31-dying-mark 1），`05-information.spec.ts` **零错误**，与本轮改动无关、未修。**未跑**：全量单测、全量 v2 E2E、v1 E2E、镜像重建、部署。交接文档按用户裁定不入库（关键结论已并入本文件）；`AGENTS.md` 本轮未改动。
 
 ### 已合并特性（功能 + 实现路径）
 
@@ -61,6 +64,12 @@ E2E spec 同步：`08-display` 的 601/680/681/844 档按半环断言、600px �
 - **日间舞台加深与账户亮度**（`feat/account-stage-brightness` → main `67648d1`）：舞台背景改独立 `stage-backdrop` 层（亮度滤镜只作用布景，头像/文字/行动卡不受影响），日间遮罩减弱露出剧院纹理；账户「显示与动画」新增 50–130% 亮度滑杆 + 恢复默认（局内不出现），偏好 `stageBrightness` 本地保存（clamp/迁移安全），`--stage-brightness` 挂根元素。详见 `docs/frontend-v2-stage-brightness.md`。
 
 - **大厅视口铺满与跨屏缩放**（`feat/lobby-viewport-fit` → main `d04125d`）：仅大厅相位 `max-width:none` + `clamp` 留白（阅读页保留 1280 上限），满高用 `calc(100svh / var(--display-scale, 1))` 补偿根 zoom，不猜测屏幕/DPR。详见 `docs/frontend-v2-lobby-viewport.md`。遗留：真实 Windows 物理双屏拖动未实测（留人工验收）。至此 UI 优化批次（#9–#16，8 个 PR）全部整合进 main。
+
+### 2.0.8-alpha（进行中，贡献 kiahir；基线 `8f255ee`）
+
+- **版本推进起始点**：内容继承 2.0.7-alpha（Q-10 / Q-11 / Q-12 与本批前端收口），该版已于 2026-10-02 合并进 `main`（merge `8560a51`）。
+- **降临者查验徽标（纯前端，2026-10-03）**：降临者二阶段之前查验过的目标，在座位号行显示一枚查验徽标——一阶段「魂灵 / 非魂灵」、二阶段「死神阵营 / 人类阵营」（`features/game/seat-check-marks.ts` 从 `private.events` 的 `descender_check_result` 派生，**一个座位只留最近一次**：先比 `nightNumber`、同夜取后者）。颜色按用户裁定：**魂灵（私有知识徽标与一阶段查验徽标同一色调）与死神阵营统一取死神阵营色 `--faction-death #8f3b48`**（2026-10-04 定稿，替代 2026-10-03 的「统一为魂灵紫」）、人类阵营用身份徽标的人类阵营色 `--faction-human`、非魂灵用灰 `#66717f`；**降临者查验过自己座位时抑制身份徽标**（网格布局座位卡内容宽仅 96.95px，否则「3 字身份 + 天理 + 4 字」必折行）。**徽标尺寸统一（2026-10-04 追加裁定「统一 2/3/4 字的徽标大小」，方案 A+ 微调）**：2 / 3 / 4 字一律 **7px 字号 + 35×12px 盒**（`.badge-strip--sm` 7px、`.badge-strip__item` `min-width:35px; min-height:12px`，4 字不再单独 7px、也不再有 1px 高度差），同时 `.seat-number` 的 `gap` 7 → **4px**；两枚徽标行宽 86px，余量 10.95px（1440）/ 8.66px（390），四档视口均单排、卡片不变高。数据来源纯前端（服务端本就只把该事件发给查验者本人），**不改契约 / 服务端 / 引擎**；公开观众不显示、第二屏同身份徽标口径可见。详见 `docs/frontend-v2-stage-ux.md` §4 / §4.1、单测 `tests/frontend-v2-check-marks.test.ts`、E2E `specs-v2/37-check-marks.spec.ts`、`specs-v2/05-information.spec.ts`。
+- **二阶段全局飘雪（纯前端装饰，2026-10-02）**：对局内 `public.stage === 2` 时整页飘雪——判定 `web-v2/src/presentation/snowfall.ts` 的 `snowActive`（`room.phase==='playing'` + `gameId` + `public` + `phase!=='ended'` + `stage===2`，白天与夜晚都飘；大厅/复盘/一阶段不出现；观战与第二屏同显）。**DOM + CSS 动画**：`presentation/snowfall.ts`（`snowActive`/`snowflakeCount`/`snowSeed`/`makeSnowflakes`）+ `features/game/snowfall-layer.tsx` + `styles/snowfall.css`，挂在 `features/game/scene.tsx` 的 `.game-scene` 内；固定层 `z-index: 4`（在 sticky HUD(5)/语音条(8)/死亡公告(20) 之下，`<dialog>` 弹窗在顶层不受影响）且 `pointer-events: none`，只走 `transform`、无 rAF 常驻循环，落点距离用图层本地 `clientHeight` 写入 `--snow-fall`/`--snow-mid`（缩放与环形/网格布局下自洽）。**极简形态（用户裁定 2026-10-02，同日两次追加「可适当增大尺寸和密度」→「增加雪粒的密度和大小」）**：直径 3–6px、不透明度 .12–.34、时长 11–20s、数量 `clamp(round(area/13000), 45, 150)` 且 ≤680px ×0.6，昼夜两套配色（夜间冷白 + 淡蓝光晕；白天近白冷调芯 `#eef4fc` + 白边——**同日再追加「白天颜色改白一些、透明度适当降低」**）。种子＝`gameId|roomId|dayNumber`，刷新/重连/推送不重排；每片 `delay = -random × duration` 使首帧即铺满。**不加独立开关**，跟随「动画偏好」：**减少动画整层卸载**（不留静态雪），隐藏/离线/离场同样卸载，恢复可见后回来（环境动效，与夜景氛围一次性雾效刻意不同）。与夜景氛围叠加无冲突，不受 `--stage-brightness` 影响；不改规则 2.0 / 契约 2.2 / 服务端 / 引擎，偏好键集合不变（`08-display.spec.ts` 断言未动）。详见 `docs/frontend-v2-snowfall.md`、单测 `tests/frontend-v2-snowfall.test.ts`、E2E `specs-v2/36-snowfall.spec.ts`。**验证（2026-10-02，容器内）**：增量单测 1 文件 8 例全过；两个前端 typecheck 与 `build:web:v2`（125 模块）退出码 0；E2E `36-snowfall` chromium + webkit **8/8 通过**（截图留档：白天二阶段 `snowfall-*.png`、夜间二阶段 `snowfall-night-*.png`）；另用一次性像素探针（冻结动画、开关雪花层各截一张做差）确认雪粒确实绘制在预期坐标（图层 1440×900、粒心像素差 18–65），探针已删除。未跑全量 Vitest / 全量 v2 E2E / v1 E2E。
 
 ### 2.0.7-alpha（已完成并合并，贡献 kiahir；基线 `816f904`；merge `8560a51`，保留贡献提交 `8f255ee`）
 
@@ -82,7 +91,7 @@ E2E spec 同步：`08-display` 的 601/680/681/844 档按半环断言、600px �
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
-| 文档 | ✅ | 规则书 v1.1（含 Q-09 移交时机与规则 2.0 命名预设；合并版 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.7-alpha**；Q-01–Q-08 全量定值（规则书第 09 章） |
+| 文档 | ✅ | 规则书 v1.1（含 Q-09 移交时机与规则 2.0 命名预设；合并版 `docs/rules-v2-full.md`）+ 需求文档 **v2.0.8-alpha**；Q-01–Q-08 全量定值（规则书第 09 章） |
 | M1–M4 里程碑 | ✅ | M1 规则引擎与数据 · M2 文字闭环（引擎 + visibility + 夜间窗口驱动 + HTTP/Socket.IO）· M3 白天与复盘 + React/Vite 网页前端 · M4 语音与部署（发布竞态修复 + 双设备验收、服务器 + Tunnel + CI 镜像、**M4d** 容器化 E2E、**M4e** 收官报告 `M4_ACCEPTANCE_REPORT.md`，§15） |
 | 增补 v1.2–v1.5 | ✅ | 观战（绑定玩家只读第二屏、语音旁听、复盘同权）· 房主踢人（大厅期移出成员/观战者）· 板子编辑器（只改角色数量 + 实时校验 + 强制实验模式）· 终局退出（释放席位、房主不解散、空房销毁；对局中仍 409） |
 | 文档一致性整理（v1.9） | ✅ | 全仓库 24 个 md 逐项核对（LiveKit 残留、版本号与计数、失效链接、R-54 正文），**无玩法变更** |
@@ -98,7 +107,7 @@ E2E spec 同步：`08-display` 的 601/680/681/844 档按半环断言、600px �
 
 1. 读本文件 + `AGENTS.md`（项目规则与 Docker 约束）即可接上状态。
 2. 规则细节查 `theater_death_rulebook_v1.1.md`（第 09 章 = S3 裁定）；
-   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.7-alpha：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合 · v2.0.2-beta 遗言顺序明文 + 账户显示设置修复 + 文档审计 · v2.0.3-alpha 局内语音音量显示与调节 · v2.0.4-alpha 竞选投票资格修正 + 夜间公开时钟 + 死神知识呈现 + 语音自动化 · v2.0.5-alpha 开局身份揭示 · v2.0.6-alpha 声网语音可靠性收口（媒体回收 / 发布 TTL / 客户端 / 送达回执 / 频道对账）+ 真机验收与鉴权实测 · v2.0.7-alpha 竞选投票阶段本人提示（无资格说明 / 投票回执）+「上警名单 → 竞选名单」重命名 + 团队攻击单按钮 / 点击切换 / 草稿配色昼夜一致修正 / 空目标一律说「空刀」+ 公屏写权限档位（Q-10）+ 白天自由发言阶段（Q-11）+ 座位徽标体系（BadgeStrip / 阵营配色 / 恒定单排 8px / 本人身份徽标）+ 座位「濒死」标记（私有 `private.knowledge.dyingSeats`）+ 大厅与复盘自由开麦（Q-12），见文末版本记录）。
+   工程规格查 `theater_death_development_requirements_v1.1.md`（最新 v2.0.8-alpha（版本推进，内容继承 2.0.7-alpha）：v1.6 声网替换 · v1.7 规则 2.0 与移交时机 · v1.8 账号与 v2 体系准入 · v1.9 文档一致性整理 · v2.0.1-beta 解散与遗弃回收 · v2.0.2-alpha 舞台行动 UX 整合 · v2.0.2-beta 遗言顺序明文 + 账户显示设置修复 + 文档审计 · v2.0.3-alpha 局内语音音量显示与调节 · v2.0.4-alpha 竞选投票资格修正 + 夜间公开时钟 + 死神知识呈现 + 语音自动化 · v2.0.5-alpha 开局身份揭示 · v2.0.6-alpha 声网语音可靠性收口（媒体回收 / 发布 TTL / 客户端 / 送达回执 / 频道对账）+ 真机验收与鉴权实测 · v2.0.7-alpha 竞选投票阶段本人提示（无资格说明 / 投票回执）+「上警名单 → 竞选名单」重命名 + 团队攻击单按钮 / 点击切换 / 草稿配色昼夜一致修正 / 空目标一律说「空刀」+ 公屏写权限档位（Q-10）+ 白天自由发言阶段（Q-11）+ 座位徽标体系（BadgeStrip / 阵营配色 / 恒定单排 8px / 本人身份徽标）+ 座位「濒死」标记（私有 `private.knowledge.dyingSeats`）+ 大厅与复盘自由开麦（Q-12）· v2.0.8-alpha 版本推进，见文末版本记录）。
 3. 历史迁移断点（2026-09-19，PR#3 移植，外部贡献 syhneversigh）：A 组公开知识泄露修复（`visibility/knowledge.ts` 先裁剪后发送）+ `engine/targets.ts` 目标查询 + 加固模块；B 组天理夜死移交时机对齐 R-46/T-40 字面 + 规则 2.0 命名预设 `THEATER_DEATH_13_V2`；D 组账号体系 / `server/rooms.ts` 稳定房间模型 / `server/v2` + `contracts/` + `web-v2/` + `e2e/specs-v2/` 准入，v2 语音改造为声网（uid 稳定映射 + token 权限模型），旧 LiveKit 残留已删除。**入口切换**：镜像默认启动 v2 体系与新前端（`server/index.ts` 分发、`server/legacy-index.ts` + `ENTRY=v1` 回滚、`WEB_ROOT=web-v2/dist`、数据目录 `data-v2`）。
 4. 工作方式：先讲方案、阿真批准后动手；全部构筑/测试/运行在 Docker 容器内；测试必须真实运行，不许只写不跑。
 
@@ -287,7 +296,7 @@ theater_death/
 │           · fixtures/contract-2.1（29 份 JSON 快照 + full-index）
 ├─ e2e/     容器化 Playwright 验收：specs/（v1 入口 10 个：01 冒烟·02 语音·03 越权·04 全流程·05 恢复
 │           · 06 泄漏·07 观战·08 踢人·09 板子编辑器·10 终局退出）
-│           · specs-v2/（v2 入口 33 个：账号·房间·行动·夜行·情报·公屏·复盘·展示·全流程·恢复·特殊行动·治理重连·发布冒烟·账号失败·管理·语音·遗言·语音电平·身份揭示·死亡特效·阶段转场·夜景氛围·发言聚焦·身份能力·竞选名单·舞台亮度·大厅视口·送达回执·竞选投票提示·窄屏 HUD·自由发言·濒死标记·大厅语音）
+│           · specs-v2/（v2 入口 35 个：账号·房间·行动·夜行·情报·公屏·复盘·展示·全流程·恢复·特殊行动·治理重连·发布冒烟·账号失败·管理·语音·遗言·语音电平·身份揭示·死亡特效·阶段转场·夜景氛围·发言聚焦·身份能力·竞选名单·舞台亮度·大厅视口·送达回执·竞选投票提示·窄屏 HUD·自由发言·濒死标记·大厅语音·二阶段飘雪·降临者查验徽标）
 │           · helpers/ 与 helpers-v2/ · capacity.mjs · timeline.mjs · playwright.config.ts / playwright.v2.config.ts
 │           · （配套镜像 deploy/Dockerfile.e2e 与 compose e2e profile）
 ├─ vite.config.ts / vite.v2.config.ts   前端构建配置（产物 web/dist 与 web-v2/dist）
@@ -303,7 +312,7 @@ theater_death/
 - **最近一次全量实测**（2026-10-11，UI 清晰度 P0–P2 合并树上，维护方复核）：容器内 `vitest run` **100 文件 741 例全过**（16.7s）；4 个 typecheck 全过；`tsc -p e2e` 与 main 完全一致（31 条 v1 既有错误、specs-v2 零错误）；新 spec 33/34/35 双浏览器 **20/20**，受影响 05/08/20/24/29 与 01（重启 api 后 2/2）/17 全过；06 第二用例与 12 的 AC09/AC19 为既有问题（main 基线同样失败）。
 - 上一次全量实测（2026-10-02，`2.0.7-alpha` 分支，含本批修复的 Q-11 / Q-12 过期断言）：镜像构建链内 `vitest run` **98 文件 730 例全过**，同批四个 typecheck 与 `build:web` / `build:web:v2` 通过；上一次（2026-09-23，含 v2.0.6-alpha 声网语音可靠性收口）：容器内 `vitest run` **93 文件 643 例全过**（14.6s）；较上一版 603 例新增 40 例（送达回执 / 频道对账 / REST 超时与重试 / 缺凭据降级 / 客户端凭证续期与重连，含维护方补的「无客户凭据不暴露频道查询」1 例）。
 - 更早一次全量实测（2026-09-22，含 v2.0.5-alpha 与 UI 优化批次）：**92 文件 603 例全过**。
-- **当前静态清点**（`it(`/`test(` 正则清点，未跑全量核对）：`tests/` **100 文件 / 741 例**（与全量实跑一致）、`e2e/specs-v2` **36 spec / 116 例**。
+- **当前静态清点**（`it(`/`test(` 正则清点）：`tests/` **102 文件 / 752 例**、`e2e/specs-v2` **38 spec / 124 例**；本批**未跑全量实跑核对**（AGENTS 测试策略：全量回归须用户明确要求），最近一次全量实跑为 2026-10-11 的 **100 文件 741 例**（main `05bb219` 口径）。
 - **2.0.7-alpha 已合并进 main `8560a51`**（保留贡献提交 `8f255ee`）：**全量单测 98 文件 730 例全过**（2026-10-02 镜像构建链内 + 2026-10-03 维护方合并前复核），并**已在本地重建镜像** `ghcr.io/azhen073/theater-death:2.0.7-alpha`（本地标签，**未推送注册表**）；**未部署**；四个 typecheck 全过；新 spec 双浏览器 **24/24**、受影响 spec chromium **16/16**；**未跑全量 E2E / v1 E2E**。
 - **UI 清晰度 P0–P2（#19–#21）已合并进 main `bea75fa`**（stacked 顺序 `034397e` → `b0ebf95` → `bea75fa`，保留贡献提交 tip `823f5d5`）：**全量单测 100 文件 741 例全过**（2026-10-11 维护方实测）+ 4 typecheck + 新 spec 双浏览器 **20/20**；合并后小修：select-tests 补 vote-tally 映射；**未部署**；**未跑全量 E2E / v1 E2E**。
 

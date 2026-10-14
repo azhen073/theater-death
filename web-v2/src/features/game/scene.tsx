@@ -23,6 +23,7 @@ import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
 import { DisplaySettings } from '../account/display-settings.tsx';
 import { PhaseTransition } from './phase-transition.tsx';
+import { SnowfallLayer } from './snowfall-layer.tsx';
 import { VoteTallyCard, VoteTallyLive, VoteProgress } from './vote-tally.tsx';
 import { parseVoteTally } from '../../presentation/vote-tally.ts';
 import { PlayerMarkEditor } from './player-marks.tsx';
@@ -529,6 +530,7 @@ export function GameScene({
         </div>
       )}
       <div className={`game-scene ${view.room.phase === 'playing' && view.public?.phase === 'night' ? 'game-scene--night' : ''}`} hidden={!active || manage}>
+        <SnowfallLayer view={view} active={active && online} />
         <PhaseTransition view={view} enabled={online && active} urgent={revealUrgent} occupied={identityEntryReveal || overlay !== null || manage} />
         <VoteTallyLive view={view} enabled={online && active} hasTask={!!task} occupied={identityEntryReveal || overlay !== null || manage} />
         {active && identityEntryReveal && (
