@@ -115,7 +115,7 @@ test('本人座位：查验过自己时抑制身份徽标；天理 + 查验共�
   expect(own.tones).toEqual(['sheriff', 'spirit']);
 
   const spectator = structuredClone(fixture);
-  spectator.viewer = { ...spectator.viewer, kind: 'public_spectator', readOnly: true };
+  spectator.view.viewer = { ...spectator.view.viewer, kind: 'public_spectator', readOnly: true };
   spectator.view.private = null;
   spectator.view.public!.sheriff = { enabled: true, holderId: null }; // 天理是公开信息，这里只验证私有查验结果不外泄
   await mount(page, spectator);

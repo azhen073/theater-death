@@ -1,12 +1,12 @@
 # theater_death 进度与交接
 
-更新时间：2026-10-10 · 供上下文压缩（compact）后接续工作使用
+更新时间：2026-10-14 · 供上下文压缩（compact）后接续工作使用
 
 ## 当前状态
 
 ### UI 清晰度 P0–P2 三批（#19/#20/#21）已合并（2026-10-11，维护方）
 
-三者为 stacked 依赖（#20 含 #19、#21 含 #20 的全部提交），按序合并进 main：`034397e`（P0）→ `b0ebf95`（P1）→ `bea75fa`（P2），保留贡献提交 tip `823f5d5`；纯 web-v2 前端 + 测试 + 脚本，未改引擎/服务端/契约。维护方复核（合并树上实测）：全量单测 **100 文件 741 例全过**（16.7s）+ 4 typecheck 全过 + `tsc -p e2e` 与 main 完全一致（31 条 v1 既有错误、specs-v2 零错误）+ 新 spec 33/34/35 双浏览器 **20/20** + 受影响 05/08/20/24/29 全过 + 06 第一例 / 17 通过 + 01 重启 api 后 2/2。**既有问题（main 基线同样失败，与本批无关）**：06 第二用例假时钟不推进永远等不到 day；12 的 AC09（hostMemberId 断言）与 AC19（页面加载超时）；E2E 目录 31 条 v1 类型错误；player-marks 模块无单测（仅 E2E 覆盖）。**已核**：票型只读公开事件（`election_result`/`vote_result`，字段与引擎 payload 一致、units/2 票）、本地标记仅 localStorage、死亡特效只读公开死讯、复盘可视化只读授权 DTO、素材 SHA256 与登记一致。合并后小修：select-tests 补 vote-tally 映射；E2E 静态清点 **36 spec / 116 例**。**未跑全量 E2E / v1 E2E；未部署。** 环境坑记录：acceptance 假时钟下限流窗口不自然过期（登录 30 次/60s per IP），密集跑多个真实 spec 后 429 持续生效，需重启 api 重置。
+三者为 stacked 依赖（#20 含 #19、#21 含 #20 的全部提交），按序合并进 main：`034397e`（P0）→ `b0ebf95`（P1）→ `bea75fa`（P2），保留贡献提交 tip `823f5d5`；纯 web-v2 前端 + 测试 + 脚本，未改引擎/服务端/契约。维护方复核（合并树上实测）：全量单测 **100 文件 741 例全过**（16.7s）+ 4 typecheck 全过 + E2E specs-v2 typecheck 10 条既有（2026-10-14 更正补测：20-death-effects 7 / 20-phase-transition 2 / 31-dying-mark 1；**原记「`tsc -p e2e` 与 main 一致（31 条 v1 既有、specs-v2 零错误）」不成立**——test 容器不挂载 `e2e/`，31 条系缺 `@playwright/test` 类型的假错误）+ 新 spec 33/34/35 双浏览器 **20/20** + 受影响 05/08/20/24/29 全过 + 06 第一例 / 17 通过 + 01 重启 api 后 2/2。**既有问题（main 基线同样失败，与本批无关）**：06 第二用例假时钟不推进永远等不到 day；12 的 AC09（hostMemberId 断言）与 AC19（页面加载超时）；E2E specs-v2 既有 10 条类型错误（2026-10-14 补测更正）；player-marks 模块无单测（仅 E2E 覆盖）。**已核**：票型只读公开事件（`election_result`/`vote_result`，字段与引擎 payload 一致、units/2 票）、本地标记仅 localStorage、死亡特效只读公开死讯、复盘可视化只读授权 DTO、素材 SHA256 与登记一致。合并后小修：select-tests 补 vote-tally 映射；E2E 静态清点 **36 spec / 116 例**。**未跑全量 E2E / v1 E2E；未部署。** 环境坑记录：acceptance 假时钟下限流窗口不自然过期（登录 30 次/60s per IP），密集跑多个真实 spec 后 429 持续生效，需重启 api 重置。
 
 ### P2：复盘可视化 / 大厅入座 / 移动端体验（2026-10-10）
 
@@ -42,10 +42,12 @@ E2E spec 同步：`08-display` 的 601/680/681/844 档按半环断言、600px �
 
 复用 P0 的公开中央开票卡与汇总进度条、3 秒全屏昼夜转场、夜间暗色、公开参选/退选角标、本地玩家标记、默认情报页与数字未读提示、退选按钮分组。05/06 测试合并主线新徽标、HUD 与夜间公屏规则，保留精确定位、公屏切换和 Socket 确认/重试竞态修正。验证（2026-10-09，Docker）：相关单测 8 文件 77/77；四项应用 typecheck 与 build:web:v2 通过；05/06 双浏览器 22/22；其余界面回归首轮 63/66，08 的 320px 三列旧断言对齐 main 两列设计后独立 12/12，24 的 WebKit 页签切换一例原样单独复跑通过；三项整合验收 3/3（徽标/本机标记与刷新、复盘阵营与标记同卡、票型与全屏转场），最终去重 91 项均取得通过结果，保留首次失败记录。整页截图与原始报告在工作区 artifacts/pr19-main-integration-20261009/。额外全 E2E typecheck 存在 10 条错误（20-death-effects、20-phase-transition、31-dying-mark），在未修改 main d8ad278 快照上复现同样错误；未在本轮扩改。未跑全量单测/全量 E2E，未部署。
 
-**版本 / 分支**：`2.0.8-alpha`（自 `2.0.7-alpha` 的 tip `8f255ee` 拉出；已推送到 `origin/2.0.8-alpha`（tip `22b9d2c`），并已并入 `origin/main` 的 `05bb219`；**尚未合并进 main**）；上一版 `2.0.7-alpha` 已于 2026-10-02 合并进 `main` `8560a51`（保留贡献提交 `8f255ee`）；UI 优化批次 #9–#16 与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。**UI 清晰度 P0–P2（#19–#21）已于 2026-10-11 合并进 main `bea75fa`**（stacked 顺序 `034397e` → `b0ebf95` → `bea75fa`，保留贡献提交 tip `823f5d5`）。**未部署**。本分支本地 **领先 `origin/2.0.8-alpha`（tip `22b9d2c`）18 笔提交未推送**（2026-10-13 核查），推送与 PR 待用户明确指令。
+**版本 / 分支**：`2.0.8-alpha`（自 `2.0.7-alpha` 的 tip `8f255ee` 拉出；分支已推送到 `origin/2.0.8-alpha`（tip `6fc2c29`），**已于 2026-10-14 合并进 main `5ccc9fb`**（PR #22，保留贡献提交 tip `6fc2c29`））；上一版 `2.0.7-alpha` 已于 2026-10-02 合并进 `main` `8560a51`（保留贡献提交 `8f255ee`）；UI 优化批次 #9–#16 与 v2.0.1-beta–v2.0.6-alpha 均已合并进 main。**UI 清晰度 P0–P2（#19–#21）已于 2026-10-11 合并进 main `bea75fa`**（stacked 顺序 `034397e` → `b0ebf95` → `bea75fa`，保留贡献提交 tip `823f5d5`）。**未部署**；维护方复核与合并小修见下方 2026-10-14 条目。
 
 - **合并后验证（2026-10-12，容器内）**：4 个 typecheck 全过（exit 0）；新 spec `specs-v2/36-snowfall.spec.ts`、`specs-v2/37-check-marks.spec.ts` 双浏览器 **16/16 通过**（20.6s；截图 `test-results-frontend-v2/snowfall-*.png`、`check-marks-*.png`）；受影响回归 05/08/20-death-effects/20-phase-transition/24/29/33-theme/34-death-art 双浏览器 **79 passed / 1 failed**——唯一失败 `[webkit] 20-phase-transition:62` 为批量负载下转场未在 3.4s 内消失，单跑该 spec **16/16 全过**，判为计时偶发。**集成发现并已修**：`37-check-marks` 排版用例原以「整卡 scrollWidth」代替「徽标行溢出」，被 main 的 P1 装饰卡框 `.seat-main::before`（`inset:-1px`、不占布局、`pointer-events:none`）恒定计入 1px 而误报；实测所有座位/四档视口/双引擎均为 1px（含无徽标的对照座位 6 号），关掉该伪元素即归零 → 已改为度量徽标行本身 `row.scrollWidth - row.clientWidth`，原意图（单排、卡片不变高、整页无横向溢出）未放松。**未跑**：全量单测、全量 v2 E2E、v1 E2E、镜像重建、部署；本机 `node_modules` 缺 `sharp`/`ajv`/`agora-rtc-sdk-ng`，typecheck 与测试一律在容器内跑。
-- **390 宽整页截图时序修复（2026-10-13，容器内）**：`e2e/specs-v2/05-information.spec.ts` 的 `seat-badges-mobile-*` 与 `seat-badges-multi-390-*` 两处 390 宽截图紧跟 `setViewportSize` 之后，chromium 的 `fullPage` 捕获会拿到尚未按新布局重排的那一帧（存档图里徽标整枚缺失；webkit 无此问题，DOM 与命中测试始终正常）。新增本地 `settleLayout(page)`（等两级 rAF）并在两处截图前调用；产品代码、断言与其余逻辑未改。**验证**：容器内本 spec 双浏览器 **18/18 通过**（31.2s）；像素计数复验（天理 `#81704C` / 死神 `#8F3B48`）——`seat-badges-mobile-chromium` **0/0 → 329/620**、`seat-badges-multi-390-chromium` **0/0 → 313/635**，与同批 1440 chromium（328/626）及 webkit（1431/2728、1383/2776）同量级。**另核实**：`tsc -p e2e/tsconfig.v2.json`（E2E 镜像内）报 **12 条既有错误**（20-death-effects 7 / 37-check-marks 2 / 20-phase-transition 2 / 31-dying-mark 1），`05-information.spec.ts` **零错误**，与本轮改动无关、未修。**未跑**：全量单测、全量 v2 E2E、v1 E2E、镜像重建、部署。交接文档按用户裁定不入库（关键结论已并入本文件）；`AGENTS.md` 本轮未改动。
+- **390 宽整页截图时序修复（2026-10-13，容器内）**：`e2e/specs-v2/05-information.spec.ts` 的 `seat-badges-mobile-*` 与 `seat-badges-multi-390-*` 两处 390 宽截图紧跟 `setViewportSize` 之后，chromium 的 `fullPage` 捕获会拿到尚未按新布局重排的那一帧（存档图里徽标整枚缺失；webkit 无此问题，DOM 与命中测试始终正常）。新增本地 `settleLayout(page)`（等两级 rAF）并在两处截图前调用；产品代码、断言与其余逻辑未改。**验证**：容器内本 spec 双浏览器 **18/18 通过**（31.2s）；像素计数复验（天理 `#81704C` / 死神 `#8F3B48`）——`seat-badges-mobile-chromium` **0/0 → 329/620**、`seat-badges-multi-390-chromium` **0/0 → 313/635**，与同批 1440 chromium（328/626）及 webkit（1431/2728、1383/2776）同量级。**另核实**：`tsc -p e2e/tsconfig.v2.json`（E2E 镜像内）报 **12 条**＝10 条既有（20-death-effects 7 / 20-phase-transition 2 / 31-dying-mark 1）＋2 条本 PR 新增（37-check-marks 的 `spectator.viewer` 笔误），`05-information.spec.ts` **零错误**；新增的 2 条已由维护方在合并小修修复（修后为 10 条既有）。**未跑**：全量单测、全量 v2 E2E、v1 E2E、镜像重建、部署。交接文档按用户裁定不入库（关键结论已并入本文件）；`AGENTS.md` 在该轮未改动。
+
+- **维护方复核与合并（2026-10-14）**：**已合并进 main `5ccc9fb`**（PR #22，保留贡献提交 tip `6fc2c29`）。复核（容器内）：web-v2 前端套件 **29 文件 254 例全过** + 4 typecheck 全过；E2E `36-snowfall`/`37-check-marks`/`05-information` 双浏览器 **34/34**（55s）；受影响回归 08/20-death-effects/20-phase-transition/24/29/31/33/34 双浏览器 **63 passed / 1 failed**（`[webkit] 20-phase-transition:62` 计时偶发，单跑该 spec **16/16** 全过）；specs-v2 独立 typecheck 12→**10**（修复 37 的 `spectator.viewer` 笔误）。**合并后小修**：37 笔误；更正本文件与 AGENTS 的「tsc -p e2e…specs-v2 零错误」错误记录；目录树 specs-v2 计数 35→38；AGENTS / 需求文档 / README 合并状态同步。**未部署**。
 
 ### 已合并特性（功能 + 实现路径）
 
@@ -65,7 +67,7 @@ E2E spec 同步：`08-display` 的 601/680/681/844 档按半环断言、600px �
 
 - **大厅视口铺满与跨屏缩放**（`feat/lobby-viewport-fit` → main `d04125d`）：仅大厅相位 `max-width:none` + `clamp` 留白（阅读页保留 1280 上限），满高用 `calc(100svh / var(--display-scale, 1))` 补偿根 zoom，不猜测屏幕/DPR。详见 `docs/frontend-v2-lobby-viewport.md`。遗留：真实 Windows 物理双屏拖动未实测（留人工验收）。至此 UI 优化批次（#9–#16，8 个 PR）全部整合进 main。
 
-### 2.0.8-alpha（进行中，贡献 kiahir；基线 `8f255ee`）
+### 2.0.8-alpha（已完成并合并，贡献 kiahir；基线 `8f255ee`；merge `5ccc9fb`，保留贡献提交 tip `6fc2c29`）
 
 - **版本推进起始点**：内容继承 2.0.7-alpha（Q-10 / Q-11 / Q-12 与本批前端收口），该版已于 2026-10-02 合并进 `main`（merge `8560a51`）。
 - **降临者查验徽标（纯前端，2026-10-03）**：降临者二阶段之前查验过的目标，在座位号行显示一枚查验徽标——一阶段「魂灵 / 非魂灵」、二阶段「死神阵营 / 人类阵营」（`features/game/seat-check-marks.ts` 从 `private.events` 的 `descender_check_result` 派生，**一个座位只留最近一次**：先比 `nightNumber`、同夜取后者）。颜色按用户裁定：**魂灵（私有知识徽标与一阶段查验徽标同一色调）与死神阵营统一取死神阵营色 `--faction-death #8f3b48`**（2026-10-04 定稿，替代 2026-10-03 的「统一为魂灵紫」）、人类阵营用身份徽标的人类阵营色 `--faction-human`、非魂灵用灰 `#66717f`；**降临者查验过自己座位时抑制身份徽标**（网格布局座位卡内容宽仅 96.95px，否则「3 字身份 + 天理 + 4 字」必折行）。**徽标尺寸统一（2026-10-04 追加裁定「统一 2/3/4 字的徽标大小」，方案 A+ 微调）**：2 / 3 / 4 字一律 **7px 字号 + 35×12px 盒**（`.badge-strip--sm` 7px、`.badge-strip__item` `min-width:35px; min-height:12px`，4 字不再单独 7px、也不再有 1px 高度差），同时 `.seat-number` 的 `gap` 7 → **4px**；两枚徽标行宽 86px，余量 10.95px（1440）/ 8.66px（390），四档视口均单排、卡片不变高。数据来源纯前端（服务端本就只把该事件发给查验者本人），**不改契约 / 服务端 / 引擎**；公开观众不显示、第二屏同身份徽标口径可见。详见 `docs/frontend-v2-stage-ux.md` §4 / §4.1、单测 `tests/frontend-v2-check-marks.test.ts`、E2E `specs-v2/37-check-marks.spec.ts`、`specs-v2/05-information.spec.ts`。
@@ -296,7 +298,7 @@ theater_death/
 │           · fixtures/contract-2.1（29 份 JSON 快照 + full-index）
 ├─ e2e/     容器化 Playwright 验收：specs/（v1 入口 10 个：01 冒烟·02 语音·03 越权·04 全流程·05 恢复
 │           · 06 泄漏·07 观战·08 踢人·09 板子编辑器·10 终局退出）
-│           · specs-v2/（v2 入口 35 个：账号·房间·行动·夜行·情报·公屏·复盘·展示·全流程·恢复·特殊行动·治理重连·发布冒烟·账号失败·管理·语音·遗言·语音电平·身份揭示·死亡特效·阶段转场·夜景氛围·发言聚焦·身份能力·竞选名单·舞台亮度·大厅视口·送达回执·竞选投票提示·窄屏 HUD·自由发言·濒死标记·大厅语音·二阶段飘雪·降临者查验徽标）
+│           · specs-v2/（v2 入口 38 个：账号·房间·行动·夜行·情报·公屏·复盘·展示·全流程·恢复·特殊行动·治理重连·发布冒烟·账号失败·管理·语音·遗言·语音电平·身份揭示·死亡特效·阶段转场·夜景氛围·发言聚焦·身份能力·竞选名单·舞台亮度·大厅视口·送达回执·竞选投票提示·窄屏 HUD·自由发言·濒死标记·大厅语音·主题·死亡美术·P2 可用性·二阶段飘雪·降临者查验徽标）
 │           · helpers/ 与 helpers-v2/ · capacity.mjs · timeline.mjs · playwright.config.ts / playwright.v2.config.ts
 │           · （配套镜像 deploy/Dockerfile.e2e 与 compose e2e profile）
 ├─ vite.config.ts / vite.v2.config.ts   前端构建配置（产物 web/dist 与 web-v2/dist）
@@ -309,12 +311,13 @@ theater_death/
 ## 测试状态
 
 **头条数字**
-- **最近一次全量实测**（2026-10-11，UI 清晰度 P0–P2 合并树上，维护方复核）：容器内 `vitest run` **100 文件 741 例全过**（16.7s）；4 个 typecheck 全过；`tsc -p e2e` 与 main 完全一致（31 条 v1 既有错误、specs-v2 零错误）；新 spec 33/34/35 双浏览器 **20/20**，受影响 05/08/20/24/29 与 01（重启 api 后 2/2）/17 全过；06 第二用例与 12 的 AC09/AC19 为既有问题（main 基线同样失败）。
+- **最近一次全量实测**（2026-10-11，UI 清晰度 P0–P2 合并树上，维护方复核）：容器内 `vitest run` **100 文件 741 例全过**（16.7s）；4 个 typecheck 全过；E2E specs-v2 typecheck 10 条既有（2026-10-14 更正补测；原记「`tsc -p e2e` 31 条 v1、specs-v2 零错误」不成立——test 容器不挂载 `e2e/`，31 条系缺 `@playwright/test` 的假错误）；新 spec 33/34/35 双浏览器 **20/20**，受影响 05/08/20/24/29 与 01（重启 api 后 2/2）/17 全过；06 第二用例与 12 的 AC09/AC19 为既有问题（main 基线同样失败）。
 - 上一次全量实测（2026-10-02，`2.0.7-alpha` 分支，含本批修复的 Q-11 / Q-12 过期断言）：镜像构建链内 `vitest run` **98 文件 730 例全过**，同批四个 typecheck 与 `build:web` / `build:web:v2` 通过；上一次（2026-09-23，含 v2.0.6-alpha 声网语音可靠性收口）：容器内 `vitest run` **93 文件 643 例全过**（14.6s）；较上一版 603 例新增 40 例（送达回执 / 频道对账 / REST 超时与重试 / 缺凭据降级 / 客户端凭证续期与重连，含维护方补的「无客户凭据不暴露频道查询」1 例）。
 - 更早一次全量实测（2026-09-22，含 v2.0.5-alpha 与 UI 优化批次）：**92 文件 603 例全过**。
 - **当前静态清点**（`it(`/`test(` 正则清点）：`tests/` **102 文件 / 752 例**、`e2e/specs-v2` **38 spec / 124 例**；本批**未跑全量实跑核对**（AGENTS 测试策略：全量回归须用户明确要求），最近一次全量实跑为 2026-10-11 的 **100 文件 741 例**（main `05bb219` 口径）。
 - **2.0.7-alpha 已合并进 main `8560a51`**（保留贡献提交 `8f255ee`）：**全量单测 98 文件 730 例全过**（2026-10-02 镜像构建链内 + 2026-10-03 维护方合并前复核），并**已在本地重建镜像** `ghcr.io/azhen073/theater-death:2.0.7-alpha`（本地标签，**未推送注册表**）；**未部署**；四个 typecheck 全过；新 spec 双浏览器 **24/24**、受影响 spec chromium **16/16**；**未跑全量 E2E / v1 E2E**。
 - **UI 清晰度 P0–P2（#19–#21）已合并进 main `bea75fa`**（stacked 顺序 `034397e` → `b0ebf95` → `bea75fa`，保留贡献提交 tip `823f5d5`）：**全量单测 100 文件 741 例全过**（2026-10-11 维护方实测）+ 4 typecheck + 新 spec 双浏览器 **20/20**；合并后小修：select-tests 补 vote-tally 映射；**未部署**；**未跑全量 E2E / v1 E2E**。
+- **v2.0.8-alpha（#22）已合并进 main `5ccc9fb`**（保留贡献提交 tip `6fc2c29`）：web-v2 前端套件 **29 文件 254 例全过** + 4 typecheck + 新 spec 双浏览器 **34/34**（36/37/05）+ 受影响回归 63 passed / 1 failed（webkit 转场计时偶发，单跑 16/16）+ specs-v2 typecheck 12→10（修复 37 笔误）；**未跑全量单测 / 全量 E2E / v1 E2E；未部署**。
 
 **2.0.7-alpha 增量（容器内，2026-09-23 起；各批均以「还原对照」验证改动有效性）**
 - 竞选投票本人提示：新增 `tests/frontend-v2-election-vote-notes.test.ts`（20 例）；E2E `28-election-vote-notes`（新，双浏览器 10/10）+ `24-election-chat` + `03-actions`。详见 `docs/frontend-v2-election-vote-notes.md`。
