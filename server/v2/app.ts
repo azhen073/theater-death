@@ -16,6 +16,7 @@ import { authRouter, requireAccount, textField, type AccountRevocation } from '.
 import { ApiError } from './errors.ts';
 import { gameView } from './view.ts';
 import { parseCommand } from './parse-command.ts';
+import { designateSpeechRoundIssue, previewSpeechOrder } from '../../engine/day.ts';
 import { RateLimits } from './rate-limit.ts';
 import { V2Media, DELIVERY_STATES, type DeliveryState } from './media.ts';
 import { roomVoiceChannel, roomVoiceIdentity } from './room-voice.ts';
@@ -304,6 +305,19 @@ export function createV2App(deps: V2Deps) {
       const profile = accounts.profileOrNull(subject.userId);
       return { ...p, uid: subject.uid, nickname: subject.nickname, avatarUrl: profile?.avatarUrl ?? null };
     }) } });
+  });
+  router.post('/rooms/:code/speech-order-preview', async (req, res) => {
+    limited(req, 'speech-preview', 30, 2000);
+    const room = roomFor(req); const actorId = player(room, intent(req));
+    const state = room.runtime?.state;
+    if (!state) throw new ApiError(409, 'game_not_started');
+    const startPlayerId = textField(req.body?.startPlayerId, 'start_player_id');
+    const direction = req.body?.direction;
+    if (direction !== 'asc' && direction !== 'desc') throw new ApiError(400, 'invalid_direction');
+    const issue = designateSpeechRoundIssue(state, actorId, startPlayerId, direction);
+    if (issue) throw new ApiError(409, issue.code);
+    const order = previewSpeechOrder(state, startPlayerId, direction);
+    res.json({ speechOrder: order.map(playerId => ({ playerId, seat: state.players.find(player => player.playerId === playerId)!.seat })) });
   });
   router.post('/rooms/:code/command', async (req, res) => {
     limited(req, 'command', 16, 2000);

@@ -152,6 +152,10 @@ function buildSpeechOrder(
   return rotated.map((player) => player.playerId);
 }
 
+export function previewSpeechOrder(state: GameState, startPlayerId: string, direction: 'asc' | 'desc'): readonly string[] {
+  return buildSpeechOrder(state, startPlayerId, direction);
+}
+
 function requireDay(state: GameState): DayContext {
   if (state.phase !== 'day' || state.day === null) {
     throw new Error(`当前阶段 ${state.phase} 不能执行白天行动`);

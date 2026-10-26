@@ -32,6 +32,10 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 
 `POST /api/v2/rooms` 新增**必填**布尔字段 `freeSpeech`（缺失或非布尔返回 400 `invalid_free_speech`；`true`/`false` 都可，没有默认值）。选择「开启」时，冻结规则 `room.config.timersSeconds.freeSpeech = 120`，`RoomSnapshot.room.freeSpeech === true`；选择「不开启」时该键从冻结规则里移除、`room.freeSpeech === false`（1.1 板本来就不带该键）。开启后**每个白天**在**发言轮结束、放逐投票开始之前**插入固定 **120 秒**的阶段：`DayDTO.step === 'free_speech'`，公开窗口 `windows[].id === 'free_speech'`（给全桌倒计时），该阶段**不提前结束**。语音上**全体存活玩家**的 `capabilities.canPublishVoice` 为 `true`（可同时开麦；死者仍为 `false`），`private.voice.delivery` 照常下发（无唯一发言者：聚合按窗口计数，任何发布者自己的回执都不计，见 `docs/frontend-v2-voice.md`）。
 
+## 发言顺序预览
+
+`POST /rooms/{code}/speech-order-preview` 按当前指定发言任务返回 `{speechOrder: [{playerId, seat}]}`，方向取 `asc` 或 `desc`。顺序由引擎统一计算，客户端不再自行排序。
+
 ## 对局外语音与语音范围（2026-09-27 新增，用户裁定 Q-12）
 
 进出对局前后的语音范围统一挂在 `RoomSnapshot.voice`（**必有字段**，语音未启用时为 `null`）：
