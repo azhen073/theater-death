@@ -651,9 +651,9 @@ export function GameScene({
         )}
         {active && overlay?.kind === 'player' && details && (
           <Modal title={`${details.seat}号玩家`} context={context} onClose={() => setOverlay(null)}>
-            <div className="account-profile">
+            <div className="seat-profile">
               <Avatar url={details.avatarUrl} name={details.nickname} size="large" />
-              <div>
+              <div className="seat-profile__details">
                 <h3>{details.nickname}</h3>
                 <p className="muted">UID {details.uid}</p>
                 <p>
