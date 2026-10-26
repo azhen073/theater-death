@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import type { BootstrapDTO, CatalogDTO } from '../../../../contracts/catalog.ts';
+import type { BoardValidationResult, BootstrapDTO, CatalogDTO } from '../../../../contracts/catalog.ts';
 import type { RoleId } from '../../../../rulesets/types.ts';
 import type { PublicChatMode } from '../../../../contracts/v2.ts';
 import type { RoomEntry } from '../../transport/types.ts';
 import { Field, Notice, PageHeading } from '../../components/ui.tsx';
 import { publicChatLabel } from '../../presentation/labels.ts';
-import { ApiFailure } from '../../transport/http.ts';
+import { ApiFailure, errorMessage, post } from '../../transport/http.ts';
 import { useIntent } from '../../transport/intent.ts';
-import { boardIssues, roleTotal } from './configuration.ts';
+import { roleTotal } from './configuration.ts';
 
 export function CreateRoom({ userId, catalog, bootstrap, blocked, loading, onCreated, onExpired, onBack }: {
   userId: string; catalog: CatalogDTO; bootstrap: BootstrapDTO; blocked: boolean; loading: boolean;
@@ -22,11 +22,23 @@ export function CreateRoom({ userId, catalog, bootstrap, blocked, loading, onCre
   const [publicChat, setPublicChat] = useState<PublicChatMode | null>(null);
   // 白天「自由发言」阶段同样必须显式选择（开启/不开启），没有默认值。
   const [freeSpeech, setFreeSpeech] = useState<boolean | null>(null);
+  const [issues, setIssues] = useState<string[]>([]);
+  const [checking, setChecking] = useState(false);
   const operation = useIntent<RoomEntry>(userId, onCreated, error => { if (error instanceof ApiFailure && error.code === 'unauthorized') onExpired(); });
+  useEffect(() => {
+    if (!custom) { setIssues([]); setChecking(false); return; }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      setChecking(true);
+      void post<BoardValidationResult>('/rulesets/validate', { roles, playerCount: count }, controller.signal)
+        .then(result => { if (!controller.signal.aborted) setIssues(result.issues.map(issue => issue.message)); })
+        .catch(error => { if (!controller.signal.aborted) setIssues([errorMessage(error)]); })
+        .finally(() => { if (!controller.signal.aborted) setChecking(false); });
+    }, 200);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [custom, roles, count]);
   if (!preset) return <Notice error>当前没有可创建的版型，请返回首页重新连接。</Notice>;
-  const issues = custom ? boardIssues(roles, catalog) : [];
-  if (custom && count !== roleTotal(roles)) issues.push(`当前角色合计 ${roleTotal(roles)} 人，与设定的 ${count} 人不一致。`);
-  const locked = loading || blocked || operation.busy || operation.unresolved;
+  const locked = loading || blocked || checking || operation.busy || operation.unresolved;
   const reset = () => { setCustom(false); setRoles(structuredClone(preset.config.roles)); setCount(preset.playerCount); };
   const submit = (event: FormEvent) => {
     event.preventDefault(); if (locked || issues.length || publicChat === null || freeSpeech === null) return;

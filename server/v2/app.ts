@@ -8,7 +8,7 @@ import { RequestFingerprintError } from '../receipts.ts';
 import type { VoiceService } from '../../voice/agora.ts';
 import { buildReviewView } from '../../visibility/review.ts';
 import { THEATER_DEATH_13_V2 } from '../../rulesets/theater-death-13-v2.ts';
-import { validateRuleset } from '../../rulesets/validate.ts';
+import { validateBoard } from './ruleset-validation.ts';
 import type { RulesetConfig } from '../../rulesets/types.ts';
 import { AccountStore, type AccountSession } from './account-store.ts';
 import type { RoomAccess } from './access.ts';
@@ -157,6 +157,11 @@ export function createV2App(deps: V2Deps) {
   app.get('/api/v2/catalog', (_req, res) => res.json(catalog()));
   app.get('/healthz', (_req, res) => res.json({ status: 'ok', apiVersion: 2, contractVersion: CONTRACT_VERSION, rulesVersion: '2.0' }));
   app.get('/', (_req, res) => res.json({ service: 'theater-death-v2', api: '/api/v2', contractVersion: CONTRACT_VERSION, ui: 'not-included' }));
+  app.post('/api/v2/rulesets/validate', (req, res) => {
+    if (!limits.allow('ruleset-validate:ip:' + req.ip, 150, 2000)) throw new ApiError(429, 'rate_limited');
+    const ruleset: RulesetConfig = { ...structuredClone(THEATER_DEATH_13_V2), mode: 'experimental', roles: req.body?.roles };
+    res.json(validateBoard(ruleset, req.body?.playerCount));
+  });
   const router = express.Router();
   const session = (req: Request) => requireAccount(accounts, req, deps.cookieName);
   router.use((req, _res, next) => { try { session(req); next(); } catch (error) { next(error); } });
@@ -249,11 +254,11 @@ export function createV2App(deps: V2Deps) {
     const ruleset: RulesetConfig = req.body?.roles === undefined
       ? { ...preset, timersSeconds: timers }
       : { ...preset, timersSeconds: timers, mode: 'experimental', roles: req.body.roles };
-    const validation = validateRuleset(ruleset);
-    if (!validation.ok) throw new ApiError(400, 'invalid_ruleset', validation.issues.map((v) => v.code).join(','));
-    const count = Object.values(ruleset.roles).reduce((a, b) => a + b, 0);
-    if (count > 64) throw new ApiError(400, 'player_limit');
-    if (req.body?.playerCount !== undefined && req.body.playerCount !== count) throw new ApiError(400, 'player_count_mismatch');
+    const validation = validateBoard(ruleset, req.body?.playerCount);
+    if (!validation.ok) {
+      const code = validation.issues.some(issue => issue.code === 'player_limit') ? 'player_limit' : validation.issues.some(issue => issue.code === 'player_count_mismatch') ? 'player_count_mismatch' : 'invalid_ruleset';
+      throw new ApiError(400, code, validation.issues.map((v) => v.code).join(','));
+    }
     const room = await directory.create(s, ruleset, publicChat as PublicChatMode);
     res.status(201).json(entry(room, room.members.get(s.userId)!));
   });

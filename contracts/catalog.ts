@@ -9,6 +9,7 @@ export interface BootstrapDTO {
 }
 export interface RoleAbilityDTO { stage: 1 | 2; summary: string; clauses: string }
 export interface CatalogRoleDTO { roleId: RoleId; name: string; description: string; faction: FactionId; victory: string; abilities: RoleAbilityDTO[] }
+export interface BoardValidationResult { ok: boolean; issues: { code: string; message: string }[] }
 export interface CatalogDTO {
   rulesVersion: '2.0';
   roles: CatalogRoleDTO[];

@@ -328,6 +328,38 @@
         }
       }
     },
+    "/rulesets/validate": {
+      "post": {
+        "summary": "校验实验板子配置",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roles": { "$ref": "#/components/schemas/Roles" },
+                  "playerCount": { "type": "integer" }
+                },
+                "required": ["roles"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "校验完成；ok 表示是否可创建，issues 列出全部问题",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BoardValidationResult" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/rooms": {
       "parameters": [],
       "post": {
@@ -2601,6 +2633,26 @@
           "profileVersion",
           "expiresAt"
         ],
+        "additionalProperties": false
+      },
+      "BoardValidationResult": {
+        "type": "object",
+        "properties": {
+          "ok": { "type": "boolean" },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": { "type": "string" },
+                "message": { "type": "string" }
+              },
+              "required": ["code", "message"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["ok", "issues"],
         "additionalProperties": false
       },
       "Permission": {
