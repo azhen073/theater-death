@@ -5318,6 +5318,9 @@
                 "description": {
                   "type": "string"
                 },
+                "victory": {
+                  "type": "string"
+                },
                 "abilities": {
                   "type": "array",
                   "minItems": 2,
@@ -5352,6 +5355,7 @@
                 "roleId",
                 "name",
                 "description",
+                "victory",
                 "abilities",
                 "faction"
               ],

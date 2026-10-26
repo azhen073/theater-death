@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { CatalogDTO } from '../contracts/catalog.ts';
+import type { RoomSnapshot } from '../contracts/v2.ts';
 import { ROLE_IDS, type RoleId } from '../rulesets/types.ts';
 import { phaseAbility } from '../web-v2/src/features/game/phase-ability-model.ts';
+import { currentOperation, playerRuleChapters } from '../web-v2/src/features/rules/quick-view.tsx';
 
 const catalog = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/catalog-full.json', import.meta.url), 'utf8')) as CatalogDTO;
 function role(roleId: RoleId) {
@@ -30,5 +32,34 @@ describe('phase-specific identity rule summaries', () => {
     expect(phaseAbility(role('laike'), 2).current).toContain('两个分支不叠加');
     expect(phaseAbility(role('spirit'), 2).current).toContain('联合每夜最多两个');
     expect(phaseAbility(role('death'), 2).current).toContain('已死则只读');
+  });
+});
+
+describe('rules quick view', () => {
+  const view = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
+
+  it('offers player chapters without engineering content', () => {
+    const chapters = playerRuleChapters(catalog);
+    expect(chapters).toHaveLength(9);
+    expect(chapters.some(chapter => chapter.id === 'chapter-10')).toBe(false);
+  });
+
+  it('uses authorized tasks and spectator state for current operation hints', () => {
+    expect(currentOperation(view)).toContain('选择守护目标');
+    expect(currentOperation({ ...view, viewer: { ...view.viewer, readOnly: true } })).toEqual(['你正在观战，只能查看当前视角。']);
+  });
+
+  it('uses server voice capability when no action task exists', () => {
+    const next = structuredClone(view);
+    next.tasks = [];
+    next.capabilities.canPublishVoice = true;
+    expect(currentOperation(next)).toEqual(['可以开麦发言']);
+    next.capabilities.canPublishVoice = false;
+    expect(currentOperation(next)).toEqual(['现在不需要你操作']);
+  });
+
+  it('provides victory text from the catalog', () => {
+    expect(role('door').victory).toContain('丧亲者');
+    expect(role('death').victory).toContain('科研员');
   });
 });

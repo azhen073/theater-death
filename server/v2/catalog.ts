@@ -80,13 +80,24 @@ const roleContent: Record<RoleId, { description: string; abilities: { stage: 1 |
     ],
   },
 };
+const victory: Record<RoleId, string> = {
+  laike: '消灭死神与魂灵；丧亲者存活不影响人类获胜。',
+  door: '消灭死神与魂灵；丧亲者存活不影响人类获胜。',
+  water: '消灭死神与魂灵；丧亲者存活不影响人类获胜。',
+  descender: '消灭死神与魂灵；丧亲者存活不影响人类获胜。',
+  researcher: '消灭死神与魂灵；丧亲者存活不影响人类获胜。',
+  civilian: '消灭死神与魂灵；丧亲者存活不影响人类获胜。',
+  death: '消灭科研员，并消灭全部神职或全部平民。',
+  spirit: '消灭科研员，并消灭全部神职或全部平民。',
+  mourner: '消灭科研员，并消灭全部神职或全部平民。',
+};
 const text = readFileSync(new URL('../../docs/rules-v2-full.md', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 const headings = [...text.matchAll(/^## (\d{2})\s+(.+)$/gm)];
 const clauses = new Set([...text.matchAll(/R-(\d{2})｜/g)].map((m) => Number(m[1])));
 if (headings.length !== 10 || Array.from({ length: 54 }, (_, i) => i + 1).some((n) => !clauses.has(n))) throw new Error('Incomplete rules 2.0 catalog');
 const data: CatalogDTO = {
   rulesVersion: '2.0',
-  roles: ROLE_IDS.map((roleId) => ({ roleId, name: ROLE_DEFINITIONS[roleId].displayName, faction: ROLE_DEFINITIONS[roleId].factionId, ...roleContent[roleId] })),
+  roles: ROLE_IDS.map((roleId) => ({ roleId, name: ROLE_DEFINITIONS[roleId].displayName, faction: ROLE_DEFINITIONS[roleId].factionId, ...roleContent[roleId], victory: victory[roleId] })),
   presets: [{ presetId: 'default-13', name: '剧院死神13人正式板', playerCount: 13, config: structuredClone(THEATER_DEATH_13_V2) }],
   constraints: { minPlayers: 5, maxPlayers: 64, repeatableRoleIds: ['spirit', 'civilian'], requiredRoleIds: ['civilian', 'researcher', 'death', 'spirit'], requiresAnyOf: [...DEITY_ROLE_IDS] },
   rulebook: { version: '2.0', title: '《剧院死神》玩家规则书', chapters: headings.map((h, i) => ({ id: `chapter-${h[1]}`, title: `${h[1]} ${h[2]}`, markdown: text.slice(h.index, headings[i + 1]?.index ?? text.length).trim() })) },
