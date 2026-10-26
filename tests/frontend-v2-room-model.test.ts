@@ -8,7 +8,7 @@ import { canManageMember, hostExitDissolves, memberLabel } from '../web-v2/src/f
 import { formatCountdown, publicPhaseLabel } from '../web-v2/src/presentation/labels.ts';
 
 function fixture<T>(name: string): T {
-  return JSON.parse(readFileSync(new URL(`./fixtures/contract-2.1/${name}`, import.meta.url), 'utf8')) as T;
+  return JSON.parse(readFileSync(new URL(`./fixtures/contract-2.2/${name}`, import.meta.url), 'utf8')) as T;
 }
 
 const catalog = fixture<CatalogDTO>('catalog-full.json');

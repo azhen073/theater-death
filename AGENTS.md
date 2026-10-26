@@ -1,95 +1,63 @@
 # theater_death 项目规则
 
-《剧院死神》在线法官：13 人 9 身份社交推理游戏的在线裁判系统。服务端拥有真实状态，纯规则引擎 + Socket.IO 实时 + 两种部署（玩家电脑 / 第三方服务器）。
+《剧院死神》在线法官：13 人、9 身份社交推理游戏的服务端裁决系统。当前工程版本为 `v2.0.8-alpha`，规则版本为 `2.0`，客户端契约为 `2.2`。系统只保留 v2 入口。
 
 ## 必读文档
 
-- `README.md` — 仓库总览与快速上手（安装 / 更新 / 构建命令、版本号约定、部署入口）
-- `PROGRESS.md` — 进度与交接（compact 后接续工作先读这里）
-- `theater_death_rulebook_v1.1.md` — 玩法权威（R-01–R-54，含 S3 裁定第 09 章；默认 1.1 命名预设）
-- `docs/rules-v2-full.md` — 规则 2.0 现行合并版（默认入口支持 v2 命名预设，差异见 `docs/rules-v2.md`）
-- `theater_death_development_requirements_v1.1.md` — 工程规格（F-01–F-10、测试 T-01–T-50、里程碑 M1–M4）
+- `README.md`：项目总览、安装、构建和目录。
+- `PROGRESS.md`：当前状态与交接。
+- `docs/rules-v2-full.md`：现行完整玩法规则。
+- `theater_death_development_requirements.md`：现行工程需求与验收边界。
+- `docs/client-contract-2.2.md`、`docs/openapi-v2.2.json`：当前客户端契约。
 
-## 声网官方文档与核对（2026-09-22）
+## 架构约束
 
-- **唯一官方来源**：`https://doc.shengwang.cn/`（中文站）。`docs.agora.io`、`api-ref.agora.io`、`docs-preview.agora.io`、`docs.agoraio.cn`、`doc-archive.shengwang.cn` 等**一律不算官方来源**，只能当参考；结论必须回到官方站或下面的 MCP Server 复核后才可写进代码/文档。
-- **官方文档 MCP Server**：`https://doc-mcp.shengwang.cn/mcp`（Streamable HTTP，服务名 `MDX Documentation Server`，无需 session id）。三个工具：
-  - `search-docs { query }` — 全文搜索官方文档
-  - `list-docs { category?, limit?, sortBy? }` — 按分类列文档（例：`api-ref/rtc/javascript`，约 68 篇）
-  - `get-doc-content { uri }` — 取正文；URI 形如 `docs://api-reference/rtc/javascript/interfaces/iagorartcclient`、`docs://api-reference//rtc/restful/channel-management/operations/post-dev-v1-kicking-rule`
-- **调用方式**：`curl.exe` / `Invoke-WebRequest` 在本机会因 Schannel 报 `SEC_E_NO_CREDENTIALS`；改用 Node 内置 `fetch` POST JSON-RPC（`initialize` → `tools/list` → `tools/call`）即可，临时脚本用完删除。
-- **已知语料缺口**：REST「查询用户列表 / 查询用户状态」（`channel-management/operations/get-*`）**不在语料里**（`get-doc-content` 返回 not found），且官方站这些页面是 JS 渲染；`kicking-rule` 系列、Web SDK 客户端 API（属性/事件/字段）都在语料中，可直接核对。遇缺口时用浏览器打开官方站对应页人工确认并回填。
-- **纪律**：涉及声网实现的事实（API 名、字段名、错误码、限制、调用时机）**先查 MCP 再写码**，并在文档中标注出处；官方未覆盖的行为不得凭非官方站推断。示例见 `docs/proposal-voice-delivery-observability.md`（逐条标注核对状态）。
+- 先实现纯规则和获批准的预期测试，再接网络与界面。
+- 客户端只能提交意图；身份、权限和结果由服务端解析，不能信任载荷自报。
+- 公共状态、个人历史和阵营历史必须先授权再发送，禁止先发全量再由页面隐藏。
+- 同一角色的多个连接不能增加行动或票数。
+- 引擎为纯函数，不依赖时钟、网络或浏览器；Node.js 直接运行 TypeScript，源码导入带 `.ts` 后缀。
+- 默认使用规则 2.0 和契约 2.2，不再提供 v1 回滚入口。
+- 公屏文字在对局内所有阶段可写，具体权限由建房时选择的 `alive_only` / `everyone` 决定；观众和第二屏只读。
+- 对局内语音按 R-43 和当前阶段授权；大厅与复盘允许正式玩家自由开麦，观众和第二屏只订阅。
+- 一套程序支持电脑和第三方托管，不复制规则引擎。
+- 不擅自扩充服务器灾难恢复、录音、公开匹配和管理员改判。
+- 规则改动必须同步条款引用、测试和当前文档，不能修改正确测试预期来掩盖实现错误。
 
-## 当前进度
+## Docker 约束
 
-- 2026-09-22 公开死亡粒子 + 头像常驻星芒（`feat/public-death-effects`，基线 `b3f5a1e`；**已合并进 main `9b94a65`**，保留贡献提交 `245609e`/`e1ab0f8`）；复用原合图，公开事件驱动，回归撤印，减少动画/关闭特效仍保留文字公告。未部署。详见 `docs/frontend-v2-death-effects-verification.md`。
-- 2026-09-22 公开阶段短转场（UI 1/5，`feat/ui-phase-transitions`，基线 `b3f5a1e`；**已合并进 main `b784995`**，保留贡献提交 `b07116e`/`b98b369`）；只读公开昼夜/轮/阶段，入夜「夜幕降临」、天亮「天光初现」、第二阶段「第二阶段开启」播 2.2s 幕布+时钟转场（复用原素材 + CSS，无新依赖）；`sessionStorage` 按 scope/轮/阶段去重，刷新/重连/后台/紧急行动/弹层/减少动画压制或取消且不补播；同批死讯先留 3.2s 窗口再补播（pending 队列，刷新/离线取消）。维护方整合：解 `scene.tsx` 与 #9 冲突、spec 同步到 #9 文案/时长与公开夹具、素材补 SHA256。未部署。详见 `docs/frontend-v2-phase-transition-verification.md`。
-- 2026-09-22 发言聚焦与可选提示音（UI 3/5，`feat/ui-speech-attention`，基线 `b3f5a1e`；**已合并进 main `4bf179a`**，保留贡献提交 `5b0cd61`）；公开发言者金色高亮 + 原素材光环（`aperture.png`，头像圆形裁切不变）+「准备/正在发言」标签；新增「发言与提醒」条替换旧 `speaker-banner` 发言行（天理投票进度行保留），本人准备期突出 15 秒倒计时与「提前开始发言」；提示音默认关闭、点击解锁、仅本页、刷新复位，公开阶段与本人发言各响一次（`sessionStorage` 去重，重复/重连/后台不补响），解锁失败降级文字提醒；不碰麦克风/autoMic/声网/R-43/服务端命令。维护方整合：解 `stage.tsx` 与 #9 的冲突（光环包在 `seat-avatar` 外层，星芒共存）、素材补 SHA256。未部署。详见 `docs/frontend-v2-speech-attention-verification.md`。
-- 2026-09-22 上警名单与公屏可读性（UI 5/5，`feat/ui-election-chat`，基线 `b3f5a1e`；**已合并进 main `3cf19c9`**，保留贡献提交 `3f0caa7`）；侧栏新增「上警名单」卡（四标签之上常驻可见，报名/退选/重投/结束与当选状态，只用公开候选与公开座位，夜间/复盘不显示）；公屏消息改「N号 · 昵称」+ 字号/行距/历史区高度提升（样式限 `#panel-public`），聊天跟随/未读/分页/草稿逻辑未动。未部署。详见 `docs/frontend-v2-election-chat-verification.md`。
-- 2026-09-22 夜间舞台氛围（UI 2/5，`feat/ui-night-atmosphere`，基线 `b3f5a1e`；**已合并进 main `7c426e5`**，保留贡献提交 `589ca64`/`6bf6adb`/`e89f9fe`）；只读公开夜晚状态叠银蓝夜景（原素材光晕 + 暗角 + 雾与 24 粒飘尘），雾/粒子 5 秒后卸载只留静态层，`sessionStorage` 按房间/局/轮去重（刷新/重连不补播），隐藏/离线/离场/减少动画停止；已为 #15 亮度层预留 `--stage-brightness` 与 `:has(> .stage-backdrop)` 兼容；素材补 SHA256。未部署。详见 `docs/frontend-v2-night-atmosphere-verification.md`。
-- 2026-09-22 分阶段身份能力说明（UI 4/5，`feat/ui-phase-identity`，基线 `b3f5a1e`；**已合并进 main `4d58eb0`**，保留贡献提交 `c894d44`）；九身份 × 两阶段规则摘要（带 R 条款与规则版本，标注「不代表此刻可行动，以服务端舞台任务为准」），只挂授权情报面板与「我的身份」弹窗，观众/错配不显示、第二屏标「当前观察视角」；未改目录合同/玩法/权限/服务端。维护方抽查 R-15/18/19/20/21/25/28 与规则书一致（硬编码文案，后续规则变更需同步）。未部署。详见 `docs/frontend-v2-phase-identity-verification.md`。
-- 2026-09-22 日间舞台加深与账户亮度设置（`feat/account-stage-brightness`，基线 `b3f5a1e`；**已合并进 main `67648d1`**，保留贡献提交 `6bc4fd9`/`985b9df`）；舞台背景改独立 `stage-backdrop` 层（`z-index:-1` + 舞台 `isolation:isolate`），亮度滤镜只作用于布景层；日间遮罩减弱露出剧院纹理；账户「显示与动画」新增 50–130% 亮度滑杆 + 恢复默认（**局内不出现**），偏好 `stageBrightness` 本地保存（clamp/取整/迁移安全），`--stage-brightness` 挂根元素；与 #13 夜景氛围层组合已实测（同值滤镜、单次应用）。未部署。详见 `docs/frontend-v2-stage-brightness.md`。
-- 2026-09-22 大厅视口铺满与跨屏缩放适配（`feat/lobby-viewport-fit`，基线 `b3f5a1e`；**已合并进 main `d04125d`**，保留贡献提交 `fadf762`）；仅大厅相位加 `home-layout--lobby`（`max-width:none` + `clamp` 留白，阅读页保留 1280 上限）；满高用 `calc(100svh / var(--display-scale, 1))` 补偿根 zoom；不猜测屏幕/DPR，以浏览器视口为准。遗留：真实 Windows 物理双屏拖动未实测（留人工验收）。未部署。详见 `docs/frontend-v2-lobby-viewport.md`。
+- 构筑、测试和运行都在 Docker 容器内完成，宿主机不承担 Node.js 等运行时依赖。
+- 开发、测试和生产使用同一镜像。
+- 数据目录、端口、会话秘密和媒体配置通过 Compose 与环境变量注入；镜像不包含真实密钥。
+- 标准构建：`docker compose -f deploy/docker-compose.yml build`。
+- 依赖变化后在容器内更新 `package-lock.json`，不要在宿主机安装项目依赖。
 
-- M1 完成：rulesets 默认板 + 验证器、纯引擎（开局/团队确认/夜晚/晨间/胜负）。
-- M2 完成：夜间窗口驱动、HTTP 会话/房间/命令/聊天、Socket.IO 实时推送。
-- M3a 完成：白天引擎（竞选/发言/放逐/遗言/天理移交/结算）与共享阶段转换块。
-- M3b 完成：白天驱动（窗口排程/命令）与夜→日→夜循环编排。
-- M3c 完成：终局复盘（R-53：全身份/状态/胜负/时间线/含加入前历史的全部交流）。
-- M3d 完成：网页前端（React + Vite，同镜像交付）；创建房间 → 13 人开局 → 昼夜循环 → 终局复盘的浏览器全流程实机验收通过。
-- M4a 完成：规则收尾（实验模式 API + 大厅横幅 + 落盘、T-50/T-17/T-36 测试补齐）；M4c 完成：部署与运行手册（install/start/stop/update 脚本、RUNBOOK）、大厅退出/解散功能、GitHub（公开）仓库 + Actions 构建发布 ghcr 镜像、服务器部署并经外网域名验证。
-- M4b 语音完成（LiveKit：R-43 许可策略、短期凭证与服务端权限同步、前端语音条、compose voice profile、RUNBOOK §7）；**服务器实机双设备验收通过**（发布权限竞态修复：失败自动重试 + 权限事件驱动）。
-- 当前测试基线：603 单测 / 92 测试文件（2026-09-22 全量实测，含 v2.0.5-alpha 与 UI 优化批次）；v2.0.6-alpha 合并后全量 93 文件 643 例（2026-09-23）；**v2.0.7-alpha 合并后全量 98 文件 730 例全过**（2026-10-02 镜像构建链内 + 2026-10-03 维护方合并前复核，含本版修复的 Q-11 / Q-12 两处过期断言）；**UI 清晰度 P0–P2（#19–#21）合并后全量 100 文件 741 例全过**（2026-10-11 维护方实测 16.7s；v2 E2E 静态清点 36 spec / 116 例）；**v2.0.8-alpha（#22）合并后**：web-v2 前端套件 **29 文件 254 例全过** + 新 spec 双浏览器 **34/34**（2026-10-14 维护方实测；静态清点 102 文件 752 例、38 spec 124 例，全量未重跑）。**M4d 完成**：容器化 Playwright E2E（chromium+webkit 全流程、语音组、越权、泄漏、恢复、容量）并修复白天驱动崩溃；**M4e 完成**：收官报告 `M4_ACCEPTANCE_REPORT.md`（§15 格式，属 2026-09-16 时点快照）；**观战（需求 v1.2 增补）完成**：绑定玩家只读第二屏（`tests/spectator.test.ts` + E2E `07-spectator.spec.ts`）；**房主踢人（需求 v1.3 增补）完成**：大厅期移出成员/观战者（`tests/server-api.test.ts` + E2E `08-kick.spec.ts`）；**终局退出（需求 v1.5 增补）完成**：仅终局后可退出（释放席位、房主不解散、空房销毁；对局中仍 409，E2E `10-end-exit.spec.ts`）。E2E 入口：v1 `e2e/specs/`、v2 `e2e/specs-v2/`。**v1.7/v1.8 完成（贡献提案 syhneversigh，阿真确认）**：天理夜死移交时机对齐 + 规则 2.0 命名预设 + 账号体系与 v2 服务端/前端体系准入（`server/v2`、`web-v2`、`contracts/`、`docs/`、`e2e/specs-v2`）；镜像默认入口已切换为新版（`.env` 设 `ENTRY=v1` 可回滚）。**v1.9 完成（贡献提案 kiahir，阿真确认）**：全仓库文档一致性核对（媒体服务残留 / 版本号与计数 / 失效链接 / R-54 正文），无玩法变更。**v2.0.1-beta 完成（贡献提案 kiahir，阿真确认）**：房间解散改为**任意阶段**立即生效（仅房主；对局中终止按 `aborted` 记账）；房主离开语义＝大厅**即解散**、对局中**暂离**、复盘**普通离开**（房间保留、房主由其他在线正式成员继任；非房主一律普通离开）；**大厅里房主的操作只保留「解散房间」**；遗弃房间 **24 小时回收**（v2 按「全员离线」、v1 按「房间无活动」）。遗留动作：服务器更新镜像并改配声网凭据（`git pull` → `.env` 换 `AGORA_*` → `./deploy/update.sh`）。细化计划见 `PROGRESS.md`。
-- 语音关键约束（2026-09-19 起）：服务器语音采用 **声网 Agora 免费层**（App ID / App Certificate 只入 `.env`，不入库；控制台**开启「连麦鉴权」**发布权限控制才生效——**本项目实测未生效、已接受风险（2026-09-21，见下条）：发布权仅由服务端签发/撤回 + 发布 TTL 150 秒兜底**）；R-43 发布权通过短期 token 实现——加入 = 订阅角色（可听不可发），发言 = 服务端下发发布凭证（TTL **150 秒**：覆盖最长 120 秒发言窗口 + 30 秒缓冲）+ 前端 `renewToken` 即时生效，收回 = 订阅凭证即时降权 + TTL 到期兜底；踢人/关房走频道管理 REST（一次性踢出，可立即重进）。上一代 LiveKit 实现与残留已清理（`deploy/livekit*.yaml`、`deploy/frontend-local.ps1` 的 `livekit` 服务、各 compose 的 `LIVEKIT_*` / `VOICE_SERVICE_URL` / `VOICE_ADMIN_URL`）；仅 `docs/openapi-v2.2.json` 的 `/voice/webhook`（`livekitSignature`）与 `server/v2/app.ts` 中未被注入的 `verifyWebhook` 路由仍为历史遗留（**未启用**，待定）。
-- 关于夜间窗口"无事可做提前结束"的提案已讨论并否决：固定时长是防泄露设计（需求明文），不要重新引入。
-- **v2.0.2-alpha 完成（贡献提案 syhneversigh，阿真确认）**：舞台行动 UX 已整合进 main（2026-09-21）：舞台内行动交互与竖屏适配 + 边界修复 + 团队方案“发布并确认本人”单请求原子操作（保留全队逐版确认与固定窗口，R-47 语义不变）。维护方复核后修复环形/文档流判定竞态（加宽后最多约 1.5 秒滞后且浏览器不一致）。未部署。
-- **v2.0.2-beta（已完成；贡献 kiahir）**：分支 `2.0.2-beta`（由 `2.0.2-alpha` 改名，基线 `main` 的 `de68a89`，曾推送 `c5df078`，后随分支改名并入 `2.0.3-alpha`）。遗言复核 + R-45 顺序明文（无行为变更）+ `e2e/specs-v2/17-last-words.spec.ts`；账户「显示与动画」F2/F5 修复（`aria-label`、`display-settings` 定点样式）；md 审计修 md-1/md-2。
-- **v2.0.3-alpha 完成（贡献 kiahir，阿真确认）**：分支自 `2.0.2-beta` 的 tip（`c5df078`）拉出，并**承接了 `2.0.2-beta` 的远端分支名**（远端已改名 `2.0.3-alpha`）；全部提交已整合进 main（`d669426`）。**局内语音音量显示与调节（A+B + 输出/输入增益）**：自己的 5 段电平、当前发言者「N号 正在发言 · X%」（输出静音时显示「已静音」但保留"谁在发言"）、输出音量 0–100 + 一键静音、麦克风增益 0–150（>125 关闭 AGC 并重建采集轨道，重开麦/换设备自动重应用）；纯本地偏好（`localStorage`），受 R-43 时段门控、不上报服务端。维护方复核修复 `08-display.spec.ts` 两处漏更新断言（偏好键集合漏 4 个语音字段、裸 `getByRole('checkbox')` strict 冲突）。未覆盖/未实现：真实媒体需声网凭据未验、座位卡电平环与每玩家音量未做。遗留：F1/F3/F4、P1/P2、`lastWords.firstNight`/`otherNights` 死配置。未部署。
-- **v2.0.4-alpha 完成（竞选投票资格修正 + 夜间公开时钟 + 死神知识呈现 + 语音自动化；阿真确认）**：分支 `2.0.4-alpha`（基线 `3980344`；全部提交已整合进 main，tip `f2005ec`）。**规则变更 R-42**：候选与平票重投的平票者不得投票、无投票人（如全员报名）时本局无天理、退选者在投票开始前退选即恢复投票权；同步 1.1 规则书 + `docs/rules-v2-full.md` + `docs/rules-v2.md`（V2-02）+ 规则目录夹具；引擎新增 `electionVoters`/`electionVoterCount` 与 `vote_forbidden_candidate`，服务端竞选满员判定与 `eligibleCount` 同步（放逐路径不变）。**夜间公开时钟**：`public.night.closesAt` 只给当前夜间段截止（段1=协商、段2=查验、回归段=回归；不含段名/段数），HUD 在无公开窗口时回落显示。**死神知识**：`private.knowledge.spiritSeats`（死神/丧亲者→魂灵，魂灵→其他魂灵，其余空）+ 座位卡「魂灵」私有徽标 + 身份弹窗「已知身份」区块。**语音自动化**：进对局自动加入语音（手动离开后本局不再自动重连；观战/第二屏仍手动旁听；**Q-12 起大厅与复盘也自动加入房间频道，手动离开后本次停留不再自动重连，自动开麦仍只在对局内**）+ 新偏好 `autoMic`（默认开）轮到自己自动开麦（每发言窗口一次、手动关麦不重开）+ `START_SPEECH` 文案改「提前开始发言」。未跑全量、未部署。
-- **v2.0.5-alpha 完成（贡献 syhneversigh，阿真确认；已合并进 main `8ea46ca`，保留贡献提交 `7d4a40a`）**：正式玩家每局首次入场自动展示一次身份卡；`sessionStorage` 按房间/局/玩家去重；观战、第二屏、复盘排除；10 秒内行动优先。当前静态口径 Vitest 89 文件 577 例、v2 E2E 19 spec / 55 例。02 实验房间仍有既有 presence `offline`/`reconnecting` 断言失败，与本需求无关。未跑 E2E 全量，未部署。
-- 构建/测试命令：`docker compose -f deploy/docker-compose.yml build`（构建即跑全部测试）。
-- **v2.0.6-alpha 完成（贡献 kiahir，阿真确认；已合并进 main `20ccd06`，保留贡献提交 `f40a1ee`；原分支 `2.0.4-beta` 于 2026-09-22 改名）**：合并后小修：install.ps1 恢复 BOM、无客户凭据时不暴露 `queryChannelUsers`（对账按 skipped，与 RUNBOOK 一致）。分支自 `main` 的 `9c86a90` 拉出（版本名 = 分支名），并**已合并 `origin/main` 的 `3379726`**（v2.0.5-alpha 开局身份揭示 + UI 优化批次 PR #9–#16）。声网语音审计后的**可靠性收口**（无玩法/契约字段变更）：① `server/v2/media.ts` 踢出改为**成功后才删身份映射**（失败留给下一次 `sync` 重试，逐身份捕获失败，`required` 时抛错映射 `/voice/sync` 503），`enqueue` 队列链**永不 reject**（修掉「`required` 失败后下一次入队的 work 被跳过」）；② `voice/agora.ts` 频道管理 REST 加 `AbortSignal.timeout`（15s）+ 5xx/超时/网络错误退避重试（3 次尝试，250ms→1s），4xx 不重试；③ 发布凭证 TTL **600s → 150s**（最长发言窗口 120s + 30s 缓冲；加入凭证仍 1800s，不影响收听）——「撤销强度」取方案①，方案②（失去发布权即踢 uid）待定案；④ 客户端（v2 `session.ts`/`bar.tsx` + v1 `voice.tsx`）补 `token-privilege-will-expire`/`did-expire`（过期前续期 / 过期后重连并恢复开麦）、autoMic 只在 `connected` 才记窗口键、重连期间开麦按钮禁用 +「重连中…」、`#stopTask` 串行化（关麦立刻重开不双发）、uid 归属与 `exception` 提示、离开复位 `onAutoplayFailed`、设备选择会话内保留；⑤ **端到端送达回执（C）**：`POST /api/v2/rooms/:code/voice/receipt`（限流 60/分 + 成员/对局校验，身份取会话解析、不信任载荷）+ `private.voice.delivery` **只下发给当前发言者**，界面「已送达 N/M」（听众为 0 不显示）；⑥ **频道轮询对账（D，不使用 NCS）**：`queryChannelUsers` + `media.reconcile` 每 5 秒仅对进行中对局比对频道实况，**只踢未知 uid**（听众合法在线，不得误踢），计数经 `ADMIN_PASSWORD` 的 `AdminSummary.voice.reconcile` 暴露；⑦ **发言者本人页面不再显示远端电平**（只留「N号 正在发言」）；⑧ **部署面凭据链补齐**（install 脚本生成 `.env` 补客户 ID/密钥 + `ADMIN_PASSWORD` + `AGORA_REST_BASE_URL`；主 `docker-compose.yml` 与 `compose.v2.release.yml` 均已补齐注入）；⑨ **缺凭据降级不崩**（`VOICE_ENABLED=true` 缺 App ID/证书 → 文字测试模式 + 告警；凭据格式非法仍拒绝启动）与**空 `AGORA_REST_BASE_URL` 修复**（空串会使 REST 变成相对 URL，踢人/关房/对账全废）；⑩ **关房改为「官方调用 + 逐个补踢」**：不带 uid 的踢人规则实测返回 `success/id 0` 却一个人都不踢（静默空操作），补踢后终局/解散才能真正清空频道，残留打 `voice_close_room_incomplete`；对账失败也补打 `voice_reconcile_query_failed <原因>`；方案、出处与逐条官方核对见 `docs/proposal-voice-delivery-observability.md`。**未单独复跑全量**（镜像构建链内含全量单测与四个 typecheck）；仍未验：增益/AGC 听感、`publish_audio` 兜底（未启用）、`16-voice` 对送达行无断言；**踢人/关房真实 REST 与 v1 `02-voice` 已于 2026-09-23 凭据到位后补验通过**（生产要用踢人/关房/对账，`.env` 必须配客户 ID/密钥）。**已知风险（已接受，用户决定 2026-09-21）**：实测并复测本项目**「连麦鉴权」未生效**（声网侧不强制发麦）；缓解 = 服务端签发/撤回（依赖客户端 `renewToken`）+ 发布 TTL 150 秒上限；将来若要强保证，可启用该功能或改用方案②（失去发布权即踢 uid）。仍余 1 条未做：v1 无自动重连且 uid = 座位号（多标签页 `UID_CONFLICT`）。审计 9 项中 **②③④⑤ 已在本版修复**，其余未处理：openapi 的 voice/token 仍是 LiveKit 形态、v1 不回收玩家媒体、文档过期、token 角色/权限位无断言、首次安装 `NODE_ENV` 相冲；见需求文档文末 v2.0.6-alpha 一节。
+## 声网资料核对
 
-- **v2.0.7-alpha 完成（贡献 kiahir，阿真确认；已合并进 main `8560a51`，保留贡献提交 `8f255ee`；分支 `2.0.7-alpha` 已于 2026-10-02 推送到 `origin/2.0.7-alpha`，含 `94e9d57` 断言修复与 `3033b07` 记录同步，基线 `816f904`）**：维护方复核（2026-10-03）：全量 **98 文件 730 例全过** + 4 typecheck + 新 spec 双浏览器 **24/24** + 受影响 spec chromium **16/16**；未跑全量 E2E / v1 E2E；未部署；合并后小修：需求文档「本地，未推送」笔误（不涉代码）。贡献方记录：竞选投票阶段本人提示——无资格者（候选 / 重投平票者 / 死者 / 票权冻结）给出原因，投票后给出「已投给 N号 昵称 / 已弃票」；判定镜像 `engine/day.ts` 的 `submitElectionVoteIssue`（**已退选按 R-42 恢复投票权、不提示**），回执只认当前 `election_vote` 窗口。界面「上警名单」→「竞选名单」。**提示音开关从局内发言条移入账户「显示与动画」**（持久偏好 `attentionSound`，默认关；局内任意手势自动解锁，未解锁时给一行可点兜底）。**团队攻击合并为单按钮**：标签即载荷——未改草稿「同意方案 v(n)」、有目标「发布并确认方案」、本地目标为空「发布并确认空刀」（要空刀先「清空选择」），空刀不再与方案并列（避免误触覆盖队友名单）。**草稿目标配色区分**：座位上「我的选择」＝浅蓝实线、「当前草稿目标」＝浅青虚线 +「草稿」角标（重合＝浅蓝实线 + 浅青环），方案面板给图例、`aria-label` 补「在队伍草稿中」，不靠颜色单独承载信息；**随后修正「我的选择」昼夜不一致**——删除 `night-atmosphere.css` 里把选中态压成淡蓝的夜间覆盖，三态颜色改由 `main.css` 的 `--seat-selected*` / `--seat-draft*` 变量统一定义（座位态规则带 `.theater-stage` 前缀，特异度高于夜间底色规则）；**再按用户裁定整体调浅（2026-09-27）**：描边/光环改用新 token `--seat-selected-line` / `--seat-draft-line`（不承载文字），角标底色用 `--seat-selected` / `--seat-draft`（白字对比度达标）；「不可选」座位日/夜底色分开并整体提升小字对比度。**契约文档维护**：`docs/openapi-v2.2.json` 的 voice/token 改为实现形状 `{appId, channel, uid, token}`、补 `/voice/receipt`、`/voice/webhook` 标 `deprecated`（未挂载），`private.voice.delivery` 抽成共用 `VoiceDelivery`（**审计项 ① 已修**）。**团队刀人目标选择＝点击切换**（再点取消，`maxTargets`＝不同目标数上限）——**界面不再表达"同一目标多刀"**（用户裁定），服务端/引擎/契约未改。**生效文案**：「此刻截止会执行」→「窗口截止将采用」（依据三态判定），**生效版本内容为空时显示「v{n} · 空刀（今晚不出刀）」、无生效版本显示「当前无草稿（空刀）」**（空目标不能显示成「空选择」），并加 `title` 注明以服务端结算为准；**草稿行同口径**（最新草稿为空目标 →「最新草稿 v{n}：空刀」）。**公屏写权限档位（规则 + 契约变更，用户裁定 Q-10）**：公屏文字改为**对局内所有阶段可写**（夜间不再禁发，覆盖 S2 原裁定；夜间语音仍按 R-43 全静音）；房主**建房时必须显式选择**档位、无默认值、创建后不可改——`alive_only`＝仅存活正式玩家可写（死者只读，本人遗言期仍可写）/ `everyone`＝存活与死者全体可写；观众与第二屏任何档位下只读，大厅与复盘不适用。实现：`contracts/v2.ts` 新增 `PUBLIC_CHAT_MODES`/`PublicChatMode` 与 `RoomSnapshot.room.publicChat`、`POST /rooms` 必填校验（缺失或非法 → 400 `invalid_public_chat`）；`visibility/chat.ts` 的 `canPostPublic(state, playerId, policy)` 改三档（`legacy_day_only`＝v1 旧行为默认值 / `alive_only` / `everyone`），经 `server/capabilities.ts` 透传到 v2 快照与聊天路由；`web-v2` 建房表单新增必选「公屏权限」单选（未选不可提交）、大厅「本局规则」与侧栏公屏页签展示档位；**同批把「阵营交流记录」从「情报」页签移到「公屏」页签、排在公屏记录之下**（页签数量与顺序不变，未读圆点改由公屏页签承载 `unread.public + unread.faction`；阵营房成员制与读写权限未变）。**死亡公告横幅定位修正**：`.death-notice` 原写死 `top: 88px`，与高度随宽度/缩放变化的 sticky HUD 冲突（窄屏压住工具行）——改为 `GameScene` 用 `ResizeObserver` + rAF 节流的 `scroll`/`resize` 把 HUD 当前下沿写入 `--hud-bottom`，CSS 用 `top: calc(var(--hud-bottom, 112px) + 8px)`（≤680px 为 HUD 之下全宽条；**非 WebKit 专有**）。**窄屏 HUD 滚动后收成细条（用户选定方案 B）**：≤680px 下滑时 HUD 收成约 44px（只留阶段/倒计时 +「更多」），操作移入「更多」面板，回顶 ≤24px 自动展开（滞回），桌面宽度永不收起（满血两行 HUD 吸附时会盖住一整排座位）；点 HUD 操作前统一先调 `helpers-v2/rooms.ts` 的 `revealHudActions(page)`。**白天「自由发言」阶段（规则变更 Q-11，用户裁定）**：房主**建房时必须显式选择**（`POST /rooms` 必填布尔 `freeSpeech`，缺失/非布尔 → 400 `invalid_free_speech`，冻结在本局规则里）；开启后**每个白天**在**发言轮之后、放逐投票之前**插入固定 **120 秒**（`timersSeconds.freeSpeech = 120`，**不提前结束**），**存活玩家可开麦**（死者仍只能旁听），无「当前发言者」、`autoMic` 不自动开麦，界面按本机远端电平显示「谁在说话」座位光环，并**照常下发送达回执**（多发布者按窗口聚合、发布者自己的回执不计）；新增 `PublicGameDTO.voice.uids`（uid → playerId，供光环归属，不含隐藏信息；**Q-12 起移到顶层 `RoomSnapshot.voice`**）。**1.1 预设与 v1 入口没有该阶段**（正式预设比对忽略这个房主可选键）。**阶段行动卡文案修正（2026-09-27）**：该阶段原只显示通用「本阶段无需操作」（`tasks` 为空），与本阶段唯一动作（开麦）相反 → 新增 `web-v2/src/features/game/free-speech-note.ts` 覆盖：存活「自由发言时间…点击上方语音条开麦发言」、出局「你已出局…只能旁听」；只读视角与其它阶段逐字不变，缺本人私有视图时退回通用文案。详见 `docs/frontend-v2-free-speech.md`。**座位徽标（可复用 BadgeStrip，2026-09-27 用户裁定）**：旧 `.seat-known`/`.seat-sheriff` 的 `writing-mode: vertical-rl` 在容器 Chromium 的 CJK 字体下盒高恒为 0、两字重叠 → 抽出三层可复用件 `presentation/badges.ts`（色调注册表 + 纯函数）、`components/badge-strip.tsx`、`features/game/seat-badges.ts`（顺序固定 **身份 → 天理 → 魂灵**），落点＝座位号行内、多徽标共用底色框按色调等分；身份徽标只在本人座位（第二屏同样显示，公开观众不显示），底色按阵营取 `--faction-human` / `--faction-death`（同一对变量供身份弹窗/开局身份卡/复盘 `.faction-tag`）。**排版定为恒定单排**：`needsStackedRow()` 与 `.seat-number--stacked` 删除（`flex-wrap` 仅兜底），320px 窄屏由 `@media (max-width: 359px)` 两列网格解决。本人座位不再显示「你」（无障碍名补「你的座位」）。**座位左下角「濒死」标记（同日裁定 方案 B/L1/②）**：新增**可选**私有字段 `private.knowledge.dyingSeats`，由 `server/v2/view.ts` 的 `dyingSeatsFor()` 与 `engine/night.ts` 的 `dying_list` 授权逐条对齐（一阶段+夜间+名单已产生+本人在世；降临者全部、水妖仅未用还魂曲者；其余身份/二阶段/白天/本人已死亡/公开视图与观众**省略该字段**）；前端 `web-v2/src/features/game/seat-dying.ts` 只读该字段，左下角渲染白底红字角标，`aria-label` 追加「，濒死」，不改公开 `alive`。详见 `docs/frontend-v2-stage-ux.md` §4（徽标）/ §5（濒死标记）。**进入对局前的大厅与复盘自由开麦（Q-12，2026-09-27 用户裁定，方案甲）**：大厅与复盘不属于对局 → **R-43 只约束对局内，对局内链路一字未改**；**仅正式玩家可发布**、观众与第二屏只订阅、无房主开关、无准备门槛、无送达回执；用户裁定**复盘期间也允许开麦**。因大厅/复盘没有对局期的 `room.access` / `participants` / `gameId` → 新增**独立房间频道** `l_<roomId>`（大厅+复盘共用，对局仍用 `gameId`）：`voice/policy.ts` 新增 `roomVoicePermission`、新文件 `server/v2/room-voice.ts`、`media.ts` 抽 `VoiceScope`（`matchScope`/`roomScope`）、顶层字段 `RoomSnapshot.voice={channel,uids}`（**移除** `PublicGameDTO.voice`；对局内 uid→playerId、房间内 uid→memberId）、`server/v2/stable-room.ts` 的 `startMatch` 关房间频道、`releaseControl` 撤房间身份、对账覆盖双频道、`/voice/token` 的 `gameId` 变可选（非对局相位以服务端为准）；客户端按 `scope` 切频道、`bar.tsx` 三相位渲染但**只有对局内自动开麦**、大厅成员卡「正在说话」光环。详见 `docs/frontend-v2-voice.md` 与需求文档第 17 条。**全量已跑通（2026-10-02，98 文件 730 例，镜像构建链内实测）、镜像已在本地重建（`ghcr.io/azhen073/theater-death:2.0.7-alpha`，本地标签，未推送注册表）、未部署；真实凭据下的大厅互听未验（按 `16-voice` 口径补）。** **v1 入口保持「仅白天」旧行为（已知不对称）**。未做：重投标题、`speechOrder`、候选徽标、进度行 aria、v1 不对称。详见 `docs/frontend-v2-election-vote-notes.md`、`docs/frontend-v2-public-chat-modes.md` 等本批 v2 前端文档；E2E 见 `specs-v2/29-hud-compact.spec.ts`（窄屏 HUD 收起）与 `specs-v2/30-free-speech.spec.ts`（自由发言文案）。
-- **v2.0.8-alpha 完成（贡献 kiahir，阿真确认；PR #22 已合并进 main `5ccc9fb`，保留贡献提交 tip `6fc2c29`；分支 `2.0.8-alpha` 自 `2.0.7-alpha` 的 tip `8f255ee` 拉出）**：**降临者查验徽标（纯前端，2026-10-03）**——降临者查验过的目标在座位号行显示一枚徽标：一阶段按返回「魂灵 / 非魂灵」、二阶段按返回「死神阵营 / 人类阵营」；派生件 `features/game/seat-check-marks.ts` 只读 `private.events` 的 `descender_check_result`（该事件本就只发给查验者本人，服务端已裁剪），**一个座位只留最近一次**（先比 `nightNumber`、同夜取后者）；颜色＝**魂灵（私有知识徽标与一阶段查验徽标同一色调）与死神阵营统一取死神阵营色 `--faction-death #8f3b48`**（2026-10-04 定稿，替代 2026-10-03 的「统一为魂灵紫」）、人类阵营 `--faction-human`（与身份徽标同源）、非魂灵灰 `#66717f`；**降临者查验过自己座位时抑制身份徽标**（用户裁定，网格布局座位卡内容宽仅 96.95px 否则折行）。**徽标尺寸统一（2026-10-04 裁定「统一 2/3/4 字的徽标大小」，方案 A+ 微调）**：2 / 3 / 4 字一律 **7px 字号 + 35×12px 盒**（`.badge-strip--sm` 7px、`.badge-strip__item` `min-width:35px; min-height:12px`，4 字不再单独 7px、也不再有 1px 高度差），`.seat-number` 的 `gap` 7 → **4px**；两枚徽标行宽 86px、余量 10.95px（1440）/ 8.66px（390），四档视口单排、卡片不变高；公开观众不显示、第二屏与身份徽标同口径可见。详见 `docs/frontend-v2-stage-ux.md` §4 / §4.1 与 E2E `specs-v2/37-check-marks.spec.ts`、`specs-v2/05-information.spec.ts`。**二阶段全局飘雪（纯前端装饰，规则 / 契约 / 服务端 / 引擎零改动）**——对局内 `public.stage === 2` 时整页飘雪（白天与夜晚都飘；大厅、复盘、一阶段不出现；观战与第二屏同显），判定在 `presentation/snowfall.ts` 的 `snowActive`；实现为 **DOM + CSS 动画**（`presentation/snowfall.ts` + `features/game/snowfall-layer.tsx` + `styles/snowfall.css`，挂在 `.game-scene`），固定层 `z-index: 4`（在 sticky HUD / 语音条 / 死亡公告之下，弹窗是顶层不受影响）且 `pointer-events: none`。**极简形态**（用户裁定；2026-10-02 三次追加「可适当增大尺寸和密度」→「增加雪粒的密度和大小」→「白天颜色改白一些、透明度适当降低」后为直径 3–6px、不透明度 .12–.34、`clamp(round(area/13000), 45, 150)` 且 ≤680px ×0.6；白天雪粒芯近白 `#eef4fc`）。种子＝`gameId|roomId|dayNumber`（刷新 / 重连 / 推送不重排，换天才换一组），每片 `delay = -random × duration` 使首帧即铺满。**不加独立开关**：跟随账户「动画偏好」——**减少动画整层卸载**（不留静态雪），页面隐藏 / 离线 / 离场同样卸载，返回可见后回来（环境动效，与夜景氛围的一次性雾效刻意不同）。与夜景氛围（舞台内层）叠加无冲突，不受 `--stage-brightness` 影响。详见 `docs/frontend-v2-snowfall.md`、E2E `specs-v2/36-snowfall.spec.ts`。其余内容继承 2.0.7-alpha（Q-10 / Q-11 / Q-12 与本批前端收口）；该版已于 2026-10-02 合并进 `main`（merge `8560a51`，随后 `37dc12c` / `d8ad278` 为维护方文档与 CI 小修），本分支已并入 `origin/main`，向 `main` 发起的 PR 只含 v2.0.8-alpha 自身的提交。**合并后验证（2026-10-12，容器内）**：本分支已再并入 `origin/main` 的 `05bb219`（merge `66648ef`，PR 现含 v2.0.8-alpha 的 18 个提交）；4 个 typecheck 全过；新 spec `specs-v2/36-snowfall.spec.ts`（原 `33-snowfall`，改名避让 main 已占编号）与 `specs-v2/37-check-marks.spec.ts`（原 `34-check-marks`）双浏览器 **16/16 通过**；受影响回归 05/08/20-death-effects/20-phase-transition/24/29/33-theme/34-death-art 双浏览器 **79 passed / 1 failed**（唯一失败 `[webkit] 20-phase-transition:62` 系批量负载下转场未在 3.4s 内消失，单跑该 spec **16/16 全过**，判为计时偶发）；整页截图 **63 张**在 `test-results-frontend-v2/`。**集成发现并已修（`db916ca`）**：`37-check-marks` 排版用例原用「整卡 scrollWidth」代替「徽标行溢出」，被 main 的 P1 装饰卡框 `.seat-main::before`（`inset:-1px`、不占布局、`pointer-events:none`）恒定计入 1px 而误报——实测所有座位/四档视口/双引擎均为 1px（含无徽标的对照座位），关掉该伪元素即归零；改量徽标行本身 `row.scrollWidth - row.clientWidth`，原意图（单排、卡片不变高、整页无横向溢出）未放松。另补 CI 增量映射 `frontend-v2-snowfall` / `frontend-v2-check-marks`（`d96af78`）。**未跑**：全量单测、全量 v2 E2E、v1 E2E、镜像重建与部署；本机 `node_modules` 缺 `sharp`/`ajv`/`agora-rtc-sdk-ng`，typecheck 与测试一律在容器内跑。维护方复核与合并（2026-10-14）：web-v2 前端套件 **29 文件 254 例全过** + 4 typecheck + 新 spec 双浏览器 **34/34**（36/37/05）+ 受影响回归 63 passed / 1 failed（`[webkit] 20-phase-transition:62` 计时偶发，单跑 16/16）+ specs-v2 typecheck 修复 37 的 `spectator.viewer` 笔误（12→10 条既有）；合并后小修：37 笔误 + 记录更正（「tsc -p e2e…specs-v2 零错误」不成立）+ 目录树计数 38。未跑全量单测 / 全量 E2E / v1 E2E；未部署。
-
-- **UI 清晰度 P0–P2 完成（贡献 syhneversigh，阿真确认；PR #19/#20/#21 已按序合并进 main `bea75fa`，保留贡献提交 tip `823f5d5`；三者 stacked：`feat/ui-p0-clarity` → `feat/ui-p1-theme` → `feat/ui-p2-experience`，基线 `d8ad278`）**：**P0**＝公开中央开票卡（只解析 `election_result`/`vote_result` 公开事件、units/2 票、防重播）+ 记录页「查看票型」+ 投票进度条；3 秒全屏昼夜转场（天亮副行显示公开死亡座位/平安夜；「天光初现」→「天亮了」）；夜间全局暗色；座位公开「选/退」参选角标；本地玩家标记（仅 localStorage）；侧栏默认「情报」页 + 数字未读徽章。**P1**＝死亡特效合图分层（avatar-sheet 四区域 + multiply 白底 + 程序兜底；`frames/death|human.png` 生死卡框为不占布局的装饰伪元素）；全局暗色主题 `theme: system/light/dark`（旧存档迁移安全；玩家/管理员入口均应用）。**P2**＝复盘谢幕座位图 + 身份卡立绘名册 + 时间线轮次锚点/票型卡/死讯徽标；大厅入座预览（纯视觉、明示不代表开局座位）；601–900px 竖屏双排半环（几何单测锁定不重叠）+ ≤900px 底部固定页签（软键盘收起、不复制 DOM）+ HUD 菜单 Esc/外点关闭。维护方复核（2026-10-11）：全量 **100 文件 741 例全过** + 4 typecheck + E2E specs-v2 typecheck 10 条既有（2026-10-14 更正补测；**原记「`tsc -p e2e` 与 main 一致（31 条 v1 既有、specs-v2 零错误）」不成立**——test 容器不挂载 `e2e/`，31 条系缺 `@playwright/test` 类型的假错误）+ 新 spec 双浏览器 **20/20** + 受影响 spec 全过（06 第二用例与 12 的 AC09/AC19 为既有问题，main 基线同样失败）+ 素材 SHA256 实测一致；合并后小修：select-tests 补 vote-tally 映射。未跑全量 E2E / v1 E2E；未部署。详见 `PROGRESS.md`。
-
-## 裁定状态
-
-- Q-01–Q-08 已全量定值（规则书第 09 章），不得用传统狼人杀惯例改写；发现新边界问题重新开号并走版本记录。
-- **Q-09**（2026-09-19，夜死天理移交时机）与 **Q-10**（2026-09-23，公屏写权限档位：对局内全阶段可写，房主建房时在 `alive_only` / `everyone` 间显式选择、无默认值；**覆盖 S2 的「夜间公屏禁发」原裁定**；v1 入口维持旧行为）见规则书第 09 章与 `docs/rules-v2.md` V2-05。夜间语音不受影响（R-43 仍全体静音）。
-- **Q-11**（2026-09-23，白天「自由发言」阶段）：规则 2.0 新增**可选**阶段，房主建房时显式选择开关（无默认值）；开启后每个白天在**发言轮之后、放逐投票之前**插入固定 **120 秒**，存活玩家可开麦、不提前结束、**照常下发送达回执**、界面按远端电平显示「谁在说话」。见规则书第 09 章与 `docs/rules-v2.md` V2-06；1.1 预设与 v1 入口没有该阶段。
-- **Q-12**（2026-09-27，进入对局前的大厅与复盘自由开麦）：二者不属于对局，R-43 只管对局内（**对局内口径未改**）；**仅正式玩家**可发布、观众与第二屏只订阅、无房主开关、无准备门槛、无送达回执；用**独立房间频道** `l_<roomId>`（对局仍 `gameId`），开局关房间频道、终局回房间频道。见规则书第 09 章与 `docs/rules-v2.md` V2-07；1.1 预设与 v1 入口不实现（v1 仍 409）。
-- 玩法规则、实现约定、实验默认值必须明确分开；实验模式配置必须在大厅醒目提示，不得冒充正式功能。
-- 房主是**房间管理角色**（不是玩法角色）：继任/移交只看「正式成员 + 在线且有连接 + 会话有效」，**不限游戏内生死**——已出局的正式成员同样可以继任房主，因此也能解散房间 / 踢人 / 移交。该行为经阿真确认保留，**不要重新引入"死者不接任"**。无人在线时房主为空、房主类按钮全部隐藏。
-
-## Docker 约束（阿真要求，2026-09-16）
-
-- 全部构筑与运行在 Docker 容器内完成，与宿主机真实环境隔离，保证可迁移。
-- 开发、测试、生产共用同一镜像；宿主机不承担运行时依赖（除 Docker 本身）。
-- 数据目录、端口、会话秘密、媒体配置通过 compose 与 `.env` 注入；镜像内不含真实密钥。
-- 交付物包含 Dockerfile、compose 编排与基础镜像版本锁定。
+涉及声网实现的事实必须先在 `https://doc.shengwang.cn/` 或其官方文档 MCP Server 核对。其他域名只能作为参考，不能作为实施依据。官方未覆盖的行为不得凭非官方资料推断。
 
 ## 协作约束
 
-- 先写纯规则和获批准的预期测试，再接网络与界面。
-- 客户端只能提交意图，身份由服务端会话解析，不能信任载荷自报。
-- 公共状态、个人历史、阵营历史都必须先授权后发送；不能先发全量再用页面隐藏。
-- 同一角色的多个连接不能增加行动或票数。
-- 对局内只做公共白天语音、夜间语音全体静音（R-43）；大厅与复盘不属于对局，正式玩家可自由开麦（Q-12），观众与第二屏只订阅。公屏文字自 2026-09-23（Q-10）起改为**对局内所有阶段可写**，写权限档位由房主建房时显式选定（`alive_only`＝仅存活正式玩家 / `everyone`＝存活与死者全体，无默认值、创建后不可改）；观众与第二屏任何档位下只读；死者阵营房只读。
-- 一套程序支持电脑和第三方托管，不复制规则引擎。
-- 不擅自扩充服务器灾难恢复、录音、公开匹配和管理员改判。
-- 所有规则改动须更新条款引用、测试及版本记录。
-- 报告真实执行命令与结果；未运行、未覆盖必须标明。
-- 不能修改正确测试预期来掩盖实现不符合规则。
-- **未经用户明确的、直接的指令，不得 push 到 GitHub 远端仓库**（含 `origin` / `fork`，以及新建、改名、删除远端分支或开 PR）。本地 `commit` 可以照常做；`git fetch` 等只读远端操作不受限制。
+- 改代码前先说明方案，得到用户同意后实施。
+- 未经用户明确、直接的指令，不得 push 到任何 GitHub 远程仓库，也不得新建、改名、删除远程分支或创建 PR。
+- 本地 commit 可以按用户要求执行。
+- 报告真实执行的命令和结果；未运行、未覆盖的项目必须明确说明。
 
-## 测试策略（阿真要求，2026-09-17）
+## 测试策略
 
-- **默认只跑增量测试**：改动后只跑相关单测文件（`npx vitest run tests/xxx.test.ts`）与相关 E2E spec（`npx playwright test specs/0x-xxx.spec.ts`）。
-- **全量回归（全部单测 + 全量 E2E）只在阿真明确要求时运行**；不要"顺手"跑全量，测试慢、等待成本高。
-- 例外：构建 app 镜像时 Docker 构建链内部会跑全部单测（构建必要部分，不算违规）；纯文档/只读研究不必跑测试。
-- 汇报时要如实写明跑了哪些、没跑哪些。
-- **测试后提供关键截图（全屏）**：跑完测试（增量或全量）后，把本次改动涉及的关键界面 / 状态用**全屏截图**呈现——Playwright 用 `page.screenshot({ fullPage: true })`（整页可见），**不要只截元素局部、也不要只截视口**——并在汇报里给出文件路径（`present` 展示或附在汇报里）。截图属测试产物，不入源码交付；若无法截图或未截，必须说明原因。
+- 默认只跑与改动相关的 Vitest 文件和 Playwright spec，不顺手运行全量 E2E。
+- 全量回归只在用户明确要求时运行；标准 Docker 镜像构建链内的全量单元测试属于构建必要步骤。
+- 纯文档或只读研究不必运行测试。
+- 增量测试示例：
+
+  ```bash
+  docker compose -f deploy/compose.frontend.yml run --rm test node scripts/test-incremental.mjs tests/xxx.test.ts
+  ```
+
+- v2 E2E 示例：
+
+  ```bash
+  docker compose -f deploy/compose.frontend-acceptance.yml --profile acceptance run --rm browser npx playwright test --config=playwright.v2.config.ts specs-v2/xxx.spec.ts
+  ```
+
+- 浏览器测试后提供本次改动涉及界面或状态的整页截图，使用 `page.screenshot({ fullPage: true })`。截图是测试产物，不入源码；无法截图时必须说明。

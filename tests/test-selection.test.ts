@@ -34,17 +34,14 @@ describe('incremental test selector', () => {
       'tests/contract-http-lifecycle.test.ts', 'tests/command-receipts-api.test.ts', 'tests/contract-knowledge-api.test.ts',
       'tests/v2-api.test.ts', 'tests/contract-openapi.test.ts', 'tests/contract-client-example.test.ts', 'tests/contract-release-flow.test.ts',
     ]);
-    expect(selected('tests/server-test-utils.ts')).toEqual([
-      'tests/server-api.test.ts', 'tests/realtime.test.ts', 'tests/spectator.test.ts', 'tests/review.test.ts', 'tests/voice-api.test.ts',
-    ]);
     expect(selected('tests/helpers.ts')).toContain('tests/contract-snapshots.test.ts');
     expect(selected('tests/helpers.ts')).toContain('tests/visibility.test.ts');
   });
 
-  it('maps the legacy v1 entry and web-v2 sources to their reviewed suites', () => {
-    expect(selected('server/legacy-index.ts')).toEqual([
-      'tests/server-api.test.ts', 'tests/realtime.test.ts', 'tests/spectator.test.ts', 'tests/capabilities.test.ts',
-      'tests/receipts.test.ts', 'tests/v2-api.test.ts', 'tests/v2-maintenance.test.ts',
+  it('maps shared server and web-v2 sources to their reviewed suites', () => {
+    expect(selected('server/realtime.ts')).toEqual([
+      'tests/capabilities.test.ts', 'tests/receipts.test.ts', 'tests/v2-api.test.ts',
+      'tests/v2-maintenance.test.ts', 'tests/smoke.test.ts',
     ]);
     const frontend = selected('web-v2/src/features/room/policy.ts');
     expect(frontend).toContain('tests/frontend-v2-room-model.test.ts');
@@ -94,7 +91,6 @@ describe('incremental test selector', () => {
     expect(selected('tests/frontend-v2-acceptance-server.ts')).toEqual(['tests/smoke.test.ts']);
     expect(selected('tests/frontend-v2-game-harness.tsx')).toEqual(['tests/smoke.test.ts']);
     expect(selected('tests/deploy-frontend-local.tests.ps1')).toEqual(['tests/smoke.test.ts']);
-    expect(selected('vite.config.ts')).toEqual(['tests/smoke.test.ts']);
     expect(selected('vite.v2.config.ts')).toEqual(['tests/smoke.test.ts']);
   });
 
@@ -128,7 +124,7 @@ describe('incremental test selector', () => {
   });
 
   it('prints the ordinary no-selection message for ordinary documentation', () => {
-    const result = select('docs/client-contract-2.1.md');
+    const result = select('docs/client-contract-2.2.md');
     expect(result.status).toBe(0);
     expect(result.stdout.trim()).toBe('No backend runtime change; no tests selected.');
     expect(() => JSON.parse(result.stdout)).toThrow();

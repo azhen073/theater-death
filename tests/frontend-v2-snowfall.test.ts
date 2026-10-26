@@ -6,7 +6,7 @@ import {
 } from '../web-v2/src/presentation/snowfall.ts';
 
 function baseline(): RoomSnapshot {
-  return JSON.parse(readFileSync('tests/fixtures/contract-2.1/night-spirit-full.json', 'utf8')) as RoomSnapshot;
+  return JSON.parse(readFileSync('tests/fixtures/contract-2.2/night-spirit-full.json', 'utf8')) as RoomSnapshot;
 }
 
 describe('stage 2 snowfall scope', () => {

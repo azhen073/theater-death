@@ -4,7 +4,7 @@ import type { RoomSnapshot } from '../contracts/v2.ts';
 import { DeathEffectsTracker, DEATH_ART_REGIONS, DEATH_EFFECT_MS, particleCount, makeParticles } from '../web-v2/src/presentation/death-effects.ts';
 
 function baseline(): RoomSnapshot {
-  const view = JSON.parse(readFileSync('tests/fixtures/contract-2.1/night-door-full.json', 'utf8')) as RoomSnapshot;
+  const view = JSON.parse(readFileSync('tests/fixtures/contract-2.2/night-door-full.json', 'utf8')) as RoomSnapshot;
   view.public!.events = [];
   view.public!.seats.forEach(seat => { seat.alive = true; });
   return view;

@@ -7,7 +7,7 @@ import { factionKey, factionLabel } from '../web-v2/src/presentation/faction.ts'
 import { seatBadges } from '../web-v2/src/features/game/seat-badges.ts';
 
 function fixture<T>(name: string): T {
-  return JSON.parse(readFileSync(new URL(`./fixtures/contract-2.1/${name}`, import.meta.url), 'utf8')) as T;
+  return JSON.parse(readFileSync(new URL(`./fixtures/contract-2.2/${name}`, import.meta.url), 'utf8')) as T;
 }
 
 const base = fixture<RoomSnapshot>('night-spirit-full.json');

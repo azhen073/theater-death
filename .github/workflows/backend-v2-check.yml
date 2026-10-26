@@ -1,7 +1,7 @@
 name: backend-v2-incremental
 on:
   pull_request:
-    branches: [main, backend/v2, backend/client-contract-2.1]
+    branches: [main]
 permissions:
   contents: read
 jobs:

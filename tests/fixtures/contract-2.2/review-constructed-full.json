@@ -1,0 +1,425 @@
+{
+  "review": {
+    "gameId": "g_64b73c3a1dffb2a1ec72305110dd5fe3",
+    "winner": "human",
+    "reason": "constructed_contract_review",
+    "endedAtDay": 1,
+    "players": [
+      {
+        "playerId": "p_1566334a866673f3",
+        "seat": 1,
+        "roleId": "civilian",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000010",
+        "nickname": "httpuserj",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_9c309287faf48f4f",
+        "seat": 2,
+        "roleId": "laike",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000008",
+        "nickname": "httpuserh",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_b8d19a2cdeb779d0",
+        "seat": 3,
+        "roleId": "civilian",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000001",
+        "nickname": "httpusera",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_bf7b6929af2f78c7",
+        "seat": 4,
+        "roleId": "death",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000012",
+        "nickname": "httpuserl",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_e27b8ec9cccef85c",
+        "seat": 5,
+        "roleId": "researcher",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000004",
+        "nickname": "httpuserd",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_4351ee9b08d3c464",
+        "seat": 6,
+        "roleId": "civilian",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000005",
+        "nickname": "httpusere",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_57d8a74967206b43",
+        "seat": 7,
+        "roleId": "spirit",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000003",
+        "nickname": "httpuserc",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_8cf5542448df6993",
+        "seat": 8,
+        "roleId": "descender",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000007",
+        "nickname": "httpuserg",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_54ef23db483e276c",
+        "seat": 9,
+        "roleId": "mourner",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000011",
+        "nickname": "httpuserk",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_56be6043fc2cc3c2",
+        "seat": 10,
+        "roleId": "door",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000013",
+        "nickname": "httpuserm",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_c912ab6e937e8969",
+        "seat": 11,
+        "roleId": "civilian",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000002",
+        "nickname": "httpuserb",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_7ceb0382c441093c",
+        "seat": 12,
+        "roleId": "water",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000009",
+        "nickname": "httpuseri",
+        "avatarUrl": null
+      },
+      {
+        "playerId": "p_d2f3f33b59850d2f",
+        "seat": 13,
+        "roleId": "spirit",
+        "life": "alive",
+        "revealed": false,
+        "uid": "10000006",
+        "nickname": "httpuserf",
+        "avatarUrl": null
+      }
+    ],
+    "timeline": [
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "game_started",
+        "payload": {
+          "dayNumber": 1,
+          "seats": [
+            {
+              "playerId": "p_1566334a866673f3",
+              "nickname": "httpuserj",
+              "seat": 1
+            },
+            {
+              "playerId": "p_9c309287faf48f4f",
+              "nickname": "httpuserh",
+              "seat": 2
+            },
+            {
+              "playerId": "p_b8d19a2cdeb779d0",
+              "nickname": "httpusera",
+              "seat": 3
+            },
+            {
+              "playerId": "p_bf7b6929af2f78c7",
+              "nickname": "httpuserl",
+              "seat": 4
+            },
+            {
+              "playerId": "p_e27b8ec9cccef85c",
+              "nickname": "httpuserd",
+              "seat": 5
+            },
+            {
+              "playerId": "p_4351ee9b08d3c464",
+              "nickname": "httpusere",
+              "seat": 6
+            },
+            {
+              "playerId": "p_57d8a74967206b43",
+              "nickname": "httpuserc",
+              "seat": 7
+            },
+            {
+              "playerId": "p_8cf5542448df6993",
+              "nickname": "httpuserg",
+              "seat": 8
+            },
+            {
+              "playerId": "p_54ef23db483e276c",
+              "nickname": "httpuserk",
+              "seat": 9
+            },
+            {
+              "playerId": "p_56be6043fc2cc3c2",
+              "nickname": "httpuserm",
+              "seat": 10
+            },
+            {
+              "playerId": "p_c912ab6e937e8969",
+              "nickname": "httpuserb",
+              "seat": 11
+            },
+            {
+              "playerId": "p_7ceb0382c441093c",
+              "nickname": "httpuseri",
+              "seat": 12
+            },
+            {
+              "playerId": "p_d2f3f33b59850d2f",
+              "nickname": "httpuserf",
+              "seat": 13
+            }
+          ]
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_1566334a866673f3",
+          "roleId": "civilian"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_9c309287faf48f4f",
+          "roleId": "laike"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_b8d19a2cdeb779d0",
+          "roleId": "civilian"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_bf7b6929af2f78c7",
+          "roleId": "death"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_e27b8ec9cccef85c",
+          "roleId": "researcher"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_4351ee9b08d3c464",
+          "roleId": "civilian"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_57d8a74967206b43",
+          "roleId": "spirit"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_8cf5542448df6993",
+          "roleId": "descender"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_54ef23db483e276c",
+          "roleId": "mourner"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_56be6043fc2cc3c2",
+          "roleId": "door"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_c912ab6e937e8969",
+          "roleId": "civilian"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_7ceb0382c441093c",
+          "roleId": "water"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "role_assigned",
+        "payload": {
+          "playerId": "p_d2f3f33b59850d2f",
+          "roleId": "spirit"
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "spirit_knowledge",
+        "payload": {
+          "seats": [
+            7,
+            13
+          ]
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "faction_room_created",
+        "payload": {
+          "roomId": "faction_room",
+          "memberSeats": [
+            7,
+            13
+          ]
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "night_started",
+        "payload": {
+          "nightNumber": 1,
+          "stage": 1
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "attack_events",
+        "payload": {
+          "nightNumber": 1,
+          "attacks": []
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "dying_list",
+        "payload": {
+          "nightNumber": 1,
+          "seats": []
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "rescue_declined",
+        "payload": {
+          "nightNumber": 1
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "night_deaths_confirmed",
+        "payload": {
+          "nightNumber": 1,
+          "deaths": []
+        }
+      },
+      {
+        "dayNumber": 1,
+        "stage": 1,
+        "type": "election_started",
+        "payload": {
+          "phase": "signup"
+        }
+      }
+    ],
+    "chat": {
+      "public": [
+        {
+          "id": 1,
+          "messageId": "480634a7-713b-4dd4-a248-e0acc0c67e24",
+          "senderId": "p_56be6043fc2cc3c2",
+          "senderSeat": 10,
+          "text": "contract message",
+          "at": 91000
+        }
+      ],
+      "faction": []
+    },
+    "startedAt": 1000,
+    "endedAt": 91000,
+    "durationMs": 90000
+  }
+}

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { acceptProfile, SnapshotCursor, controlEffect } from '../web-v2/src/state/snapshot.ts';
 import type { ControlReason, Profile, RoomSnapshot } from '../contracts/v2.ts';
 
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.2/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
 
 function snapshot(): RoomSnapshot {
   return structuredClone(fixture);

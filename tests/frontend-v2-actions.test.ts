@@ -4,7 +4,7 @@ import type { CommandAction, CommandIntent, RoomSnapshot, TargetSelection, TaskD
 import { COMMAND_ACTIONS } from '../contracts/v2.ts';
 import { actionIssue, commandIntent, currentTask, emptyDraft, proposalEditAndConfirmIntent, selectionIssue, speechPreview, targetActions, taskKey, updateSelection } from '../web-v2/src/features/actions/model.ts';
 
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.2/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
 
 function viewCopy(): RoomSnapshot {
   return structuredClone(fixture);

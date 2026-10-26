@@ -4,7 +4,7 @@ import type { ChatMessageDTO, RoomSnapshot } from '../contracts/v2.ts';
 import { ApiFailure } from '../web-v2/src/transport/http.ts';
 import { CHAT_MAX_LENGTH, ChatTracker, canPost, chatMessages, chatTextIssue } from '../web-v2/src/features/chat/model.ts';
 
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.2/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
 
 function viewCopy(): RoomSnapshot {
   const view = structuredClone(fixture);

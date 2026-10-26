@@ -4,7 +4,7 @@ import type { CommandIntent, CommandReceipt, ReceiptLookup, RoomSnapshot } from 
 import { ApiFailure } from '../web-v2/src/transport/http.ts';
 import { CommandTracker } from '../web-v2/src/features/actions/commands.ts';
 
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
+const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.2/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
 
 function viewCopy(): RoomSnapshot {
   const view = structuredClone(fixture);

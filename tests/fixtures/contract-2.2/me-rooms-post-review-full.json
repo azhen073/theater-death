@@ -1,0 +1,18 @@
+{
+  "currentRoomId": "r_8901ef2071599b83e578eadd303ed80c",
+  "rooms": [
+    {
+      "roomId": "r_8901ef2071599b83e578eadd303ed80c",
+      "roomCode": "RNSTL7",
+      "gameId": null,
+      "phase": "lobby",
+      "memberId": "m_1c83593a2c85aba1c904b5be6700bb34",
+      "kind": "formal",
+      "playerId": null,
+      "activeHere": true,
+      "controlling": true,
+      "canRecover": false,
+      "requiresTakeover": false
+    }
+  ]
+}

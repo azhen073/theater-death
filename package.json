@@ -8,8 +8,6 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "typecheck:web": "tsc --noEmit -p web",
-    "build:web": "vite build",
     "dev:web:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
     "typecheck:web:v2": "tsc --noEmit -p web-v2",
     "typecheck:web:v2-tests": "tsc --noEmit -p web-v2/tsconfig.browser-tests.json",
@@ -21,7 +19,6 @@
   "dependencies": {
     "agora-rtc-sdk-ng": "^4.24.8",
     "agora-token": "^2.0.6",
-    "cookie-parser": "^1.4.7",
     "express": "^5.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -29,7 +26,6 @@
     "socket.io": "^4.8.0"
   },
   "devDependencies": {
-    "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.0",
     "@types/node": "^24.13.4",
     "@types/react": "^19.3.0",

@@ -54,7 +54,7 @@ services:
       - ../e2e/helpers-v2:/e2e/helpers-v2:ro
       - ../e2e/playwright.v2.config.ts:/e2e/playwright.v2.config.ts:ro
       - ../e2e/tsconfig.v2.json:/e2e/tsconfig.v2.json:ro
-      - ../tests/fixtures/contract-2.1:/contract-fixtures:ro
+      - ../tests/fixtures/contract-2.2:/contract-fixtures:ro
       - ../contracts:/contracts:ro
       - ../rulesets:/rulesets:ro
       - ../test-results-frontend-v2:/results

@@ -17,7 +17,7 @@ services:
       PORT: 3000
       DATA_DIR: /app/data-v2
       PUBLIC_BASE_URL: http://localhost:3003
-      ACCOUNT_COOKIE_NAME: td_account_contract_21
+      ACCOUNT_COOKIE_NAME: td_account_contract_22
       VOICE_ENABLED: "false"
     volumes:
-      - ../data-contract-2.1:/app/data-v2
+      - ../data-contract-2.2:/app/data-v2

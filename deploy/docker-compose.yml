@@ -13,8 +13,6 @@ services:
       PORT: "3000"
       # 默认生产；本地以 http 调试（PUBLIC_BASE_URL 为 http）时设 NODE_ENV=development
       NODE_ENV: ${NODE_ENV:-production}
-      # 默认新版（v2）入口；ENTRY=v1 回滚旧版（旧数据目录同时保留挂载）
-      ENTRY: ${ENTRY:-}
       DATA_DIR: /app/data-v2
       WEB_ROOT: /app/web-v2/dist
       SESSION_SECRET: ${SESSION_SECRET:-change-me}
@@ -29,7 +27,6 @@ services:
       AGORA_REST_BASE_URL: ${AGORA_REST_BASE_URL:-}
     volumes:
       - ../data-v2:/app/data-v2
-      - ../data:/app/data
 
   e2e:
     build:

@@ -33,8 +33,6 @@ export function createSystemClock(): Clock {
   };
 }
 
-export const systemClock = createSystemClock();
-
 export interface FakeClock extends Clock {
   advance(ms: number): void;
   elapse(ms: number): void;

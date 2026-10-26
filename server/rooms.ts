@@ -14,9 +14,6 @@ import type { Broadcaster } from './realtime.ts';
 
 export type GameDriver = NightDriver | DayDriver;
 
-/** v1 无在线状态（无状态 cookie + 内存房间），因此以「房间无活动」判定遗弃并在超时后回收。 */
-export const INACTIVE_ROOM_TTL_MS = 24 * 60 * 60_000;
-
 export interface RoomMember {
   readonly playerId: string;
   readonly nickname: string;
@@ -95,8 +92,6 @@ export class Room {
   nextMessageId = 1;
   readonly receipts = new Map<string, CommandReceipt>();
   voiceClosed = false;
-  /** 最近一次房间活动（任何房间 HTTP 请求或实时连接握手）；用于回收被遗弃的 v1 房间 */
-  lastActivityAt = 0;
   /** 当前持有发布授权（已下发发布凭证）的玩家，用于识别权限变化 */
   readonly voiceGranted = new Set<string>();
   #queue: Promise<unknown> = Promise.resolve();
@@ -153,7 +148,6 @@ export class RoomRegistry {
     const room = new Room(code, `g_${randomBytes(16).toString('hex')}`, members[0]!, ruleset);
     room.members.push(...members.slice(1));
     room.queueOwner = queueOwner;
-    room.lastActivityAt = now;
     this.#roomsByCode.set(code, room);
     this.#roomsByGameId.set(room.gameId, room);
     this.#deps.logStore.recordRoom({ gameId: room.gameId, code, createdAt: now, ruleset });
@@ -169,7 +163,6 @@ export class RoomRegistry {
     const now = this.#deps.clock.now();
     const member = this.#makeMember(nickname);
     const room = new Room(code, gameId, member, ruleset);
-    room.lastActivityAt = now;
     this.#roomsByCode.set(code, room);
     this.#roomsByGameId.set(gameId, room);
     this.#deps.logStore.recordRoom({
@@ -446,21 +439,6 @@ export class RoomRegistry {
     room.driver = null;
     this.#roomsByCode.delete(room.code);
     this.#roomsByGameId.delete(gameId);
-  }
-
-  /**
-   * 回收被遗弃的 v1 房间：超过 ttlMs 没有任何房间请求或实时握手即销毁（成员下次请求拿到 404 回入口页）。
-   * v2 稳定房间由 StableRoom/EmptyRooms 管理（queueOwner 非空），这里跳过，避免两套生命周期互相拆台。
-   */
-  sweepInactive(now: number, ttlMs: number): Room[] {
-    const reclaimed: Room[] = [];
-    for (const room of [...this.#roomsByCode.values()]) {
-      if (room.queueOwner !== null) continue;
-      if (now - room.lastActivityAt < ttlMs) continue;
-      this.disposeRoom(room.gameId);
-      reclaimed.push(room);
-    }
-    return reclaimed;
   }
 
   #makeMember(nickname: string): RoomMember {

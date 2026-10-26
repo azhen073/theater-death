@@ -6,7 +6,7 @@ import { emptyDraft } from '../web-v2/src/features/actions/model.ts';
 import { electionVoteNote, electionVoteNoteText } from '../web-v2/src/features/game/election-vote-notes.ts';
 
 function fixture<T>(name: string): T {
-  return JSON.parse(readFileSync(new URL(`./fixtures/contract-2.1/${name}`, import.meta.url), 'utf8')) as T;
+  return JSON.parse(readFileSync(new URL(`./fixtures/contract-2.2/${name}`, import.meta.url), 'utf8')) as T;
 }
 
 const base = fixture<RoomSnapshot>('day-election-full.json');

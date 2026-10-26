@@ -3,14 +3,13 @@ import { spawnSync } from 'node:child_process';
 const selection = new Set();
 const mappings = [
   [/^web-v2\/src\/(presentation\/death-(events|effects)\.ts|features\/game\/(death-notice|death-effects-layer|stage)\.tsx|app\/shell\.tsx|styles\/(main|preferences)\.css)$/, ['frontend-v2-death-effects', 'frontend-v2-display-model', 'frontend-v2-stage-layout', 'frontend-v2-action-presentation', 'frontend-v2-actions', 'frontend-v2-snapshot']],
-  [/^docs\/openapi-v\d+\.\d+\.json$|^tests\/(fixtures\/contract-2\.1\/|contract-schema-utils\.ts$)/, ['contract-openapi']],
+  [/^docs\/openapi-v\d+\.\d+\.json$|^tests\/(fixtures\/contract-2\.2\/|contract-schema-utils\.ts$)/, ['contract-openapi']],
   [/^docs\/examples\/contract-client\.ts$/, ['contract-client-example']],
   [/^docs\/rules-v2-full\.md$|^contracts\/catalog\.ts$/, ['client-catalog', 'contract-openapi']],
   [/^tests\/contract-http-utils\.ts$/, ['client-catalog', 'chat-receipts-api', 'room-operation-api', 'contract-http-lifecycle', 'command-receipts-api', 'contract-knowledge-api', 'v2-api', 'contract-openapi', 'contract-client-example', 'contract-release-flow']],
-  [/^tests\/server-test-utils\.ts$/, ['server-api', 'realtime', 'spectator', 'review', 'voice-api']],
   [/^tests\/admin-test-helper\.ts$/, ['admin-api']],
   [/^tests\/(deploy-frontend-local\.tests\.ps1|frontend-v2-acceptance-server\.ts|frontend-v2-game-harness\.tsx)$/, ['smoke']],
-  [/^tests\/helpers\.ts$/, ['capabilities', 'engine-night', 'engine-morning', 'engine-info', 'engine-day', 'contract-snapshots', 'deadline-queue', 'night-driver', 'knowledge', 'day-driver', 'v2-first-election', 'targets', 'v2-handover', 'v2-media', 'v2-proposal', 'v2-realtime', 'v2-timers', 'v2-victory', 'visibility', 'window-instances', 'voice-policy']],
+  [/^tests\/helpers\.ts$/, ['capabilities', 'engine-night', 'engine-morning', 'engine-info', 'engine-day', 'contract-snapshots', 'deadline-queue', 'night-driver', 'day-driver', 'v2-first-election', 'targets', 'v2-handover', 'v2-media', 'v2-proposal', 'v2-realtime', 'v2-timers', 'v2-victory', 'visibility', 'window-instances', 'voice-policy']],
   [/^scripts\/select-tests\.mjs$/, ['test-selection']],
   [/^scripts\/check-contract-migration\.mjs$/, ['account-profile', 'audit-migration']],
   [/^package(-lock)?\.json$|^deploy\/Dockerfile.dependencies$/, ['runtime-dependencies', 'smoke']],
@@ -21,7 +20,7 @@ const mappings = [
   [/^server\/v2\/operation-receipts\.ts$/, ['operation-receipts', 'room-operation-api', 'v2-api']],
   [/^server\/receipts\.ts$/, ['receipts', 'command-receipts-api', 'v2-api']],
   [/^server\/v2\/room-realtime\.ts$/, ['room-realtime', 'contract-snapshots', 'member-presence']],
-  [/^server\/v2\/snapshots\.ts$/, ['contract-snapshots', 'knowledge', 'room-rounds', 'proposal-combined-api']],
+  [/^server\/v2\/snapshots\.ts$/, ['contract-snapshots', 'contract-knowledge-api', 'room-rounds', 'proposal-combined-api']],
   [/^server\/v2\/rounds\.ts$/, ['room-rounds', 'screen-grants', 'stable-room']],
   [/^server\/v2\/screen-grants\.ts$/, ['screen-grants', 'room-membership', 'access-v2']],
   [/^server\/v2\/empty-rooms\.ts$/, ['empty-rooms', 'room-membership']],
@@ -30,21 +29,21 @@ const mappings = [
   [/^server\/v2\/room-directory\.ts$/, ['room-membership', 'v2-maintenance', 'v2-api']],
   [/^server\/v2\/stable-room\.ts$/, ['stable-room', 'day-driver']],
   [/^contracts\//, ['contract-foundation', 'contract-snapshots', 'room-realtime', 'contract-openapi', 'contract-client-example', 'proposal-combined-api']],
-  [/^engine\/(day|morning|stage|victory|types)\.ts$/, ['engine-day', 'engine-morning', 'day-driver', 'v2-handover', 'v2-victory', 'v2-first-election', 'v2-timers', 'knowledge']],
+  [/^engine\/(day|morning|stage|victory|types)\.ts$/, ['engine-day', 'engine-morning', 'day-driver', 'v2-handover', 'v2-victory', 'v2-first-election', 'v2-timers', 'contract-knowledge-api']],
   [/^engine\/(night|proposal|targets)\.ts$/, ['engine-night', 'engine-proposal', 'night-driver', 'targets', 'v2-proposal', 'v2-first-election']],
   [/^engine\/(setup|random|events|emit|index)\.ts$/, ['engine-setup', 'engine-info', 'visibility']],
   [/^rulesets\//, ['rulesets', 'engine-setup', 'v2-proposal', 'v2-first-election', 'v2-timers']],
-  [/^visibility\//, ['visibility', 'knowledge', 'review', 'v2-spectators-api']],
+  [/^visibility\//, ['visibility', 'contract-knowledge-api', 'v2-spectators-api']],
   [/^server\/(clock|queued-clock|windows|commands|day-driver|night-driver)\.ts$/, ['day-driver', 'night-driver', 'window-instances', 'deadline-queue', 'v2-api', 'v2-timers', 'proposal-combined-api']],
-  [/^server\/(rooms|realtime|app|session|log-store|index|legacy-index|health|capabilities|receipts)\.ts$/, ['server-api', 'realtime', 'spectator', 'capabilities', 'receipts', 'v2-api', 'v2-maintenance']],
+  [/^server\/(rooms|realtime|log-store|index|capabilities|receipts)\.ts$/, ['capabilities', 'receipts', 'v2-api', 'v2-maintenance', 'smoke']],
   [/^server\/v2\/(account-store|auth|passwords|errors|admin)\.ts$/, ['account-store', 'auth-v2', 'auth-race', 'passwords', 'v2-api']],
-  [/^server\/v2\/(access|spectators|second-screen|view|realtime)\.ts$/, ['access-v2', 'knowledge', 'v2-realtime', 'v2-spectators-api', 'v2-api']],
+  [/^server\/v2\/(access|spectators|second-screen|view|realtime)\.ts$/, ['access-v2', 'contract-knowledge-api', 'v2-realtime', 'v2-spectators-api', 'v2-api']],
   [/^server\/v2\/(config|maintenance|diagnostics|media|rate-limit)\.ts$/, ['v2-config', 'v2-maintenance', 'v2-media', 'voice-agora']],
   [/^server\/v2\/room-voice\.ts$/, ['v2-media', 'v2-voice-api', 'voice-policy']],
   [/^server\/v2\/(app|index|parse-command)\.ts$/, ['auth-v2', 'v2-api', 'contract-http-lifecycle', 'contract-knowledge-api', 'v2-spectators-api', 'v2-media', 'v2-maintenance', 'room-operation-api', 'command-receipts-api', 'chat-receipts-api', 'avatars-api', 'client-catalog', 'contract-openapi', 'proposal-combined-api']],
   [/^server\/v2\/admin-router\.ts$/, ['admin-api']],
   [/^server\/v2\/frontend-app\.ts$/, ['frontend-v2-static']],
-  [/^voice\//, ['voice-policy', 'voice-api', 'voice-agora', 'v2-media']],
+  [/^voice\//, ['voice-policy', 'voice-agora', 'v2-media']],
   [/^web-v2\/src\/features\/(actions\/(presentation|stage-action-card)\.tsx?|game\/stage-layout\.ts)$/, ['frontend-v2-actions', 'frontend-v2-avatar', 'frontend-v2-chat-tracker', 'frontend-v2-command-tracker', 'frontend-v2-display-model', 'frontend-v2-draft-reconciliation', 'frontend-v2-http-deadline', 'frontend-v2-http', 'frontend-v2-ids', 'frontend-v2-room-model', 'frontend-v2-snapshot', 'frontend-v2-voice-session', 'frontend-v2-action-presentation', 'frontend-v2-stage-layout']],
   [/^web-v2\/src\/features\/game\/phase-transition(?:-model)?\.tsx?$|^web-v2\/src\/styles\/phase-transition\.css$/, ['frontend-v2-phase-transition', 'frontend-v2-identity-reveal']],
   [/^web-v2\/src\/features\/game\/identity-(?:entry-reveal\.tsx|reveal-model\.ts)$/, ['frontend-v2-identity-reveal']],
@@ -54,7 +53,7 @@ const mappings = [
   [/^web-v2\/src\/presentation\/snowfall\.ts$|^web-v2\/src\/features\/game\/snowfall-layer\.tsx$|^web-v2\/src\/styles\/snowfall\.css$/, ['frontend-v2-snowfall']],
   [/^web-v2\/src\/features\/game\/seat-check-marks\.ts$/, ['frontend-v2-check-marks']],
   [/^web-v2\//, ['frontend-v2-actions', 'frontend-v2-avatar', 'frontend-v2-chat-tracker', 'frontend-v2-command-tracker', 'frontend-v2-display-model', 'frontend-v2-draft-reconciliation', 'frontend-v2-http-deadline', 'frontend-v2-http', 'frontend-v2-ids', 'frontend-v2-room-model', 'frontend-v2-snapshot', 'frontend-v2-voice-session', 'frontend-v2-voice-levels', 'frontend-v2-badges', 'frontend-v2-dying-mark', 'frontend-v2-election-vote-notes', 'frontend-v2-free-speech-note', 'frontend-v2-check-marks', 'frontend-v2-snowfall']],
-  [/^(deploy\/|scripts\/|\.github\/|package.*json$|tsconfig.json$|vitest.config.ts$|vite(\.v2)?\.config\.ts$)/, ['smoke']],
+  [/^(deploy\/|scripts\/|\.github\/|package.*json$|tsconfig.json$|vitest.config.ts$|vite\.v2\.config\.ts$)/, ['smoke']],
 ];
 const files = process.argv.slice(2);
 const listOnly = files[0] === '--list';
@@ -63,7 +62,7 @@ for (const path of files) {
   if (/^tests\/.+\.test\.ts$/.test(path)) { if (existsSync(path)) selection.add(path); continue; }
   const match = mappings.find(([pattern]) => pattern.test(path));
   if (!match && /^tests\//.test(path)) throw new Error('Shared test helpers changed: explicitly select the affected suites for review.');
-  if (!match && (/\.(md|txt)$/.test(path) || path.startsWith('docs/') || path.startsWith('e2e/') || path.startsWith('web/') || path.startsWith('.'))) continue;
+  if (!match && (/\.(md|txt)$/.test(path) || path.startsWith('docs/') || path.startsWith('e2e/') || path.startsWith('.'))) continue;
   if (!match) throw new Error(`No incremental mapping for ${path}; add a reviewed mapping.`);
   for (const name of match[1]) selection.add(`tests/${name}.test.ts`);
 }

@@ -1,10 +1,18 @@
-import { describe, expect, it } from 'vitest';
-import { healthPayload } from '../server/health.ts';
+import { afterEach, describe, expect, it } from 'vitest';
+import { closeHarnesses, makeHarness, request } from './contract-http-utils.ts';
 
-describe('scaffold smoke', () => {
-  it('reports ok from the health payload', () => {
-    const payload = healthPayload();
-    expect(payload.status).toBe('ok');
-    expect(payload.service).toBe('theater-death');
+afterEach(closeHarnesses);
+
+describe('application smoke', () => {
+  it('serves the current v2 health payload', async () => {
+    const harness = await makeHarness(0);
+    const response = await request(harness, '/healthz');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      status: 'ok',
+      apiVersion: 2,
+      contractVersion: '2.2',
+      rulesVersion: '2.0',
+    });
   });
 });

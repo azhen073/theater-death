@@ -63,12 +63,12 @@ describe('client contract OpenAPI verification', () => {
 
   it('validates every committed contract fixture against its declared schema', () => {
     const indexFiles = ['manual-fragments-index.json', 'full-index.json'];
-    const indexes = indexFiles.flatMap((file) => JSON.parse(readFileSync(new URL(`./fixtures/contract-2.1/${file}`, import.meta.url), 'utf8')) as Array<{ file: string; schema: string; endpoint: string; scenario: string }>);
+    const indexes = indexFiles.flatMap((file) => JSON.parse(readFileSync(new URL(`./fixtures/contract-2.2/${file}`, import.meta.url), 'utf8')) as Array<{ file: string; schema: string; endpoint: string; scenario: string }>);
     expect(indexes.length).toBeGreaterThanOrEqual(8);
     const fullNames = new Set(indexes.filter((fixture) => fixture.file.endsWith('-full.json')).map((fixture) => fixture.file));
     for (const required of ['lobby-formal-full.json', 'lobby-observer-full.json', 'night-door-full.json', 'night-spirit-full.json', 'started-public-observer-full.json', 'private-second-screen-full.json', 'day-election-full.json', 'post-review-lobby-full.json']) expect(fullNames.has(required)).toBe(true);
     for (const fixture of indexes) {
-      const payload = JSON.parse(readFileSync(new URL(`./fixtures/contract-2.1/${fixture.file}`, import.meta.url), 'utf8'));
+      const payload = JSON.parse(readFileSync(new URL(`./fixtures/contract-2.2/${fixture.file}`, import.meta.url), 'utf8'));
       const schema = openapi.components.schemas[fixture.schema]
         ?? (fixture.schema === 'ChatAck' ? responseSchema('/rooms/{code}/chat', 'post', '201') : null)
         ?? (fixture.schema === 'ReviewWrapper' ? responseSchema('/rooms/{code}/review', 'get', '200') : null)
@@ -89,10 +89,10 @@ describe('client contract OpenAPI verification', () => {
     expect(check({ ...base, action: 'SUBMIT_GUARD', confirmSelf: true, expectedRevision: 0 })).toBe(false);
   });
 
-  it('documents the Agora voice token/receipt shapes and keeps the LiveKit webhook marked deprecated', () => {
+  it('documents the current Agora voice token and receipt shapes', () => {
     const token = responseSchema('/rooms/{code}/voice/token', 'post', '200');
     assertSchema(token, { appId: 'app-id', channel: 'g1', uid: 7, token: 'token' }, 'voice token');
-    // 上一代 LiveKit 形状（url/roomName）必须不再被接受
+    // 非当前字段形状不得被接受
     expect(validator(token)({ url: 'wss://media', roomName: 'g1', token: 'token' })).toBe(false);
     expect(validator(token)({ appId: 'app-id', channel: 'g1', uid: 7 })).toBe(false);
 
@@ -112,7 +112,6 @@ describe('client contract OpenAPI verification', () => {
       delivery: { windowInstanceId: 'w1', delivered: 3, blocked: 0, silentOutput: 1, failed: 0, listeners: 4, updatedAt: 1_700_000_000_000 },
     }, 'voice receipt aggregate');
 
-    expect((openapi as any).paths['/voice/webhook'].post.deprecated).toBe(true);
   });
 
   it('validates anonymous catalog/auth/room/snapshot/realtime payloads against OpenAPI schemas', async () => {

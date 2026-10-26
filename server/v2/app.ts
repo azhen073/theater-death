@@ -35,7 +35,7 @@ import { bootstrap, catalog, AVATAR_LIMITS } from './catalog.ts';
 import type { AvatarStore } from './avatars.ts';
 import { createAdminRouter } from './admin-router.ts';
 
-export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; adminCookieName?: string; secureCookies?: boolean; adminPassword?: string | null; avatars?: AvatarStore; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
+export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; adminCookieName?: string; secureCookies?: boolean; adminPassword?: string | null; avatars?: AvatarStore; voice?: VoiceService | null }
 
 export function createV2App(deps: V2Deps) {
   const { accounts, clock } = deps;
@@ -108,18 +108,6 @@ export function createV2App(deps: V2Deps) {
 
   const app = express();
   app.disable('x-powered-by');
-  if (deps.verifyWebhook) app.post('/api/v2/voice/webhook', express.raw({ type: 'application/webhook+json', limit: '64kb' }), async (req, res) => {
-    let event;
-    try {
-      if (!Buffer.isBuffer(req.body)) throw new Error('invalid_webhook');
-      event = await deps.verifyWebhook!(req.body.toString('utf8'), req.get('authorization'));
-    } catch { res.status(401).json({ error: { code: 'invalid_webhook' } }); return; }
-    if (event.event === 'participant_joined' && event.room && event.participant) {
-      const meta = access.get(event.room.name);
-      await media.joined(meta ? media.matchScope(meta) : undefined, event.participant.identity);
-    }
-    res.status(204).end();
-  });
   const rawAvatar = express.raw({ type: () => true, limit: AVATAR_LIMITS.maxBytes });
   app.put('/api/v2/me/avatar', (req, _res, next) => {
     try {

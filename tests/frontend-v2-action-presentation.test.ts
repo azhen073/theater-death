@@ -12,7 +12,7 @@ import {
 } from '../web-v2/src/features/actions/presentation.ts';
 
 const fixture = JSON.parse(
-  readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')
+  readFileSync(new URL('./fixtures/contract-2.2/night-door-full.json', import.meta.url), 'utf8')
 ) as RoomSnapshot;
 
 function viewCopy(): RoomSnapshot {

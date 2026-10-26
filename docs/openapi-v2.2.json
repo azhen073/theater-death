@@ -1412,7 +1412,7 @@
       ],
       "post": {
         "summary": "提交当前局、当前窗口的动作意图",
-        "description": "所有参数见client-contract-2.1-actions.md。身份来自会话；忽略客户端的角色/座位推断。",
+        "description": "参数结构见 Command schema 与 client-contract-2.2.md。身份来自会话；忽略客户端的角色/座位推断。",
         "requestBody": {
           "required": true,
           "content": {
@@ -2238,44 +2238,6 @@
         }
       }
     },
-    "/voice/webhook": {
-      "post": {
-        "summary": "（历史遗留，未启用）上一代 LiveKit 媒体回调",
-        "description": "**当前未启用**：媒体层已换为声网 RTC，`server/v2/index.ts` 未注入 `verifyWebhook`，该路由不会被注册（`server/v2/app.ts` 保留为历史遗留）。媒体回收改由服务端同步 + 频道轮询对账完成。保留此条仅为记录上一代契约；签名校验失败 401。",
-        "deprecated": true,
-        "security": [
-          {
-            "livekitSignature": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/webhook+json": {
-              "schema": {
-                "type": "string",
-                "maxLength": 65536
-              }
-            }
-          }
-        },
-        "responses": {
-          "204": {
-            "description": "签名事件已处理"
-          },
-          "401": {
-            "description": "invalid_webhook",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/me/avatar": {
       "parameters": [],
       "put": {
@@ -2375,17 +2337,11 @@
   },
   "components": {
     "securitySchemes": {
-      "livekitSignature": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "Authorization",
-        "description": "（历史遗留，未启用）上一代 LiveKit 服务端签名；仅 /voice/webhook 使用，而该路由当前未挂载。"
-      },
       "accountCookie": {
         "type": "apiKey",
         "in": "cookie",
         "name": "td_account_v2",
-        "description": "HttpOnly会话，浏览器自动携带。隔离开发3003使用td_account_contract_21，按服务配置区分。"
+        "description": "HttpOnly 会话，由浏览器自动携带；开发隔离环境可通过服务配置使用独立 Cookie 名。"
       }
     },
     "schemas": {
