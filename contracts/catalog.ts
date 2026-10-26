@@ -7,9 +7,11 @@ export interface BootstrapDTO {
   features: { voice: boolean; avatars: boolean; customBoards: boolean; secondScreens: boolean; persistentAccounts: boolean; gameRecovery: boolean };
   socket: { path: string; pingIntervalMs: number; pingTimeoutMs: number; disconnectGraceMs: number };
 }
+export interface RoleAbilityDTO { stage: 1 | 2; summary: string; clauses: string }
+export interface CatalogRoleDTO { roleId: RoleId; name: string; description: string; faction: FactionId; abilities: RoleAbilityDTO[] }
 export interface CatalogDTO {
   rulesVersion: '2.0';
-  roles: { roleId: RoleId; name: string; description: string; faction: FactionId }[];
+  roles: CatalogRoleDTO[];
   presets: { presetId: string; name: string; playerCount: number; config: RulesetConfig }[];
   constraints: { minPlayers: number; maxPlayers: number; repeatableRoleIds: RoleId[]; requiredRoleIds: RoleId[]; requiresAnyOf: RoleId[] };
   rulebook: { version: '2.0'; title: string; chapters: { id: string; title: string; markdown: string }[] };
