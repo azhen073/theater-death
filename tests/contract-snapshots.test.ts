@@ -60,6 +60,7 @@ describe('v2 RoomSnapshot contract', () => {
     expect(snapshot.viewer.isHost).toBe(true);
     expect(snapshot.capabilities.room.start).toMatchObject({ allowed: false, reason: 'room_not_full' });
     expect(snapshot.capabilities.room.ready).toMatchObject({ allowed: true });
+    expect(snapshot.capabilities.room.leave).toMatchObject({ effect: 'dissolve' });
   });
 
   it('starts a full ready match without requiring online presence and exposes profile projections', async () => {
@@ -71,6 +72,9 @@ describe('v2 RoomSnapshot contract', () => {
     expect(snapshot.public?.seats).toHaveLength(13);
     expect(snapshot.public?.seats.every((seat) => seat.presence === 'offline')).toBe(true);
     expect(snapshot.public?.seats[0]).toMatchObject({ avatarUrl: null, profileVersion: 0 });
+    expect(snapshot.capabilities.room.leave).toMatchObject({ effect: 'away' });
+    room.runtime!.state = { ...room.runtime!.state!, win: { winner: 'human', reason: 'test', dayNumber: 1 } };
+    expect(f.snapshots.read(room, players[0]!.session).capabilities.room.leave).toMatchObject({ effect: 'leave' });
   });
 
   it('keeps public spectators read-only and private second screens subject-bound', async () => {
@@ -82,6 +86,7 @@ describe('v2 RoomSnapshot contract', () => {
     expect(publicView.viewer).toMatchObject({ userId: spectator.userId, kind: 'public_spectator', subjectPlayerId: null, readOnly: true, isHost: false });
     expect(publicView.private).toBeNull();
     expect(publicView.tasks).toEqual([]);
+    expect(publicView.capabilities.room.leave).toMatchObject({ effect: 'leave' });
     const grants = new ScreenGrants(f.directory);
     const factionPlayerId = room.runtime!.state!.players.find((player) => player.roleId === 'death')!.playerId;
     const factionPlayer = players.find((player) => room.participants.get(player.userId)!.playerId === factionPlayerId)!;

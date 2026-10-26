@@ -17,6 +17,7 @@
 ## 接口与客户端
 
 - `POST /api/v2/rooms/:code/leave` 需要 `requestId`，返回 `left`、`dissolved`、`seatRetained`。
+- `capabilities.room.leave.effect` 由服务端提供，值为 `leave`、`away` 或 `dissolve`；按钮和确认文案只读取该效果，不复制房主与阶段判断。
 - `POST /api/v2/rooms/:code/dissolve` 仅房主可用。
 - 请求重试必须复用相同请求 ID 和载荷，不把网络失败当成已成功退出。
 - “结束复盘，返回大厅”保留原房间和规则，与“离开房间”及“解散房间”是不同操作。

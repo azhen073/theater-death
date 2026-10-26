@@ -96,12 +96,16 @@ export interface VoiceDeliveryDTO {
   windowInstanceId: string; delivered: number; blocked: number; silentOutput: number; failed: number; listeners: number; updatedAt: number;
 }
 export type RoomAction = 'ready' | 'start' | 'promote' | 'leave' | 'transferHost' | 'dissolve' | 'endReview' | 'kickFormal' | 'kickSpectator' | 'inviteSecondScreen' | 'revokeSecondScreen';
+export type RoomLeaveEffect = 'leave' | 'away' | 'dissolve';
+export interface RoomCapabilities extends Record<RoomAction, Permission> {
+  leave: Permission & { effect: RoomLeaveEffect };
+}
 export interface SnapshotCapabilities {
   canPostPublic: boolean; canPostFaction: boolean; canPublishVoice: boolean; canVote: boolean;
   supportsProposalEditConfirmation?: boolean;
   allowedCommands: CommandAction[];
   commandReasons: Record<CommandAction, string | null>;
-  room: Record<RoomAction, Permission>;
+  room: RoomCapabilities;
 }
 export interface RoomSnapshot {
   contractVersion: typeof CONTRACT_VERSION; rulesVersion: string;

@@ -676,7 +676,8 @@
       },
       "leave": {
         "allowed": true,
-        "reason": null
+        "reason": null,
+        "effect": "away"
       },
       "transferHost": {
         "allowed": false,
