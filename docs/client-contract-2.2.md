@@ -51,3 +51,7 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 `RoomSnapshot.private.knowledge.spiritSeats` 为**本人已知的魂灵座位号**（升序，含已出局者）：死神与丧亲者知晓全部魂灵（R-27、R-31），魂灵知晓其他魂灵（R-30，不含自己），其余身份为空数组。该字段只出现在本人（含绑定第二屏）的私人视图，用于座位标记与身份弹窗；公共视图与观战者没有该字段。
 
 `RoomSnapshot.private.knowledge.dyingSeats` 为**本夜濒死名单的座位号**（升序，**可选字段**）：仅在一阶段、夜间、且攻击结算已产生名单时，下发给**在世的降临者**（R-24）与**在世且未使用还魂曲的水妖**（R-20，用后当场失去名单视野）；二阶段、白天、名单未产生、本人已死亡、其他身份都**不含该字段**（不以下发空数组冒充"本夜无人濒死"）。它与同夜 `private.events` 的 `dying_list.payload.seats` 集合一致。濒死**不影响**公开的 `seats[].alive`（`visibility/projection.ts` 规定濒死对外视为存活），因此该字段只用于本人页面的座位左下角标记，公共视图与观战者永远没有它。
+
+角色目录的每个角色包含 `description` 和两个阶段的 `abilities`，每项能力摘要附 `stage`、`summary`、`clauses`。这些内容是玩家说明，不代表当前行动权限。
+
+契约夹具位于 `tests/fixtures/contract-2.1/`，可运行客户端示例位于 `docs/examples/contract-client.ts`。

@@ -5318,6 +5318,28 @@
                 "description": {
                   "type": "string"
                 },
+                "abilities": {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "stage": {
+                        "type": "integer",
+                        "enum": [1, 2]
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "clauses": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["stage", "summary", "clauses"],
+                    "additionalProperties": false
+                  }
+                },
                 "faction": {
                   "type": "string",
                   "enum": [
@@ -5330,6 +5352,7 @@
                 "roleId",
                 "name",
                 "description",
+                "abilities",
                 "faction"
               ],
               "additionalProperties": false
