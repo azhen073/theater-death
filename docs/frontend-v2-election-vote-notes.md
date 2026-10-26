@@ -17,8 +17,8 @@
 
 ## 实现
 
-`web-v2/src/features/game/election-vote-notes.ts` 提供纯函数，判定顺序与 `engine/day.ts` 的投票资格校验一致。行动展示层在通常的空闲提示之前使用该结果；没有特殊提示时保持通用文案。
+`engine/day.ts` 统一计算禁投原因，`server/v2/view.ts` 通过 `private.electionVote.blockedReason` 提供。`web-v2/src/features/game/election-vote-notes.ts` 只读取原因码和当前窗口回执，行动展示层在通用等待提示之前使用；没有特殊提示时保持通用文案。
 
-界面统一使用“竞选名单”，不引入新的服务端字段或权限来源。
+界面统一使用“竞选名单”，客户端不再复制投票资格判断。
 
 相关测试：`tests/frontend-v2-election-vote-notes.test.ts`、`e2e/specs-v2/28-election-vote-notes.spec.ts`。

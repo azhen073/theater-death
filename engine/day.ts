@@ -590,6 +590,20 @@ function electionTargets(election: ElectionState): readonly string[] {
   return election.speechOrder.filter((candidateId) => !election.withdrawn.includes(candidateId));
 }
 
+export type ElectionVoteBlockReason = 'candidate' | 'tied' | 'dead' | 'vote_frozen';
+
+export function electionVoteBlockReason(state: GameState, voterId: string): ElectionVoteBlockReason | null {
+  if (requireStep(state, 'election') !== null) return null;
+  const election = (state.day as DayContext).election as ElectionState;
+  if (election.phase !== 'vote' && election.phase !== 'revote') return null;
+  const eligibility = voteEligibility(state, voterId);
+  if (eligibility === 'dead') return 'dead';
+  if (eligibility === 'laike_frozen') return 'vote_frozen';
+  if (election.phase === 'revote' && election.tiedIds.includes(voterId)) return 'tied';
+  if (activeCandidates(state).includes(voterId)) return 'candidate';
+  return null;
+}
+
 export function submitElectionVoteIssue(
   state: GameState,
   voterId: string,
@@ -604,10 +618,14 @@ export function submitElectionVoteIssue(
     return issue('election_not_voting', '当前不在竞选投票阶段');
   }
   const eligibility = voteEligibility(state, voterId);
-  if (eligibility !== 'ok') {
+  if (eligibility === 'unknown') {
+    return issue('vote_forbidden_unknown', '该玩家没有竞选投票资格');
+  }
+  const blocked = electionVoteBlockReason(state, voterId);
+  if (blocked === 'dead' || blocked === 'vote_frozen') {
     return issue(`vote_forbidden_${eligibility}`, '该玩家没有竞选投票资格');
   }
-  if (activeCandidates(state).includes(voterId)) {
+  if (blocked !== null) {
     return issue('vote_forbidden_candidate', '候选人不得投票');
   }
   if (voterId in election.votes) {

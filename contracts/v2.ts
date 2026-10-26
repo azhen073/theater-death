@@ -74,8 +74,10 @@ export interface PublicGameDTO {
   result: { winner: 'human' | 'death_faction'; dayNumber: number; reason: string } | null;
   startedAt: number; endedAt: number | null;
 }
+export type ElectionVoteBlockReason = 'candidate' | 'tied' | 'dead' | 'vote_frozen';
 export interface PrivateGameDTO {
   self: SelfDTO; events: EventDTO[];
+  electionVote?: { blockedReason: ElectionVoteBlockReason };
   factionRoom: { roomId: string; readOnly: boolean; canWrite: boolean; members: readonly { playerId: string; seat: number; readOnly: boolean }[] } | null;
   targets: Partial<Record<CommandAction, TargetSelection>>;
   /**

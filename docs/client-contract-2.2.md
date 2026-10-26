@@ -50,6 +50,7 @@ API 前缀为 `/api/v2`，规则版本为 `2.0`。账号、成员和席位使用
 - `public.night` 为 `{closesAt}` 或 `null`，只表示当前夜间段截止时间。
 - `private.knowledge.spiritSeats` 是本人已知魂灵座位。
 - `private.knowledge.dyingSeats` 只在符合身份、阶段和存活条件时出现，濒死不改变公开 `alive`。
+- `private.electionVote.blockedReason` 只在本人当前被禁止竞选投票时出现，取值为 `candidate`、`tied`、`dead`、`vote_frozen`；客户端不自行推导禁投原因。
 - 私人事件、任务、提交状态和知识只在授权视图中返回。
 - 快照使用 `viewVersion` 和服务端时间进行对账，客户端不能用本地时间决定行动顺序或方案版本。
 
