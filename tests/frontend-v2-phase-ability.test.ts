@@ -5,6 +5,7 @@ import type { RoomSnapshot } from '../contracts/v2.ts';
 import { ROLE_IDS, type RoleId } from '../rulesets/types.ts';
 import { phaseAbility } from '../web-v2/src/features/game/phase-ability-model.ts';
 import { currentOperation, playerRuleChapters } from '../web-v2/src/features/rules/quick-view.tsx';
+import { searchRules } from '../web-v2/src/features/rules/search.tsx';
 
 const catalog = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/catalog-full.json', import.meta.url), 'utf8')) as CatalogDTO;
 function role(roleId: RoleId) {
@@ -61,5 +62,27 @@ describe('rules quick view', () => {
   it('provides victory text from the catalog', () => {
     expect(role('door').victory).toContain('丧亲者');
     expect(role('death').victory).toContain('科研员');
+  });
+});
+
+describe('clause-level rule search', () => {
+  it('finds an exact clause and chapter by R number', () => {
+    const results = searchRules(catalog, 'R-43');
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ chapterId: 'chapter-09', title: 'R-43' });
+    expect(results[0]?.excerpt).toContain('语音');
+  });
+
+  it('finds player-facing keywords and highlights their clause context', () => {
+    const results = searchRules(catalog, '还魂');
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some(result => result.chapterId === 'chapter-05' && result.title === 'R-20')).toBe(true);
+    expect(results.every(result => result.excerpt.length > 0)).toBe(true);
+  });
+
+  it('excludes engineering chapters and handles empty or missing queries', () => {
+    expect(searchRules(catalog, '')).toEqual([]);
+    expect(searchRules(catalog, 'openapi')).toEqual([]);
+    expect(searchRules(catalog, '没有这个词')).toEqual([]);
   });
 });

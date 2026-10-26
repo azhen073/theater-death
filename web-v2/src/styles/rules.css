@@ -9,3 +9,13 @@
   .rules-quick__links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rules-quick__hero, .rules-quick__actions { padding: 14px; }
 }
+
+.rules-search-results { display: grid; gap: 10px; margin: 14px 0; }
+.rules-search-result { display: grid; gap: 7px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); text-align: left; cursor: pointer; }
+.rules-search-result:hover, .rules-search-result:focus-visible { border-color: var(--accent); }
+.rules-search-result__title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; }
+.rules-search-result__title small { color: var(--muted); }
+.rules-search-result mark, .rule-block--focus { background: #f3e8bd; color: inherit; }
+.rule-block { scroll-margin-top: 16px; border-radius: 5px; }
+.rule-block--focus { padding: 6px 8px; outline: 1px solid #c6a856; }
+:root[data-theme='dark'] .rules-search-result mark, :root[data-theme='dark'] .rule-block--focus { background: #5c4c26; }
