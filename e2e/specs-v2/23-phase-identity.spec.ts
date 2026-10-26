@@ -27,7 +27,7 @@ test('九身份两阶段均显示可追溯规则摘要，并随公开阶段实�
   fixture.identityReveal = 'seen';
   const mounted = await mount(page, fixture);
   await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
-  const panel = page.getByRole('region', { name: '当前阶段身份能力' });
+  const panel = page.getByRole('dialog').getByRole('region', { name: '当前阶段身份能力' });
   for (const [roleId, clauses, first, second] of cases) {
     for (const [stage, text] of [[1, first], [2, second]] as const) {
       const next = structuredClone(fixture);
@@ -53,7 +53,7 @@ test('生死与已用状态不冒充能力可用，边界以服务端舞台任�
   fixture.view.tasks = [];
   await mount(page, fixture);
   await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
-  const panel = page.getByRole('region', { name: '当前阶段身份能力' });
+  const panel = page.getByRole('dialog').getByRole('region', { name: '当前阶段身份能力' });
   await expect(panel).toContainText('不代表此刻可行动');
   await expect(panel).toContainText('生死、技能次数和当前操作以服务端下发的舞台任务为准');
   await expect(page.getByRole('dialog')).toContainText('已使用过');
@@ -77,8 +77,8 @@ test('公开观众和错配subject没有私人能力面板，私人第二屏标�
 
   const observed = loadGameFixture('private-second-screen-full.json'); observed.identityReveal = 'seen';
   await mounted.set(observed);
-  await revealHudActions(page); await page.getByRole('button', { name: '当前观察身份' }).click();
-  await expect(page.getByRole('region', { name: '当前阶段身份能力' })).toContainText('当前观察视角');
+  await revealHudActions(page); await page.getByRole('button', { name: '你正在查看的身份' }).click();
+  await expect(page.getByRole('dialog').getByRole('region', { name: '当前阶段身份能力' })).toContainText('当前观察视角');
 });
 
 test('减少动画与390移动视口下能力说明可读且无横向溢出', async ({ page }) => {
@@ -87,7 +87,7 @@ test('减少动画与390移动视口下能力说明可读且无横向溢出', as
   const fixture = loadGameFixture('night-door-full.json'); fixture.identityReveal = 'seen';
   await mount(page, fixture);
   await revealHudActions(page); await page.getByRole('button', { name: '我的身份' }).click();
-  await expect(page.getByRole('region', { name: '当前阶段身份能力' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('region', { name: '当前阶段身份能力' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
 });
@@ -108,7 +108,7 @@ test('留存二阶段降临者在情报面板与我的身份中的390和1440截�
     await expect(panel).toContainText('不再获得濒死名单');
     await page.screenshot({ path: `/results/phase-identity-intel-descender-stage2-${width}-${testInfo.project.name}.png`, fullPage: true });
 
-    await page.getByRole('button', { name: '查看我的身份' }).click();
+    await page.getByRole('button', { name: '查看身份详情' }).click();
     const dialog = page.getByRole('dialog', { name: '我的身份' });
     await expect(dialog).toContainText('降临者');
     await expect(dialog.getByRole('region', { name: '当前阶段身份能力' })).toContainText('第 2 阶段 · 身份能力说明');

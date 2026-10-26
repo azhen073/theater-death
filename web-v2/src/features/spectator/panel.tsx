@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { RoomSnapshot } from '../../../../contracts/v2.ts';
 import { Modal, Notice } from '../../components/ui.tsx';
 import { formatCountdown } from '../../presentation/labels.ts';
+import { COPY } from '../../presentation/copy.ts';
 import { useIntent } from '../../transport/intent.ts';
 
 interface Invitation { token: string; expiresAt: number; gameId: string; subjectPlayerId: string }
@@ -36,7 +37,7 @@ export function SecondScreenPanel({ view, online, open, onClose, refresh, remain
     if (!locked && view.gameId) void operation.run(`/rooms/${view.room.code}/second-screen/${action}`, { gameId: view.gameId, ...extra });
   };
   if (!open) return null;
-  return <Modal title="私人第二屏" context={context} onClose={onClose} dismissible={!operation.busy}>
+  return <Modal title={COPY.spectator.private} context={context} onClose={onClose} dismissible={!operation.busy}>
     <p>第二屏可以查看获准玩家的私人情报，但不能行动、投票或发言。邀请只适用于当前对局。</p>
     {notice && <Notice>{notice}</Notice>}
     {operation.intent?.error && <Notice error>{operation.intent.error}{operation.unresolved && <button className="button" disabled={!online || operation.busy} onClick={() => void operation.retry()}>确认原操作结果</button>}</Notice>}
@@ -45,6 +46,6 @@ export function SecondScreenPanel({ view, online, open, onClose, refresh, remain
     {invitation && remaining(invitation.expiresAt) === 0 && <p className="muted">邀请已过期，请重新生成。</p>}
     {caps.revokeSecondScreen.allowed && <div className="button-row">{confirmRevoke ? <><span>确认撤销全部本局第二屏授权及邀请？</span><button className="button" disabled={locked} onClick={() => run('revoke')}>确认撤销</button><button className="text-button" onClick={() => setConfirmRevoke(false)}>取消</button></> : <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmRevoke(true)}>撤销第二屏授权</button>}</div>}
     {redeemable && <form onSubmit={event => { event.preventDefault(); if (token.trim()) run('redeem', { token: token.trim() }); }}><label className="select-field">输入私人邀请<input aria-label="输入私人邀请" type="password" autoComplete="off" value={token} maxLength={200} onChange={event => setToken(event.target.value)}/></label><button className="button" disabled={locked || !token.trim()}>兑换第二屏邀请</button></form>}
-    {view.viewer.kind === 'private_spectator' && <Notice>当前为私人第二屏，只读观察。授权撤销后将返回公开视角。</Notice>}
+    {view.viewer.kind === 'private_spectator' && <Notice>当前为{COPY.spectator.private}，只能查看。授权撤销后将返回{COPY.spectator.public}。</Notice>}
   </Modal>;
 }

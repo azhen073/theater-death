@@ -93,8 +93,8 @@ test('已投票与已弃票：行动卡显示回执，结算后回到通用文�
   settled.view.public!.day!.election!.phase = 'done';
   settled.view.windows = [];
   await mounted.set(settled);
-  await expect(actionCard(page).locator('h2')).toHaveText('本阶段无需操作');
-  await expect(actionCard(page)).toContainText('等待其他玩家或服务端推进阶段。');
+  await expect(actionCard(page).locator('h2')).toHaveText('现在不需要你操作');
+  await expect(actionCard(page)).toContainText('等待其他玩家行动，阶段会自动继续。');
 });
 
 test('公开观众不受影响，长昵称回执在 390 宽度无横向溢出', async ({ page }) => {

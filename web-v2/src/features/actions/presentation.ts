@@ -5,6 +5,7 @@ import { actionIssue, currentTask, skipLabels, targetActions, taskKey } from './
 import { electionVoteNote, electionVoteNoteText } from '../game/election-vote-notes.ts';
 import { freeSpeechNoteText } from '../game/free-speech-note.ts';
 import { actionLabels } from '../../presentation/labels.ts';
+import { COPY } from '../../presentation/copy.ts';
 import { targetSummary } from '../../presentation/targets.ts';
 import { ApiFailure, errorMessage } from '../../transport/http.ts';
 
@@ -236,8 +237,8 @@ export function deriveActionPresentation({
   );
   const recentOutcome = lastOutcome
     ? lastOutcome.status === 'accepted'
-      ? `最近操作：「${actionLabels[lastOutcome.intent.action]}」指令已接收（非最终结算结果）`
-      : `最近操作：「${actionLabels[lastOutcome.intent.action]}」未被接受`
+      ? COPY.action.recentAccepted(actionLabels[lastOutcome.intent.action])
+      : COPY.action.recentRejected(actionLabels[lastOutcome.intent.action])
     : null;
 
   // Unresolved records from old windows (they don't block current task, but show query buttons)
@@ -291,12 +292,12 @@ export function deriveActionPresentation({
     const idleText = freeSpeechText ?? electionText;
     return {
       mode: 'idle',
-      title: idleText?.title ?? '本阶段无需操作',
-      summary: idleText?.summary ?? '等待其他玩家或服务端推进阶段。',
+      title: idleText?.title ?? COPY.action.idleTitle,
+      summary: idleText?.summary ?? COPY.action.idleSummary,
       serverSummary: null,
       status: 'idle',
-      statusText: '无需操作',
-      disabledReason: '当前无可执行的行动任务',
+      statusText: COPY.action.idleStatus,
+      disabledReason: COPY.action.noAvailable,
       primary: null,
       emptyAction: null,
       clearAction: null,

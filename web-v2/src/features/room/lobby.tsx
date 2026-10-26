@@ -5,6 +5,7 @@ import { Avatar, Modal, Notice } from '../../components/ui.tsx';
 import { ApiFailure } from '../../transport/http.ts';
 import { useIntent } from '../../transport/intent.ts';
 import { actionLabels, formatCountdown, presenceLabels, publicChatLabel, publicPhaseLabel, roomPermissionReasons } from '../../presentation/labels.ts';
+import { COPY } from '../../presentation/copy.ts';
 import { RulesBook } from '../rules/book.tsx';
 import { useSpeakingSeats } from '../voice/speaking-seats.ts';
 import { canManageMember, hostExitDissolves, memberLabel, roomExitMessage, roomExitPresentation } from './policy.ts';
@@ -67,7 +68,7 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
   // 「谁在说话」光环（Q-12）：大厅/复盘走房间频道，服务端下发的 uid 主体就是 memberId
   const speakingSubjects = useSpeakingSeats();
   const target = (member: RoomMemberDTO) => <div className={`member-card${speakingSubjects.includes(member.memberId) ? ' member-card--speaking' : ''}`} key={member.memberId} data-member-id={member.memberId} data-speaking={speakingSubjects.includes(member.memberId) ? 'true' : undefined}>
-    <Avatar url={member.avatarUrl} name={member.nickname}/><div className="member-card__info"><strong title={`${member.nickname} · UID ${member.uid}`}>{memberLabel(member, view.viewer.userId)}</strong><div className="member-status"><span className={`presence presence--${member.presence}`}>{presenceLabels[member.presence]}</span>{speakingSubjects.includes(member.memberId) && <span className="badge badge--speaking">正在说话</span>}{member.kind === 'formal' && isLobby && <span className={member.ready ? 'badge badge--ready' : 'badge'}>{member.ready ? '已准备' : '未准备'}</span>}{member.kind !== 'formal' && <span className="badge">{member.kind === 'private_spectator' ? '私人第二屏' : '公开观众'}</span>}</div></div>
+    <Avatar url={member.avatarUrl} name={member.nickname}/><div className="member-card__info"><strong title={`${member.nickname} · UID ${member.uid}`}>{memberLabel(member, view.viewer.userId)}</strong><div className="member-status"><span className={`presence presence--${member.presence}`}>{presenceLabels[member.presence]}</span>{speakingSubjects.includes(member.memberId) && <span className="badge badge--speaking">正在说话</span>}{member.kind === 'formal' && isLobby && <span className={member.ready ? 'badge badge--ready' : 'badge'}>{member.ready ? '已准备' : '未准备'}</span>}{member.kind !== 'formal' && <span className="badge">{member.kind === 'private_spectator' ? '私人观战' : '公开观战'}</span>}</div></div>
     {(canManageMember(view, 'kick', member.memberId) || canManageMember(view, 'transfer-host', member.memberId)) && <div className="member-tools">
       {canManageMember(view, 'transfer-host', member.memberId) && <button className="text-button" disabled={locked} onClick={() => setConfirmation({ action: 'transfer-host', memberId: member.memberId, name: member.nickname })}>转移房主</button>}
       {canManageMember(view, 'kick', member.memberId) && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'kick', memberId: member.memberId, name: member.nickname })}>移出</button>}
@@ -75,12 +76,12 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
   </div>;
   return <>
     <header className="room-heading"><div><span className="eyebrow">{isLobby ? 'BEFORE THE CURTAIN' : 'THE PERFORMANCE'}</span><h1>{isLobby ? '房间大厅' : publicPhaseLabel(view)}</h1></div><div className="room-code"><small>房间码</small><strong>{view.room.code}</strong></div></header>
-    {view.viewer.readOnly && <Notice>正在观战 · {view.viewer.kind === 'private_spectator' ? '私人第二屏' : '公开视角'}。你不占正式名额，也不参与准备或行动。</Notice>}
+    {view.viewer.readOnly && <Notice>正在观战 · {view.viewer.kind === 'private_spectator' ? COPY.spectator.private : COPY.spectator.public}。你不占正式名额，也不参与准备或行动。</Notice>}
     {view.room.config.mode === 'experimental' && <Notice>实验模式 · 本房间使用自定义角色组成，规则配置已冻结。</Notice>}
     {view.room.emptyDeadline !== null && <Notice>当前无正式玩家，房间将自动解散。剩余 {formatCountdown(remaining(view.room.emptyDeadline))}</Notice>}
     {!view.room.hostMemberId && <Notice>当前暂无房主。在线正式成员的房主归属由服务端同步。</Notice>}
     {operation.intent?.error && <Notice error>{operation.intent.error}{operation.unresolved && <div className="button-row"><button className="button" onClick={() => void refresh()}>读取最新状态</button><button className="button" disabled={!online || operation.busy} onClick={() => void operation.retry()}>确认原操作结果</button></div>}</Notice>}
-    {!isLobby && view.public && <section className="panel"><h2>第 {view.public.dayNumber} 轮 · {view.public.phase === 'night' ? '夜晚' : '白天'}</h2><p>公开存活 {view.public.seats.filter(seat => seat.alive).length} 人 · 共 {view.public.seats.length} 个席位</p>{view.tasks.map(task => <p key={`${task.action}/${task.windowInstanceId}`}>当前任务：{actionLabels[task.action]}</p>)}</section>}
+    {!isLobby && view.public && <section className="panel"><h2>第 {view.public.dayNumber} 轮 · {view.public.phase === 'night' ? '夜晚' : '白天'}</h2><p>{COPY.game.alive} {view.public.seats.filter(seat => seat.alive).length} 人 · 共 {view.public.seats.length} 个席位</p>{view.tasks.map(task => <p key={`${task.action}/${task.windowInstanceId}`}>当前任务：{actionLabels[task.action]}</p>)}</section>}
     <div className="lobby-grid"><div><section className="panel"><div className="section-title"><h2>正式玩家</h2><span>{view.room.formalMembers.length} / {view.room.requiredPlayers} 人</span></div>{isLobby && <LobbySeating view={view}/>}{isLobby && <p className="muted">已准备 {readyCount} / {view.room.requiredPlayers}。开局后重新随机座位与角色。</p>}<div className="members-list">{view.room.formalMembers.map(target)}</div></section>
       <section className="panel"><div className="section-title"><h2>观战者</h2><span>{view.room.spectators.length} 人</span></div>{view.room.spectators.length ? <div className="members-list">{view.room.spectators.map(target)}</div> : <p className="muted">暂时没有观众。</p>}
         {view.viewer.readOnly && isLobby && <><button className="button" disabled={locked || !caps.promote.allowed} onClick={() => run('promote')}>加入对局</button>{!caps.promote.allowed && <p className="muted">{roomPermissionReasons[caps.promote.reason ?? ''] ?? '当前无法转为正式玩家。'}</p>}</>}

@@ -29,7 +29,7 @@ function idlePresentation(view: RoomSnapshot) {
 }
 
 describe('自由发言阶段行动卡文案：推导', () => {
-  it('存活正式玩家给出「可开麦发言」，而不是通用「本阶段无需操作」', () => {
+  it('存活正式玩家给出「可开麦发言」，而不是通用等待提示', () => {
     expect(freeSpeechNoteText(freeSpeechView())).toEqual({
       title: '自由发言时间',
       summary: '点击上方语音条开麦发言；倒计时结束自动进入放逐投票。',
@@ -101,8 +101,8 @@ describe('自由发言阶段行动卡文案：接入行动卡', () => {
     const view = freeSpeechView();
     view.public!.day!.step = 'speech_round';
     expect(idlePresentation(view)).toMatchObject({
-      title: '本阶段无需操作',
-      summary: '等待其他玩家或服务端推进阶段。',
+      title: '现在不需要你操作',
+      summary: '等待其他玩家行动，阶段会自动继续。',
     });
   });
 
