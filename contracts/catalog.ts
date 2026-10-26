@@ -8,7 +8,7 @@ export interface BootstrapDTO {
   socket: { path: string; pingIntervalMs: number; pingTimeoutMs: number; disconnectGraceMs: number };
 }
 export interface RoleAbilityDTO { stage: 1 | 2; summary: string; clauses: string }
-export interface CatalogRoleDTO { roleId: RoleId; name: string; description: string; faction: FactionId; abilities: RoleAbilityDTO[] }
+export interface CatalogRoleDTO { roleId: RoleId; name: string; description: string; faction: FactionId; victory: string; abilities: RoleAbilityDTO[] }
 export interface CatalogDTO {
   rulesVersion: '2.0';
   roles: CatalogRoleDTO[];

@@ -53,6 +53,6 @@ API 前缀为 `/api/v2`，规则版本为 `2.0`。账号、成员和席位使用
 - 私人事件、任务、提交状态和知识只在授权视图中返回。
 - 快照使用 `viewVersion` 和服务端时间进行对账，客户端不能用本地时间决定行动顺序或方案版本。
 
-角色目录的每个角色包含 `description` 和两个阶段的 `abilities`，每项能力摘要附 `stage`、`summary`、`clauses`。这些内容是玩家说明，不代表当前行动权限。
+角色目录的每个角色包含 `description`、`victory` 和两个阶段的 `abilities`，每项能力摘要附 `stage`、`summary`、`clauses`。这些内容是玩家说明，不代表当前行动权限。
 
 契约夹具位于 `tests/fixtures/contract-2.2/`，可运行客户端示例位于 `docs/examples/contract-client.ts`。
