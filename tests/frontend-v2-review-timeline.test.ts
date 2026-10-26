@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  filterReviewTimeline,
   reviewDayAnchors,
   reviewDeathSeats,
+  reviewEventCategory,
+  reviewEventPlayerIds,
   reviewVoteTally,
   type ReviewDTO,
   type ReviewEvent,
@@ -57,5 +60,35 @@ describe('review timeline presentation adapters', () => {
       event('game_started', {}), event('night_started', {}), event('day_ended', {}, 2), event('day_ended', {}, 2), event('day_ended', {}, 5),
     ])).toEqual([1, 2, 5]);
     expect(reviewDayAnchors([])).toEqual([]);
+  });
+
+  it('classifies only known actions and finds players through ids and vote/death seats', () => {
+    expect(reviewEventCategory(event('attack_events', { attacks: [] }))).toBe('action');
+    expect(reviewEventCategory(event('election_result', { votes: [] }))).toBe('vote');
+    expect(reviewEventCategory(event('deaths_announced', { seats: [] }))).toBe('death');
+    expect(reviewEventCategory(event('unknown_server_only', { secret: true }))).toBeNull();
+    expect(reviewEventPlayerIds(event('election_result', {
+      votes: [{ voterSeat: 2, targetSeat: 1 }], winnerSeat: 1,
+    }), review)).toEqual(new Set(['p1', 'p2']));
+    expect(reviewEventPlayerIds(event('attack_events', {
+      attacks: [{ targetPlayerId: 'p3' }],
+    }), review)).toEqual(new Set(['p3']));
+    expect(reviewEventPlayerIds(event('night_deaths_confirmed', {
+      deaths: [{ playerId: 'p1' }],
+    }), review)).toEqual(new Set(['p1']));
+  });
+
+  it('applies day, category and player filters together without changing source order', () => {
+    const timeline = [
+      event('attack_events', { attacks: [{ targetPlayerId: 'p1' }] }),
+      event('night_deaths_confirmed', { deaths: [{ playerId: 'p1' }] }),
+      event('election_result', { votes: [{ voterSeat: 2, targetSeat: 1 }] }, 2),
+      event('unknown_server_only', { playerId: 'p1' }, 2),
+    ];
+    expect(filterReviewTimeline(timeline, review, { dayNumber: null, category: 'death', playerId: null })).toEqual([timeline[1]]);
+    expect(filterReviewTimeline(timeline, review, { dayNumber: null, category: 'vote', playerId: 'p2' })).toEqual([timeline[2]]);
+    expect(filterReviewTimeline(timeline, review, { dayNumber: 1, category: 'action', playerId: 'p1' })).toEqual([timeline[0]]);
+    expect(filterReviewTimeline(timeline, review, { dayNumber: 2, category: 'action', playerId: 'p1' })).toEqual([]);
+    expect(filterReviewTimeline(timeline, review, { dayNumber: null, category: null, playerId: null })).toEqual(timeline);
   });
 });

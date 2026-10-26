@@ -69,3 +69,54 @@ export function reviewEventText(event: ReviewEvent, review: ReviewDTO, view: Roo
     default: return describeEvent(event, view, catalog);
   }
 }
+
+export type ReviewEventCategory = 'death' | 'vote' | 'action';
+export interface ReviewFilters {
+  dayNumber: number | null;
+  category: ReviewEventCategory | null;
+  playerId: string | null;
+}
+
+const actionEvents = new Set([
+  'attack_events', 'guard', 'guard_sacrifice', 'laike', 'faction', 'proposal_updated', 'proposal_confirmed',
+  'check', 'descender_check', 'descender_check_result', 'rescue_declined', 'rescue_selected', 'revive_selected',
+  'stage1_attack_disabled', 'speech_order', 'last_words', 'handover',
+]);
+
+export function reviewEventCategory(event: ReviewEvent): ReviewEventCategory | null {
+  if (['deaths_announced', 'elimination_announced', 'night_deaths_confirmed'].includes(event.type)) return 'death';
+  if (reviewVoteTally(event) !== null || /vote|election|ballot|candidacy/.test(event.type)) return 'vote';
+  return actionEvents.has(event.type) ? 'action' : null;
+}
+
+export function reviewEventPlayerIds(event: ReviewEvent, review: ReviewDTO): Set<string> {
+  const ids = new Set<string>();
+  const seats = new Map(review.players.map(player => [player.seat, player.playerId]));
+  const visit = (value: JsonValue, key = '') => {
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item, key);
+      return;
+    }
+    if (value !== null && typeof value === 'object') {
+      for (const [childKey, child] of Object.entries(value)) visit(child, childKey);
+      return;
+    }
+    if (/playerIds?$/i.test(key) && typeof value === 'string') ids.add(value);
+    if (/(?:^seat$|^seats$|Seats?$)/.test(key)) {
+      const seat = seatNumber(value);
+      const playerId = seat === null ? undefined : seats.get(seat);
+      if (playerId) ids.add(playerId);
+    }
+  };
+  visit(event.payload);
+  return ids;
+}
+
+export function filterReviewTimeline(timeline: readonly ReviewEvent[], review: ReviewDTO, filters: ReviewFilters): ReviewEvent[] {
+  return timeline.filter(event => {
+    if (filters.dayNumber !== null && event.dayNumber !== filters.dayNumber) return false;
+    if (filters.category !== null && reviewEventCategory(event) !== filters.category) return false;
+    if (filters.playerId !== null && !reviewEventPlayerIds(event, review).has(filters.playerId)) return false;
+    return true;
+  });
+}
