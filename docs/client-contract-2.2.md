@@ -21,6 +21,8 @@ API 前缀为 `/api/v2`，规则版本为 `2.0`。账号、成员和席位使用
 
 `RoomSnapshot.room` 返回这两个配置。公屏写权限由 `capabilities.canPostPublic` 表示，观众和第二屏始终只读。
 
+`POST /rulesets/validate` 用于实验板子校验，请求包含 `roles` 和可选 `playerCount`，返回 `{ok, issues}`。角色约束、人数上限和人数不一致都由同一服务端校验器计算，编辑器不再复制校验规则。
+
 离开、解散、准备、开局、接管和观战都使用服务端解析的账号与成员身份。客户端不得通过载荷声明身份、座位或权限。`capabilities.room.leave.effect` 明确区分 `leave`（普通离开）、`away`（对局中暂离）和 `dissolve`（房主在大厅退出即解散），客户端不自行推导退出效果。
 
 ## 行动

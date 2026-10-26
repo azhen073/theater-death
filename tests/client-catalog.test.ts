@@ -132,4 +132,23 @@ describe('v2 client bootstrap and catalog contract', () => {
     expect(supplied.response.status).toBe(201);
     expect(h.app.directory.byId.get(supplied.body.roomId)?.ruleset).toMatchObject({ mode: 'experimental', version: '2.0', roles: equalRoles });
   });
+
+  it('validates experimental boards through the public ruleset endpoint', async () => {
+    const h = await makeHarness();
+    const valid = roles({ laike: 1, researcher: 1, death: 1, spirit: 1, civilian: 1 });
+    const accepted = await request(h, '/api/v2/rulesets/validate', post({ roles: valid, playerCount: 5 }));
+    expect(accepted.status).toBe(200);
+    expect(await json(accepted)).toEqual({ ok: true, issues: [] });
+
+    const invalid = await request(h, '/api/v2/rulesets/validate', post({ roles: { ...valid, researcher: 2 }, playerCount: 4 }));
+    expect(invalid.status).toBe(200);
+    const invalidBody = await json(invalid);
+    expect(invalidBody.ok).toBe(false);
+    expect(invalidBody.issues.map((issue: { code: string }) => issue.code)).toEqual(expect.arrayContaining(['duplicate_unsupported_role', 'player_count_mismatch']));
+
+    const tooMany = await request(h, '/api/v2/rulesets/validate', post({ roles: { ...valid, civilian: 61 }, playerCount: 65 }));
+    const tooManyBody = await json(tooMany);
+    expect(tooManyBody.ok).toBe(false);
+    expect(tooManyBody.issues.map((issue: { code: string }) => issue.code)).toContain('player_limit');
+  });
 });
