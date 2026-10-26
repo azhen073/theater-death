@@ -6,6 +6,12 @@
     "regions": { "defaultAvatar": [928, 213, 472, 472], "deathMark": [48, 110, 490, 675], "deathParticles": [501, 122, 347, 225], "deathShards": [554, 408, 249, 229], "deathFade": [516, 697, 330, 105] }
   },
   {
+    "file": "death-mark-dark.png",
+    "source": "Art Materials/死亡特效和默认头像.png",
+    "sha256": "1661a089bc32a22f2dc574c39ba74ca18647d4677ce14fab9a5e7e24e43d1b99",
+    "derived": "由 avatar-sheet.png 的 deathMark 区域 [48,110,490,675] 派生：亮度键控去白底（alpha = max((1-L)^2.0, redExcess^1.1×0.9) × 原 alpha，redExcess = R−(G+B)/2），再按 50% 缩放到 245×338；暗色主题专用（普通混合，替代在暗底隐形的 multiply）"
+  },
+  {
     "roleId": "researcher",
     "file": "cards/researcher.png",
     "source": "Art Materials/IdentityCards/cards/05_科研员_米提亚.png",

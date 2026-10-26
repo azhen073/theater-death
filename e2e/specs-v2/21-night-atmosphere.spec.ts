@@ -25,6 +25,7 @@ test('夜间银蓝静态层和原素材可见，座位行动在四档宽度仍�
   await expect(stage.locator('.night-atmosphere__glow')).toBeVisible();
   await expect(stage.locator('.night-atmosphere__vignette')).toBeVisible();
   await expect(stage.locator('.night-atmosphere__motion i')).toHaveCount(24);
+  await expect(stage.locator('.night-atmosphere__beam')).toBeVisible();
   const visual = await stage.evaluate(element => {
     const stageStyle = getComputedStyle(element);
     const sceneryStyle = getComputedStyle(element.querySelector('.stage-backdrop') ?? element);
@@ -104,6 +105,8 @@ test('页面设置切换减少动画会立即停止且只保留静态夜景；�
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.reducedMotion)).toBe('true');
   await expect(page.locator('.night-atmosphere__glow')).toBeVisible();
   await expect(page.locator('.night-atmosphere__vignette')).toBeVisible();
+  await expect(page.locator('.night-atmosphere__beam')).toBeVisible();
+  await expect(page.locator('.night-atmosphere__beam')).toHaveCSS('animation-name', 'none');
   await expect(page.locator('.night-atmosphere__motion')).toHaveCount(0);
 
   await settings.getByLabel('动画偏好').selectOption('full');
@@ -122,4 +125,22 @@ test('页面设置切换减少动画会立即停止且只保留静态夜景；�
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(page.locator('.night-atmosphere__motion')).toHaveCount(0);
+});
+
+test('暗色昼夜使用不同布景层次，死亡星芒使用可加载的暗色素材', async ({ page }, testInfo) => {
+  await page.addInitScript(() => localStorage.setItem('theater-death-display-v1', JSON.stringify({ scale: 100, theme: 'dark', motion: 'reduced' })));
+  const night = loadGameFixture('night-spirit-full.json');
+  night.view.public!.seats[0]!.alive = false;
+  await mount(page, night);
+  const stage = page.getByRole('region', { name: '玩家舞台' });
+  const nightBackground = await stage.locator('.stage-backdrop').evaluate(element => getComputedStyle(element).backgroundImage);
+  await expect(stage.locator('.seat-death-mark__dark').first()).toBeVisible();
+  await expect(stage.locator('.seat-death-mark svg').first()).toBeHidden();
+  expect(await page.evaluate(async () => (await fetch('/assets/death-mark-dark.png')).ok)).toBe(true);
+  await page.screenshot({ path: `/results/night-depth-dark-${testInfo.project.name}.png`, fullPage: true });
+
+  await pushFixture(page, loadGameFixture('day-election-full.json'));
+  await expect(stage).not.toHaveClass(/theater-stage--night/);
+  const dayBackground = await stage.locator('.stage-backdrop').evaluate(element => getComputedStyle(element).backgroundImage);
+  expect(dayBackground).not.toBe(nightBackground);
 });

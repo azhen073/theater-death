@@ -10,6 +10,8 @@
 
 ### P2：复盘可视化 / 大厅入座 / 移动端体验（2026-10-10）
 
+当前功能分支另接入夜间聚光、座位层次与暗色死亡星芒。
+
 分支 `feat/ui-p2-experience`，自 P1 分支 tip `97ff8ba` 拉出（P1 尚未合并 main，本批依赖其主题层与素材约定）；未合并、未部署。纯 web-v2 前端与测试/spec 同步，不改引擎、服务端与契约。
 
 P2-A 复盘可视化：复盘页顶部新增谢幕座位环形图（`review/seating-chart.tsx`，身份徽标按阵营色、死者灰度、本人 ★；座位号补零并与昵称分置，避免与既有 spec 的文本断言冲突）；「全部身份」页签改卡片网格并挂九身份卡图（`member-card__art`，保留 `member-card` 类与「N号 昵称 / 阵营 · 身份 / 我的标记」逐字结构）；「完整时间线」新增「第 N 轮」锚点 chips（尊重减少动画偏好）、票型事件渲染公共 `VoteTallyCard`、死亡事件渲染座位徽标横排（适配层在 `review/model.ts`：复盘 timeline 携带原始引擎 payload、与公共事件同构，补 `cursor:0` 复用 `parseVoteTally`；非票型/非死亡事件与空名单保持原文字行）。
@@ -428,3 +430,4 @@ theater_death/
 - **声网链路实机验证（2026-09-19）**：E2E 语音 3 例全过（01 冒烟加入频道 + 02 发言授权/收回 + 02 夜间禁麦，1.3 分钟），浏览器经真实声网云完成加入与权限切换；本机 `.env` 已配置项目凭据（凭据不入库）。
 - **前端产物**：引入 `agora-rtc-sdk-ng` 后单包约 1.86MB（gzip 524KB，vite 提示超 500KB）；单页应用可接受，如需优化可后续 code-split。
 - **E2E 基础设施要点（M4d）**：runner 与 app 共享网络命名空间（`network_mode: service:app`）后用 `http://localhost:3000`——**非 localhost 的 http 会被 Chromium HTTPS-First 升级**（`--disable-features=HttpsFirstModeV2,...` 实测压不住，`ERR_SSL_PROTOCOL_ERROR`），localhost 天然安全上下文最稳；虚拟麦克风需 `--unsafely-treat-insecure-origin-as-secure`；`gameId` 只在**大厅视图**有（对局开始后 /api/view 不再返回）；复盘字段是 `players/timeline/winner`（不是 seats）；浏览器注入会话用 cookie `td_session`（`context.addCookies`）；compose 宿主端口冲突（3000 被占）→ `deploy/e2e.env` 用 `APP_PORT=3210`；用例间**不要 `some(async …)`**（async 回调恒真）；Playwright 镜像版本与 `@playwright/test` 精确锁定一致（1.63.0）
+- `feat/ui-night-depth` 的夜间舞台层次已接入当前功能分支；该内容不属于上游 `v2.0.8-alpha`。
