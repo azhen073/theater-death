@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CatalogDTO } from '../../../../contracts/catalog.ts';
-import type { EventDTO, RoomSnapshot, SeatDTO, TaskDTO } from '../../../../contracts/v2.ts';
-import { Avatar, Modal, Notice } from '../../components/ui.tsx';
-import { actionLabels, formatCountdown, presenceLabels, publicPhaseLabel } from '../../presentation/labels.ts';
-import { describeEvent } from '../../presentation/events.ts';
+import type { RoomSnapshot, SeatDTO, TaskDTO } from '../../../../contracts/v2.ts';
+import { Notice } from '../../components/ui.tsx';
+import { formatCountdown } from '../../presentation/labels.ts';
 import { ApiFailure } from '../../transport/http.ts';
-import { navigate } from '../../app/navigation.ts';
 import { useCommands } from '../actions/use-commands.ts';
 import { actionIssue, commandIntent, currentTask, emptyDraft, proposalEditAndConfirmIntent, taskKey, updateSelection } from '../actions/model.ts';
 import type { ActionDraft } from '../actions/model.ts';
@@ -13,32 +11,22 @@ import { actionScopeKey, areTargetSetsEqual, deriveActionPresentation, type Subm
 import { StageActionCard } from '../actions/stage-action-card.tsx';
 import { Proposal } from '../actions/proposal.tsx';
 import { Lobby } from '../room/lobby.tsx';
-import { RulesBook } from '../rules/book.tsx';
 import { Stage } from './stage.tsx';
-import { Identity, authorizedPrivate } from './identity.tsx';
+import { authorizedPrivate } from './identity.tsx';
 import { GameSidebar } from './sidebar.tsx';
 import { SpeechAttention } from './speech-attention.tsx';
 import { useSpeakingSeats } from '../voice/speaking-seats.ts';
-import { SecondScreenPanel } from '../spectator/panel.tsx';
 import { ObservedActions } from '../spectator/actions.tsx';
-import { DisplaySettings } from '../account/display-settings.tsx';
 import { PhaseTransition } from './phase-transition.tsx';
 import { SnowfallLayer } from './snowfall-layer.tsx';
-import { VoteTallyCard, VoteTallyLive, VoteProgress } from './vote-tally.tsx';
-import { parseVoteTally } from '../../presentation/vote-tally.ts';
-import { PlayerMarkEditor } from './player-marks.tsx';
+import { VoteTallyLive, VoteProgress } from './vote-tally.tsx';
 import { IdentityEntryReveal } from './identity-entry-reveal.tsx';
 import { claimIdentityReveal, identityRevealHasUrgentAction, identityRevealKey } from './identity-reveal-model.ts';
 import { reconcileDraft } from '../actions/draft-reconciliation.ts';
 import { newRequestId } from '../../transport/ids.ts';
 import { COPY } from '../../presentation/copy.ts';
-
-type Overlay =
-  | { kind: 'identity' | 'rules' | 'navigation' | 'second-screen' | 'settings' }
-  | { kind: 'player'; playerId: string }
-  | { kind: 'event'; event: EventDTO }
-  | { kind: 'vote-tally'; event: EventDTO }
-  | null;
+import { GameHUD } from './game-hud.tsx';
+import { GameOverlayContext, GameOverlays, type GameOverlay } from './game-overlays.tsx';
 
 export function GameScene({
   view,
@@ -67,7 +55,7 @@ export function GameScene({
     changed: false,
   });
   const drafts = draftState.scope === currentScope ? draftState.values : {};
-  const [overlay, setOverlay] = useState<Overlay>(null);
+  const [overlay, setOverlay] = useState<GameOverlay>(null);
   const [identityEntryReveal, setIdentityEntryReveal] = useState(false);
   const [manage, setManage] = useState(false);
   const [managementVisited, setManagementVisited] = useState(false);
@@ -431,29 +419,11 @@ export function GameScene({
   const publicWindow = publicWindows.length === 1 ? publicWindows[0] : null;
   const subject = view.public?.seats.find(seat => seat.playerId === view.viewer.subjectPlayerId);
 
-  const context = (
-    <div className="modal-game-context">
-      <span>
-        {publicPhaseLabel(view)}
-        {task ? ` · ${actionLabels[task.action]} · ${formatCountdown(remaining(task.closesAt))}` : ''}
-      </span>
-      <button
-        type="button"
-        className="text-button"
-        onClick={() => {
-          setOverlay(null);
-          setManage(false);
-        }}
-      >
-        返回舞台与行动
-      </button>
-    </div>
-  );
-
-  const details =
-    overlay?.kind === 'player' ? view.public?.seats.find(seat => seat.playerId === overlay.playerId) : null;
-  const eventText = overlay?.kind === 'event' ? describeEvent(overlay.event, view, catalog) : null;
-  const overlayTally = overlay?.kind === 'vote-tally' ? parseVoteTally(overlay.event) : null;
+  const returnToStage = () => {
+    setOverlay(null);
+    setManage(false);
+  };
+  const context = <GameOverlayContext view={view} task={task} remaining={remaining} onReturn={returnToStage}/>;
 
   const actionSlot =
     view.viewer.readOnly &&
@@ -537,45 +507,16 @@ export function GameScene({
         {active && identityEntryReveal && (
           <IdentityEntryReveal view={view} catalog={catalog} onEnter={() => setIdentityEntryReveal(false)} />
         )}
-        <header className={`game-hud${compact ? ' game-hud--compact' : ''}`} ref={hud}>
-          <div>
-            <span className="eyebrow">
-              第 {view.public?.dayNumber ?? 1} 轮 · {view.public?.phase === 'night' ? '夜晚' : '白天'} · 第{' '}
-              {view.public?.stage ?? 1} 阶段
-            </span>
-            <h1>{publicPhaseLabel(view)}</h1>
-          </div>
-          <div className="hud-meta">
-            <strong>{publicWindow ? formatCountdown(remaining(publicWindow.closesAt)) : view.public?.night ? formatCountdown(remaining(view.public.night.closesAt)) : '以当前任务为准'}</strong>
-            <span>
-              {COPY.game.alive} {view.public?.seats.filter(seat => seat.alive).length ?? 0} /{' '}
-              {view.public?.seats.length ?? 0}
-            </span>
-          </div>
-          {compact ? (
-            <div className="hud-tools hud-tools--compact">
-              <button type="button" className="button hud-more" aria-expanded={hudMenu} onClick={() => setHudMenu(value => !value)}>
-                更多
-              </button>
-            </div>
-          ) : (
-            <div className="hud-tools">
-              <span
-                className="hud-room-code"
-                title={`房间 ${view.room.code} · ${view.room.config.mode === 'formal' ? '正式模式' : '实验模式'}`}
-              >
-                房间 {view.room.code} · {view.room.config.mode === 'formal' ? '正式' : '实验'}
-              </span>
-              {hudActions}
-            </div>
-          )}
-          {compact && hudMenu && (
-            <div className="hud-menu" aria-label="对局操作">
-              <span className="hud-menu__room">房间 {view.room.code} · {view.public?.seats.filter(seat => seat.alive).length ?? 0} / {view.public?.seats.length ?? 0} {COPY.game.alive}</span>
-              {hudActions}
-            </div>
-          )}
-        </header>
+        <GameHUD
+          view={view}
+          remaining={remaining}
+          publicWindow={publicWindow}
+          compact={compact}
+          hudMenu={hudMenu}
+          hud={hud}
+          onToggleMenu={() => setHudMenu(value => !value)}
+          actions={hudActions}
+        />
 
         {view.viewer.readOnly && (
           <Notice>
@@ -630,99 +571,19 @@ export function GameScene({
           />
         </div>
 
-        {active && overlay?.kind === 'rules' && (
-          <RulesBook
-            catalog={catalog}
-            context={context}
-            roleId={privateView?.self.roleId}
-            phase={view.public?.phase}
-            view={view}
-            onClose={() => setOverlay(null)}
-          />
-        )}
-        {active && overlay?.kind === 'identity' && (
-          <Modal
-            title={view.viewer.readOnly ? COPY.spectator.currentIdentity : '我的身份'}
-            context={context}
-            onClose={() => setOverlay(null)}
-          >
-            <Identity view={view} catalog={catalog} />
-          </Modal>
-        )}
-        {active && overlay?.kind === 'player' && details && (
-          <Modal title={`${details.seat}号玩家`} context={context} onClose={() => setOverlay(null)}>
-            <div className="seat-profile">
-              <Avatar url={details.avatarUrl} name={details.nickname} size="large" />
-              <div className="seat-profile__details">
-                <h3>{details.nickname}</h3>
-                <p className="muted">UID {details.uid}</p>
-                <p>
-                  {details.alive ? '公开状态：存活' : '公开状态：已死亡'} · {presenceLabels[details.presence]}
-                </p>
-                <p>
-                  {details.revealedRoleId
-                    ? `公开身份：${catalog.roles.find(role => role.roleId === details.revealedRoleId)?.name ?? '已翻牌'}`
-                    : '身份尚未公开'}
-                </p>
-                {view.public?.sheriff.holderId === details.playerId && <p>沉睡的天理</p>}
-              </div>
-            </div>
-            <PlayerMarkEditor view={view} playerId={details.playerId} readOnly={view.room.phase !== 'playing'} />
-          </Modal>
-        )}
-        {active && overlay?.kind === 'event' && eventText && (
-          <Modal title={eventText.title} context={context} onClose={() => setOverlay(null)}>
-            <p className="muted">
-              第 {overlay.event.dayNumber} 轮 · 阶段 {overlay.event.stage}
-            </p>
-            {eventText.details.map((line, index) => (
-              <p key={index}>{line}</p>
-            ))}
-          </Modal>
-        )}
-        {active && overlay?.kind === 'vote-tally' && overlayTally && (
-          <Modal
-            title={overlayTally.kind === 'election' ? '天理竞选票型' : '放逐投票票型'}
-            context={context}
-            onClose={() => setOverlay(null)}
-          >
-            <VoteTallyCard tally={overlayTally} />
-          </Modal>
-        )}
-        {active && overlay?.kind === 'navigation' && (
-          <Modal title="剧院导航" context={context} onClose={() => setOverlay(null)}>
-            <p className="muted">查看账户或首页不会主动离开房间，对局仍继续计时。</p>
-            <div className="button-row">
-              <button type="button" className="button" onClick={() => navigate('/')}>
-                剧院首页
-              </button>
-              <button type="button" className="button" onClick={() => navigate('/account')}>
-                我的账户
-              </button>
-              <button type="button" className="button" onClick={() => setOverlay({ kind: 'rules' })}>
-                完整规则
-              </button>
-              <button type="button" className="button" onClick={() => setOverlay({ kind: 'settings' })}>
-                显示设置
-              </button>
-            </div>
-          </Modal>
-        )}
-        {active && overlay?.kind === 'settings' && (
-          <Modal title="显示设置" context={context} onClose={() => setOverlay(null)}>
-            <DisplaySettings />
-          </Modal>
-        )}
+        <GameOverlays
+          active={active}
+          online={online}
+          overlay={overlay}
+          view={view}
+          catalog={catalog}
+          privateView={privateView}
+          context={context}
+          remaining={remaining}
+          refresh={refresh}
+          onOverlay={setOverlay}
+        />
       </div>
-      <SecondScreenPanel
-        view={view}
-        online={online}
-        open={active && overlay?.kind === 'second-screen'}
-        onClose={() => setOverlay(null)}
-        refresh={refresh}
-        remaining={remaining}
-        context={context}
-      />
     </>
   );
 }
