@@ -348,6 +348,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .stage-action-card { border: 1px solid #bdc9d9; background: #fcfdfeee; border-radius: 10px; padding: 16px 20px; box-shadow: 0 4px 16px #2844660d; backdrop-filter: blur(8px); }
 .stage-action-card--readonly { background: #f8fafce8; border-color: #cbd5e1; }
 .stage-action-card__head { display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+.stage-action-card__compact-title { display: none; }
 .action-clock { font-family: ui-monospace,monospace; font-size: 18px; }
 .stage-action-card h2 { font-size: 20px; margin: 8px 0 6px; }
 .stage-action-card .task-switch { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
@@ -637,10 +638,24 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .voice-bar__device { width: 100%; justify-content: space-between; }
   .voice-bar__device select { flex: 1; }
   .stage-action-slot { margin: 10px 10px 0; }
-  .stage-action-card { padding: 14px; }
+  .stage-action-card { padding: 14px; backdrop-filter: none; }
   .stage-action-card h2 { font-size: 18px; }
   .stage-action-card .button-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
   .stage-action-card .button-row > .button--primary { min-width: 0; }
+  .game-scene:has(.stage-action-card:not(.stage-action-card--readonly) .stage-action-card__submit) { padding-bottom: calc(190px + env(safe-area-inset-bottom)); }
+  .stage-action-card__submit {
+    position: fixed; z-index: 7; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom));
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px;
+    max-height: 132px; padding: 9px 12px; overflow-y: auto;
+    border-top: 1px solid var(--line); background: #f7f9fbf5; box-shadow: 0 -5px 18px #1d2b441f;
+    backdrop-filter: blur(12px);
+  }
+  .stage-action-card__compact-title { display: block; min-width: 0; font-size: 12px; overflow-wrap: anywhere; }
+  .stage-action-card__submit .selection-summary { grid-column: 1; margin: 0; font-size: 12px; line-height: 1.4; }
+  .stage-action-card__submit .button-row { grid-column: 2; grid-row: 1 / span 2; margin: 0; display: flex; flex-wrap: nowrap; }
+  .stage-action-card__submit .button-row > .button { min-height: 44px; padding: 8px 12px; white-space: normal; }
+  .stage-action-card--readonly .stage-action-card__submit { position: static; max-height: none; padding: 0; border: 0; background: transparent; box-shadow: none; }
+  .stage-action-card--readonly .stage-action-card__compact-title { display: none; }
   .stage-seats--ring, .stage-seats--grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px 10px; padding: 18px 12px; }
   .seat-main { min-height: 113px; }
   .seat-tools button { min-height: 34px; padding: 7px 9px; }
@@ -745,6 +760,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 :root[data-theme='dark'] .effective-proposal { border-top-color: #453d52; }
 /* 舞台与座位：夜间舞台氛围（night-atmosphere.css）不动；座位卡在暗色主题下用暗底（含夜间作用域） */
 :root[data-theme='dark'] .stage-action-card { background: #211c26ee; border-color: #453d52; }
+:root[data-theme='dark'] .stage-action-card__submit { background: #211c26f5; }
 :root[data-theme='dark'] .stage-action-card--readonly { background: #1b1720e8; border-color: var(--line); }
 :root[data-theme='dark'] .task-switch button:not([aria-pressed='true']):not(.task-switch__withdraw) { background: #26202e; }
 :root[data-theme='dark'] .stage-action-card .task-switch button:not([aria-pressed='true']):not(.task-switch__withdraw) { background: #2b2434; border-color: #4a4154; }
