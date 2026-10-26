@@ -7,8 +7,8 @@ import { ApiFailure, errorMessage, get } from '../../transport/http.ts';
 import { useIntent } from '../../transport/intent.ts';
 import { Lobby } from '../room/lobby.tsx';
 import { roomExitMessage, roomExitPresentation } from '../room/policy.ts';
-import { reviewDayAnchors, reviewDeathSeats, reviewEventText, reviewScope, reviewVoteTally } from './model.ts';
-import type { ReviewDTO } from './model.ts';
+import { filterReviewTimeline, reviewDayAnchors, reviewDeathSeats, reviewEventText, reviewScope, reviewVoteTally } from './model.ts';
+import type { ReviewDTO, ReviewFilters } from './model.ts';
 import { ReviewSeatingChart } from './seating-chart.tsx';
 import { VoteTallyCard } from '../game/vote-tally.tsx';
 import { navigateTabs } from '../../components/tab-navigation.ts';
@@ -30,12 +30,17 @@ export function ReviewPage({ view, catalog, online, active = true, refresh, rema
   const [leaveConfirm, setLeaveConfirm] = useState(false);
   const [tab, setTab] = useState<'players' | 'timeline' | 'public' | 'faction'>('players');
   const [limit, setLimit] = useState(100);
+  const [filters, setFilters] = useState<ReviewFilters>({ dayNumber: null, category: null, playerId: null });
+  const updateFilters = (next: Partial<ReviewFilters>) => {
+    setFilters(current => ({ ...current, ...next }));
+    setLimit(100);
+  };
   const { reducedMotion } = usePreferences();
   useEffect(() => { if (!active) { setConfirm(false); setLeaveConfirm(false); } }, [active]);
   const scope = reviewScope(view), latest = useRef(view); latest.current = view;
   useEffect(() => {
     const controller = new AbortController(); let active = true;
-    setReview(null); setError(''); setLimit(100);
+    setReview(null); setError(''); setLimit(100); setFilters({ dayNumber: null, category: null, playerId: null });
     void get<{ review: ReviewDTO }>(`/rooms/${view.room.code}/review`, controller.signal).then(result => {
       if (!active || reviewScope(latest.current) !== scope) return;
       if (result.review.gameId !== latest.current.gameId || latest.current.room.phase !== 'review') { setError('对局已变化，请同步当前房间。'); return; }
@@ -76,19 +81,34 @@ export function ReviewPage({ view, catalog, online, active = true, refresh, rema
         return <article className="member-card" key={player.playerId}>{role && <img className="member-card__art" src={`/assets/cards/${role.roleId}.png`} loading="lazy" alt=""/>}<div className="member-card__info"><strong>{player.seat}号 {player.nickname}{mark && <span className={`seat-mark seat-mark--${mark.color ?? 'gold'}`} role="img" aria-label={playerMarkTooltip(mark)} title={playerMarkTooltip(mark)} />}</strong><p className="muted">UID {player.uid}</p><p>{key && <span className={`faction-tag faction-tag--${key}`}>{factionLabel(role?.faction)}</span>} {role?.name ?? '未提供身份'} · {player.life === 'alive' ? '最终存活' : '最终死亡'}</p>{mark && <p className="muted">我的标记：{[mark.label, mark.note].filter(Boolean).join(' · ') || '仅色点'}（仅保存在本机）</p>}</div></article>;
       })}</div>}
       {tab === 'timeline' && (() => {
-        const events = review.timeline.slice(0, limit);
+        const filtered = filterReviewTimeline(review.timeline, review, filters);
+        const events = filtered.slice(0, limit);
         const days = reviewDayAnchors(events);
         return <>
+          <div className="review-filters" role="group" aria-label="筛选复盘时间线">
+            <label>轮次<select aria-label="按轮次筛选" value={filters.dayNumber ?? ''} onChange={event => updateFilters({ dayNumber: event.target.value ? Number(event.target.value) : null })}>
+              <option value="">全部轮次</option>{reviewDayAnchors(review.timeline).map(day => <option value={day} key={day}>第 {day} 轮</option>)}
+            </select></label>
+            <label>类别<select aria-label="按类别筛选" value={filters.category ?? ''} onChange={event => updateFilters({ category: (event.target.value || null) as ReviewFilters['category'] })}>
+              <option value="">全部类别</option><option value="death">死亡</option><option value="vote">投票</option><option value="action">行动</option>
+            </select></label>
+            <label>玩家<select aria-label="按玩家筛选" value={filters.playerId ?? ''} onChange={event => updateFilters({ playerId: event.target.value || null })}>
+              <option value="">全部玩家</option>{[...review.players].sort((a, b) => a.seat - b.seat).map(player => <option value={player.playerId} key={player.playerId}>{player.seat}号 {player.nickname}</option>)}
+            </select></label>
+            <button type="button" className="text-button" disabled={!filters.dayNumber && !filters.category && !filters.playerId} onClick={() => updateFilters({ dayNumber: null, category: null, playerId: null })}>清除筛选</button>
+          </div>
+          <p className="muted review-filter-summary" role="status">显示 {events.length} / {filtered.length} 条事件{filtered.length !== review.timeline.length ? `（原时间线 ${review.timeline.length} 条）` : ''}</p>
           {days.length > 1 && <div className="review-day-nav" role="group" aria-label="按轮次跳转">{days.map(day => <button type="button" className="text-button" key={day} onClick={() => {
             document.getElementById(`review-day-${day}`)?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
           }}>第 {day} 轮</button>)}</div>}
+          {!events.length && <p className="muted">没有符合当前筛选条件的事件。</p>}
           <div className="event-list">{events.map((event, index) => {
             const text = reviewEventText(event, review, view, catalog);
             const tally = reviewVoteTally(event);
             const deaths = reviewDeathSeats(event, review);
             const anchor = index === 0 || event.dayNumber !== events[index - 1]!.dayNumber;
             return <article className="event-row" key={index} id={anchor ? `review-day-${event.dayNumber}` : undefined}><small>第 {event.dayNumber} 轮 · 阶段 {event.stage}</small><strong>{text.title}</strong>{tally ? <VoteTallyCard tally={tally}/> : deaths !== null && deaths.length > 0 ? <p className="event-deaths" aria-label={`死亡座位：${deaths.map(seat => `${seat}号`).join('、')}`}>{deaths.map(seat => <span className="event-deaths__seat" key={seat}>{seat}号</span>)}</p> : text.details.map((line, lineIndex) => <p key={lineIndex}>{line}</p>)}</article>;
-          })}{review.timeline.length > limit && <button className="button" onClick={() => setLimit(value => value + 100)}>显示后续事件</button>}</div>
+          })}{filtered.length > limit && <button className="button" onClick={() => setLimit(value => value + 100)}>显示后续事件</button>}</div>
         </>;
       })()}
       {(tab === 'public' || tab === 'faction') && <section aria-label={tab === 'public' ? '完整公屏记录' : '完整阵营记录'}>{messages.slice(0, limit).map(message => <article className="chat-message" key={message.messageId ?? message.id}><strong>{message.senderSeat ?? '—'}号 {review.players.find(player => player.playerId === message.senderId)?.nickname ?? '玩家'}</strong><p>{message.text}</p></article>)}{!messages.length && <p className="muted">本频道没有消息。</p>}{messages.length > limit && <button className="button" onClick={() => setLimit(value => value + 100)}>显示后续消息</button>}</section>}

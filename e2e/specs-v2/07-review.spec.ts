@@ -280,6 +280,46 @@ test('私人观战只读显示当前授权窗口与当前提交，不显示动�
   await expect(page.getByRole('heading', { name: '观察玩家的行动状态 · 只读' })).toHaveCount(0);
 });
 
+test('复盘时间线按轮次、死亡、投票、行动和玩家组合筛选并可清除', async ({ page }, testInfo) => {
+  const document = loadReviewDocument();
+  const [first, second] = document.review.players;
+  document.review.timeline = [
+    { dayNumber: 1, stage: 1, type: 'attack_events', payload: { attacks: [{ sourceRoleId: 'death', targetPlayerId: first!.playerId, blocked: false }] } },
+    { dayNumber: 1, stage: 1, type: 'night_deaths_confirmed', payload: { deaths: [{ playerId: first!.playerId }] } },
+    { dayNumber: 2, stage: 1, type: 'election_result', payload: { votes: [{ voterSeat: second!.seat, targetSeat: first!.seat, units: 1 }], tally: [{ seat: first!.seat, units: 1 }], tiedSeats: [], winnerSeat: first!.seat } },
+    { dayNumber: 2, stage: 1, type: 'role_assigned', payload: { playerId: second!.playerId, roleId: second!.roleId } },
+  ];
+  await mount(page, loadReviewFixture(), { review: document });
+  await page.getByRole('tab', { name: '完整时间线' }).click();
+  const category = page.getByLabel('按类别筛选');
+  const day = page.getByLabel('按轮次筛选');
+  const player = page.getByLabel('按玩家筛选');
+  await expect(page.locator('.event-row')).toHaveCount(4);
+
+  await category.selectOption('action');
+  await expect(page.locator('.event-row')).toHaveCount(1);
+  await expect(page.locator('.event-row strong')).toHaveText('本夜攻击与抵挡');
+  await category.selectOption('death');
+  await expect(page.locator('.event-row strong')).toHaveText('夜末死亡确认');
+  await category.selectOption('vote');
+  await expect(page.locator('.event-row strong')).toHaveText('天理竞选票型');
+  await day.selectOption('1');
+  await expect(page.getByText('没有符合当前筛选条件的事件。')).toBeVisible();
+  await expect(page.locator('.event-row')).toHaveCount(0);
+
+  await day.selectOption('');
+  await category.selectOption('');
+  await player.selectOption(first!.playerId);
+  await expect(page.locator('.event-row')).toHaveCount(3);
+  await expect(page.locator('.event-row strong').filter({ hasText: '身份分配' })).toHaveCount(0);
+  await page.screenshot({ path: `/results/review-filters-${testInfo.project.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: '清除筛选' }).click();
+  await expect(page.locator('.event-row')).toHaveCount(4);
+  await expect(day).toHaveValue('');
+  await expect(category).toHaveValue('');
+  await expect(player).toHaveValue('');
+});
+
 async function mountPlaying(page: Page, fixture: GameHarnessFixture) {
   let current = fixture;
   await page.route('**/__game-fixture', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(current) }));
