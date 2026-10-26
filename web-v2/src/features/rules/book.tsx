@@ -48,18 +48,18 @@ export function RulesBook({ catalog, onClose, context, roleId, phase, view }: {
     const frame = requestAnimationFrame(() => document.getElementById(`rule-block-${focusBlock}`)?.scrollIntoView({ block: 'start' }));
     return () => cancelAnimationFrame(frame);
   }, [mode, chapterId, focusBlock]);
-  return <Modal title={`规则与玩法 · ${catalog.rulebook.version}`} onClose={onClose} context={context}>
-    <div className="button-row">
+  return <Modal title={`规则与玩法 · ${catalog.rulebook.version}`} onClose={onClose} context={context} className="rules-modal">
+    <div className="rules-view-switch" aria-label="规则查看方式">
       <button className="button" aria-pressed={mode === 'quick' && !query} onClick={() => { setMode('quick'); setQuery(''); }}>现在怎么玩</button>
       <button className="button" aria-pressed={mode === 'chapter' && !query} onClick={() => { setMode('chapter'); setQuery(''); }}>完整条款</button>
     </div>
-    <label className="select-field">搜索规则<input type="search" aria-label="搜索规则" value={query} onChange={event => setQuery(event.target.value)} placeholder="角色、条款编号或关键词"/></label>
+    <label className="select-field rules-search">搜索规则<input type="search" aria-label="搜索规则" value={query} onChange={event => setQuery(event.target.value)} placeholder="角色、条款编号或关键词"/></label>
     {query.trim() ? <RuleSearchResults catalog={catalog} query={query.trim()} onSelect={jump}/> : mode === 'quick' ? <RulesQuickView catalog={catalog} roleId={roleId} view={view} onChapter={jump}/> : <>
       {history.length > 0 && <button className="text-button" onClick={() => { const previous = history.at(-1)!; setHistory(old => old.slice(0, -1)); setChapterId(previous); setFocusBlock(null); }}>返回上一章节</button>}
       <label className="select-field">章节<select aria-label="规则章节" value={chapterId} onChange={event => jump(event.target.value)}>{chapters.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
       <div className="button-row">{roleChapter && chapters.some(item => item.id === roleChapter) && <button className="button" onClick={() => jump(roleChapter)}>当前角色规则</button>}{phaseChapter && chapters.some(item => item.id === phaseChapter) && <button className="button" onClick={() => jump(phaseChapter)}>当前阶段规则</button>}</div>
       <p className="muted">正式版型的通用规则。实验房间的人数与角色组成以本房间冻结配置为准。</p>
-      {chapter ? <article aria-label={chapter.title}><h2>{chapter.title}</h2><RuleMarkdown markdown={chapter.markdown.replace(/^##[ \t]+[^\r\n]+(?:\r?\n|$)/, '')} focusBlock={focusBlock}/></article> : <p>暂未找到该规则章节。</p>}
+      {chapter ? <article className="rules-chapter" aria-label={chapter.title}><h2>{chapter.title}</h2><RuleMarkdown markdown={chapter.markdown.replace(/^##[ \t]+[^\r\n]+(?:\r?\n|$)/, '')} focusBlock={focusBlock}/></article> : <p>暂未找到该规则章节。</p>}
     </>}
   </Modal>;
 }
