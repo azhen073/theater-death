@@ -52,9 +52,9 @@ test('正式房间：默认13人板、治理、刷新与解散', async ({ browse
     await expect(host.page.getByText('公屏权限：仅存活正式玩家（死者只读）')).toBeVisible();
     await expect(host.page.getByText('配置已冻结')).toBeVisible();
     await host.page.getByRole('button', { name: '查看完整规则' }).click();
-    await expect(host.page.getByRole('dialog')).toContainText('完整规则 · 2.0');
+    await expect(host.page.getByRole('dialog')).toContainText('规则与玩法 · 2.0');
     await host.page.getByRole('button', { name: '关闭' }).click();
-    await host.page.screenshot({ path: `/results/rooms-formal-${testInfo.project.name}.png` });
+    await host.page.screenshot({ path: `/results/rooms-formal-${testInfo.project.name}.png`, fullPage: true });
 
     await enterRoom(joiner.page, code);
     const oldHostMemberId = await memberCard(host.page, accounts[0]!.username).getAttribute('data-member-id');
@@ -117,7 +117,7 @@ test('实验房间：五人冻结配置、观众晋升、离线开局与公开�
     for (const index of [1, 2, 3, 4]) { const page = await open(index); await enterRoom(page, code); formalPages.push(page); }
     const spectatorPage = await open(5);
     await enterRoom(spectatorPage, code);
-    await expect(spectatorPage.getByRole('status').filter({ hasText: '正在观战 · 公开视角' })).toBeVisible();
+    await expect(spectatorPage.getByRole('status').filter({ hasText: '正在观战 · 公开观战视角' })).toBeVisible();
     expect((await roomView(spectatorPage, code)).viewer.kind).toBe('public_spectator');
     await expect(spectatorPage.getByRole('button', { name: '准备', exact: true })).toHaveCount(0);
 
@@ -129,7 +129,7 @@ test('实验房间：五人冻结配置、观众晋升、离线开局与公开�
     await waitRoom(spectatorPage);
     await expect(memberCard(spectatorPage, accounts[5]!.username)).toContainText('未准备');
     await enterRoom(contexts[1]!.page, code);
-    await expect(contexts[1]!.page.getByText('公开观众')).toBeVisible();
+    await expect(contexts[1]!.page.getByText('公开观战', { exact: true })).toBeVisible();
 
     await spectatorPage.getByRole('button', { name: '准备', exact: true }).click();
     for (const page of [formalPages[0]!, formalPages[2]!, formalPages[3]!, formalPages[4]!]) await expect(page.getByRole('button', { name: '取消准备', exact: true })).toBeVisible();

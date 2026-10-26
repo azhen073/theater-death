@@ -22,6 +22,8 @@ API 前缀保持 `/api/v2`，规则版本保持2.0。账号、房间席位、接
 
 ## 公屏写权限档位（2026-09-23 新增，用户裁定 Q-10）
 
+离开、解散、准备、开局、接管和观战都使用服务端解析的账号与成员身份。客户端不得通过载荷声明身份、座位或权限。`capabilities.room.leave.effect` 明确区分 `leave`（普通离开）、`away`（对局中暂离）和 `dissolve`（房主在大厅退出即解散），客户端不自行推导退出效果。
+
 `POST /api/v2/rooms` 新增**必填**字段 `publicChat`，取值 `alive_only` 或 `everyone`（无默认值，缺失或非法返回 400 `invalid_public_chat`；创建后不可修改，`RoomSnapshot.room.publicChat` 原样回传）。公屏文字因此改为**对局内所有阶段可写**（夜间不再禁发）：`alive_only` 下仅存活正式玩家可写、死者只读（本人获准遗言期间仍可写）；`everyone` 下存活与死者都可写。`POST /rooms/{code}/chat`（`channel=public`）的 403 `chat_forbidden` 判定改由该档位与 `capabilities.canPostPublic` 决定；观众与第二屏在任何档位下都只读。夜间语音不受影响，仍按 R-43 全体静音。旧的、不带该字段的调用方会收到 400，属于本次契约收紧。
 
 ## 白天自由发言阶段（2026-09-23 新增，用户裁定 Q-11）

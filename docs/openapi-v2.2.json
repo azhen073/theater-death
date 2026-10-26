@@ -2626,6 +2626,16 @@
         ],
         "additionalProperties": false
       },
+      "LeavePermission": {
+        "type": "object",
+        "properties": {
+          "allowed": { "type": "boolean" },
+          "reason": { "type": ["string", "null"] },
+          "effect": { "type": "string", "enum": ["leave", "away", "dissolve"] }
+        },
+        "required": ["allowed", "reason", "effect"],
+        "additionalProperties": false
+      },
       "Roles": {
         "type": "object",
         "properties": {
@@ -4336,7 +4346,7 @@
                 "$ref": "#/components/schemas/Permission"
               },
               "leave": {
-                "$ref": "#/components/schemas/Permission"
+                "$ref": "#/components/schemas/LeavePermission"
               },
               "transferHost": {
                 "$ref": "#/components/schemas/Permission"

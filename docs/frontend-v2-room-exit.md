@@ -25,6 +25,13 @@
 
 ## 实现边界与接口
 
+- `POST /api/v2/rooms/:code/leave` 需要 `requestId`，返回 `left`、`dissolved`、`seatRetained`。
+- `capabilities.room.leave.effect` 由服务端提供，值为 `leave`、`away` 或 `dissolve`；按钮和确认文案只读取该效果，不复制房主与阶段判断。
+- `POST /api/v2/rooms/:code/dissolve` 仅房主可用。
+- 请求重试必须复用相同请求 ID 和载荷，不把网络失败当成已成功退出。
+- “结束复盘，返回大厅”保留原房间和规则，与“离开房间”及“解散房间”是不同操作。
+- 房间销毁后撤销剩余观战访问和媒体授权，但保留账号与审计数据。
+
 - `/leave` 继续使用 `requestId`；响应为 `{left:true, dissolved:boolean, seatRetained:boolean}`（`dissolved` 为 2026-09-20 新增，与旧版入口的 `/leave` 形状一致），房间已关闭时不返回保留席位的误导信息。
 - HTTP 成功或实时终端通知后才离开页面；响应丢失保留原意图，重试使用同一请求ID及载荷，不调用登出或结束复盘接口。
 - 退出确认文案按大厅、进行中、复盘以及观战身份区分，复盘不再显示“对局继续计时”。

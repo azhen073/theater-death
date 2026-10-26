@@ -124,16 +124,17 @@ describe('v2 room member policy', () => {
     expect(canManageMember(view, 'kick', spectator.memberId)).toBe(true);
   });
 
-  it('treats a lobby host exit as dissolve, so the duplicate leave button can be hidden', () => {
+  it('uses the server leave effect to hide the duplicate dissolve button', () => {
     const lobbyHost = copy(lobby);
     lobbyHost.viewer.isHost = true;
+    lobbyHost.capabilities.room.leave.effect = 'dissolve';
     expect(hostExitDissolves(lobbyHost)).toBe(true);
-    lobbyHost.viewer.isHost = false;
+    lobbyHost.capabilities.room.leave.effect = 'leave';
     expect(hostExitDissolves(lobbyHost)).toBe(false);
 
-    // 对局中是「暂离」、复盘是「普通离开」，都不是解散 → 两个按钮含义不同，都要保留。
     const playingHost = copy(night);
     playingHost.viewer.isHost = true;
+    playingHost.capabilities.room.leave.effect = 'away';
     expect(hostExitDissolves(playingHost)).toBe(false);
   });
 
