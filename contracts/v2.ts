@@ -74,6 +74,7 @@ export interface PublicGameDTO {
   result: { winner: 'human' | 'death_faction'; dayNumber: number; reason: string } | null;
   startedAt: number; endedAt: number | null;
 }
+export interface SpeechOrderPreviewDTO { speechOrder: { playerId: string; seat: number }[] }
 export type ElectionVoteBlockReason = 'candidate' | 'tied' | 'dead' | 'vote_frozen';
 export interface PrivateGameDTO {
   self: SelfDTO; events: EventDTO[];

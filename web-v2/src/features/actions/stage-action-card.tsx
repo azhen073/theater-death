@@ -1,11 +1,12 @@
-import type { ReactNode } from 'react';
-import type { RoomSnapshot, TaskDTO } from '../../../../contracts/v2.ts';
+import { useEffect, useState, type ReactNode } from 'react';
+import type { RoomSnapshot, SpeechOrderPreviewDTO, TaskDTO } from '../../../../contracts/v2.ts';
 import { actionLabels } from '../../presentation/labels.ts';
 import { targetSummary } from '../../presentation/targets.ts';
 import { Notice } from '../../components/ui.tsx';
 import type { ActionDraft } from './model.ts';
-import { speechPreview, targetActions, taskKey } from './model.ts';
+import { targetActions, taskKey } from './model.ts';
 import type { ActionPresentation } from './presentation.ts';
+import { post } from '../../transport/http.ts';
 
 export interface StageActionCardProps {
   view: RoomSnapshot;
@@ -51,6 +52,17 @@ export function StageActionCard({
     presentation.status === 'expired' ||
     presentation.status === 'sending' ||
     presentation.status === 'recovering';
+  const [preview, setPreview] = useState<number[]>([]);
+  useEffect(() => {
+    if (locked || task?.action !== 'DESIGNATE_SPEECH' || draft.targets.length !== 1) { setPreview([]); return; }
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      void post<SpeechOrderPreviewDTO>(`/rooms/${view.room.code}/speech-order-preview`, { startPlayerId: draft.targets[0], direction: draft.direction }, controller.signal)
+        .then(result => { if (!controller.signal.aborted) setPreview(result.speechOrder.map(item => item.seat)); })
+        .catch(() => { if (!controller.signal.aborted) setPreview([]); });
+    }, 150);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [locked, task?.action, view.room.code, draft.targets, draft.direction]);
 
   return (
     <section className={`stage-action-card ${isReadOnly ? 'stage-action-card--readonly' : ''}`} aria-label={ariaLabel}>
@@ -112,9 +124,9 @@ export function StageActionCard({
             </label>
           )}
 
-          {task.action === 'DESIGNATE_SPEECH' && draft.targets.length === 1 && (
+          {task.action === 'DESIGNATE_SPEECH' && preview.length > 0 && (
             <p className="speech-preview" aria-label="发言顺序预览">
-              顺序预览：{speechPreview(view, task, draft).map(seat => `${seat.seat}号`).join(' → ')}。最终顺序以服务端结果为准。
+              顺序预览：{preview.map(seat => `${seat}号`).join(' → ')}。最终顺序以服务端结果为准。
             </p>
           )}
 

@@ -35,6 +35,8 @@ API 前缀为 `/api/v2`，规则版本为 `2.0`。账号、成员和席位使用
 - 相同请求 ID 重放不会创建重复方案。
 - `capabilities.supportsProposalEditConfirmation` 只表示接口能力，不表示当前有编辑权限。
 
+`POST /rooms/{code}/speech-order-preview` 按当前指定发言任务返回 `{speechOrder: [{playerId, seat}]}`，方向取 `asc` 或 `desc`。顺序由引擎统一计算，客户端不再自行排序。
+
 ## 快照与语音
 
 `RoomSnapshot.voice` 必有值或为 `null`：

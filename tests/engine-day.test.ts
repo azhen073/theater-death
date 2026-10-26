@@ -8,6 +8,7 @@ import {
   designateSpeechRound,
   designateSpeechRoundIssue,
   electionVoteBlockReason,
+  previewSpeechOrder,
   endLastWords,
   registerCandidacy,
   registerCandidacyIssue,
@@ -552,5 +553,13 @@ describe('白天公屏发言权（R-35、R-45）', () => {
     const next = endLastWords(begunState, 'p_6').state;
     expect(canPostPublic(next, 'p_6')).toBe(false);
     expect(canPostPublic(next, 'p_7')).toBe(true);
+  });
+});
+
+describe('发言顺序预览', () => {
+  it('uses the engine ordering for both directions', () => {
+    const state = begun();
+    expect(previewSpeechOrder(state, 'p_2', 'asc')).toEqual(['p_2', 'p_3', 'p_4', 'p_5', 'p_6', 'p_7', 'p_8', 'p_9', 'p_10', 'p_11', 'p_12', 'p_13', 'p_1']);
+    expect(previewSpeechOrder(state, 'p_2', 'desc')).toEqual(['p_2', 'p_1', 'p_13', 'p_12', 'p_11', 'p_10', 'p_9', 'p_8', 'p_7', 'p_6', 'p_5', 'p_4', 'p_3']);
   });
 });

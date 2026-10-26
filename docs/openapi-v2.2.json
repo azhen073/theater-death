@@ -1431,6 +1431,55 @@
         }
       }
     },
+    "/rooms/{code}/speech-order-preview": {
+      "post": {
+        "summary": "预览当前指定发言轮顺序",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startPlayerId": { "type": "string" },
+                  "direction": { "type": "string", "enum": ["asc", "desc"] }
+                },
+                "required": ["startPlayerId", "direction"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "speechOrder": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "playerId": { "type": "string" },
+                          "seat": { "type": "integer" }
+                        },
+                        "required": ["playerId", "seat"],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["speechOrder"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/rooms/{code}/command": {
       "parameters": [
         {

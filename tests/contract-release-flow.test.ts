@@ -78,6 +78,11 @@ describe('v2 release HTTP non-terminal election, elimination, and handover flow'
     expect(stable.runtime!.state!.win).toBeNull();
 
     const speechOrder = await waitWindow(h, room.roomId, 'speech_order');
+    const preview = await request(h, `/api/v2/rooms/${room.roomCode}/speech-order-preview`, post({ requestId: 'release-speech-preview', startPlayerId: successor.playerId, direction: 'asc' }), candidateUser);
+    expect(preview.status).toBe(200);
+    const previewBody = await json(preview);
+    expect(previewBody.speechOrder).toHaveLength(13);
+    expect(previewBody.speechOrder[0]).toEqual({ playerId: successor.playerId, seat: successor.seat });
     await sendCommand(h, room.roomCode, candidateUser, { requestId: 'release-designate-speech', gameId, action: 'DESIGNATE_SPEECH', windowInstanceId: speechOrder.instanceId, targets: [successor.playerId], direction: 'asc' });
     while (stable.runtime!.driver!.windows().some((window) => window.id === 'speech_round')) {
       const day = stable.runtime!.state!.day!;
