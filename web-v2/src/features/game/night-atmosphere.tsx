@@ -31,6 +31,7 @@ export function NightAtmosphere({ view, active }: { view: RoomSnapshot; active: 
   if (!night) return null;
   return <div className="night-atmosphere" aria-hidden="true">
     <div className="night-atmosphere__glow"/>
+    <div className="night-atmosphere__beam"/>
     <div className="night-atmosphere__vignette"/>
     {moving && active && visible && !reducedMotion && <div className="night-atmosphere__motion">
       <div className="night-atmosphere__fog"/>

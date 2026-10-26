@@ -339,6 +339,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .seat-avatar { display: inline-grid; place-items: center; position: relative; isolation: isolate; line-height: 0; }
 .seat-death-mark { position: absolute; inset: -18%; width: 136%; height: 136%; pointer-events: none; mix-blend-mode: multiply; opacity: .92; mask-image: radial-gradient(ellipse at center, #000 30%, #000c 48%, transparent 72%); -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, #000c 48%, transparent 72%); }
 .seat-death-mark svg { display: block; width: 100%; height: 100%; }
+/* 暗色专用键控图默认隐藏，暗色主题在暗色区换图（display 切换，避免双请求/双渲染） */
+.seat-death-mark__dark { display: none; width: 100%; height: 100%; }
 .stage-seat--dead .seat-main { background: #eee9edee; border-color: #ae8993; }
 .stage-seat--dead .seat-status { font-weight: 600; }
 .seat-number, .seat-main > strong, .seat-status { position: relative; z-index: 1; }
@@ -769,6 +771,11 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 :root[data-theme='dark'] .team-proposal { border-color: #453d52; }
 :root[data-theme='dark'] .effective-proposal { border-top-color: #453d52; }
 /* 舞台与座位：夜间舞台氛围（night-atmosphere.css）不动；座位卡在暗色主题下用暗底（含夜间作用域） */
+/* 昼夜两档（用户裁定 2026-10-10）：暗色昼间舞台提亮为「白夜」基调——浅冷灰蓝遮罩让布景透光、
+   暗色座位卡反衬更清晰；暗色夜间舞台压向近黑，只留聚光与座位光晕等少量氛围光。浅色昼间不变。 */
+:root[data-theme='dark'] .theater-stage:not(.theater-stage--night) { --stage-scenery: linear-gradient(#93a8c9b3, #7186abd9), url('/assets/theater.png') center/cover; }
+:root[data-theme='dark'] .theater-stage.theater-stage--night { --stage-scenery: linear-gradient(#070c16e0, #0b1220e8), url('/assets/theater.png') center/cover; border-color: #3a4a66; }
+:root[data-theme='dark'] .theater-stage.theater-stage--night:has(> .stage-backdrop) { background: #0b1120; }
 :root[data-theme='dark'] .stage-action-card { background: #211c26ee; border-color: #453d52; }
 :root[data-theme='dark'] .stage-action-card__submit { background: #211c26f5; }
 :root[data-theme='dark'] .stage-action-card--readonly { background: #1b1720e8; border-color: var(--line); }
@@ -778,7 +785,20 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 :root[data-theme='dark'] .accepted-summary { color: #7fb3a3; }
 :root[data-theme='dark'] .seat-main { background: #221d29ee; border-color: #4a4154; }
 :root[data-theme='dark'] .theater-stage--night .seat-main { background: #221d29; }
+/* 夜间暗色：普通座位卡提亮到冷蓝灰并加冷色微光描边/投影，从舞台底浮出（选中/草稿/死亡/不可选四态
+   各有语义底色，用 :not 排除以免覆盖；框内小字同步调亮保持 ≥4.5 对比度） */
+:root[data-theme='dark'] .theater-stage--night .stage-seat:not(.stage-seat--selected):not(.stage-seat--draft):not(.stage-seat--dead):not(.stage-seat--unavailable) .seat-main { background: #39445e; border-color: #8fb4e855; box-shadow: 0 0 0 1px #8fb4e822, 0 6px 16px #0a0f1c66; }
+:root[data-theme='dark'] .theater-stage--night .stage-seat:not(.stage-seat--unavailable) .seat-number { color: #c7c1d1; }
+:root[data-theme='dark'] .theater-stage--night .stage-seat:not(.stage-seat--unavailable) .seat-status { color: #b9b2c6; }
+/* 夜间暗色光晕加强（浅色基调在 night-atmosphere.css，状态色系不变只提强度） */
+:root[data-theme='dark'] .theater-stage--night { --night-seat-glow: #9ec2f22e; --night-seat-glow-selected: #a9bde040; --night-seat-glow-draft: #7fc3cf3a; --night-seat-glow-speaking: #e3c07f42; }
+/* 暗色下死亡星芒换键控派生图 + 普通混合（multiply 在暗底隐形） */
+:root[data-theme='dark'] .seat-death-mark { mix-blend-mode: normal; }
+:root[data-theme='dark'] .seat-death-mark svg { display: none; }
+:root[data-theme='dark'] .seat-death-mark__dark { display: block; }
 :root[data-theme='dark'] .stage-seat--dead .seat-main { background: #2a2126ee; border-color: #5d3a44; }
+/* 死亡状态小字在暗色卡上原色（#874c57）对比度仅约 2.5，调亮到 ≥4.5 */
+:root[data-theme='dark'] .stage-seat--dead .seat-status { color: #c98a96; }
 :root[data-theme='dark'] .stage-seat--unavailable .seat-main,
 :root[data-theme='dark'] .theater-stage--night .stage-seat--unavailable .seat-main { background: #1b1720; color: #8d8296; }
 :root[data-theme='dark'] .theater-stage .stage-seat--selected .seat-main { background: var(--seat-selected-bg); border-color: var(--seat-selected-line); }

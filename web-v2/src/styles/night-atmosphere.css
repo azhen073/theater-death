@@ -1,5 +1,6 @@
 .theater-stage.theater-stage--night {
-  --stage-scenery: linear-gradient(#13233bd6, #17253fd9), url('/assets/theater.png') center/cover;
+  /* 遮罩约 70% 不透明（原 84–85% 过闷，舞台布景细节全被压死） */
+  --stage-scenery: linear-gradient(#13233bb3, #17253fb3), url('/assets/theater.png') center/cover;
   background: var(--stage-scenery);
   border-color: #708aab; isolation: isolate;
 }
@@ -7,18 +8,31 @@
 .theater-stage.theater-stage--night:has(> .stage-backdrop) { background: #26354d; }
 .night-atmosphere { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; filter: brightness(var(--stage-brightness, 1)); }
 .night-atmosphere__glow { position: absolute; inset: 0; background: url('/assets/ui-night/climax.png') center/cover; opacity: .2; }
-.night-atmosphere__vignette { position: absolute; inset: 0; background: url('/assets/ui-night/vignette.png') center/100% 100%; opacity: .6; }
+.night-atmosphere__vignette { position: absolute; inset: 0; background: url('/assets/ui-night/vignette.png') center/100% 100%; opacity: .45; }
+/* 顶部聚光：低透明度冷色光束，缓慢左右微摆；在容器内故随 --stage-brightness 滤镜 */
+.night-atmosphere__beam { position: absolute; left: 50%; top: -8%; width: 44%; height: 72%; translate: -50% 0; background: linear-gradient(#dceaff30, #dceaff10 46%, transparent 76%); clip-path: polygon(43% 0, 57% 0, 96% 100%, 4% 100%); transform-origin: 50% 0; animation: night-beam 11s ease-in-out infinite alternate; }
 .night-atmosphere__motion { position: absolute; inset: 0; }
 .night-atmosphere__fog { position: absolute; inset: 20% -25%; background: radial-gradient(ellipse, #adceef36, transparent 60%); animation: night-fog 5s ease-out both; }
 .night-atmosphere__motion i { position: absolute; width: 2px; height: 2px; border-radius: 50%; left: var(--dust-x); top: var(--dust-y); background: #d9ecff; animation: night-dust 5s ease-out both; animation-delay: var(--dust-delay); }
-.theater-stage--night .stage-center { color: #edf4ff; border-color: #aac7e966; background: #152840a8; }
-.theater-stage--night .stage-center > span, .theater-stage--night .stage-center > small { color: #d0dff3; }
+.theater-stage--night .stage-center { color: #edf4ff; border-color: #aac7e97d; background: #1a2d46a8; }
+.theater-stage--night .stage-center > span, .theater-stage--night .stage-center > small { color: #d9e5f6; }
 .theater-stage--night .seat-main { background: #f5f8fd; }
 /* 「我的选择 / 当前草稿目标」的颜色只在 main.css 的 --seat-* 变量里定义，昼夜同一套；
    main.css 里的三条座位态规则带 .theater-stage 前缀，特异度高于上面的 .theater-stage--night .seat-main，故无需夜间覆盖。 */
 /* 不可选目标（夜）：底色比正常座位（#f5f8fd）略深以区分，但仍要保证小字对比度 ≥4.5 */
 .theater-stage--night .stage-seat--unavailable .seat-main { background: #eaeff7; color: #5a6a80; }
 .theater-stage--night .stage-action-card { background: #fcfdfe; }
+/* 座位冷光晕（浅色克制；暗色加强只换 main.css 里的变量）：隔离栈让 ::after 沉到卡片之后、布景之上。
+   选中/草稿/发言态光晕换用既有状态色系；死亡座位不带光晕（保持熄灭感）。 */
+.theater-stage--night .stage-seat { isolation: isolate; }
+.theater-stage--night .stage-seat::after { content: ''; position: absolute; inset: -9px -13px; border-radius: 14px; background: radial-gradient(ellipse 62% 48% at 50% 74%, var(--night-seat-glow, #a9c7ef17), transparent 70%); z-index: -1; pointer-events: none; }
+.theater-stage--night .stage-seat--selected::after { background: radial-gradient(ellipse 62% 48% at 50% 74%, var(--night-seat-glow-selected, #8ea2bd2e), transparent 70%); }
+.theater-stage--night .stage-seat--draft::after { background: radial-gradient(ellipse 62% 48% at 50% 74%, var(--night-seat-glow-draft, #6aacb826), transparent 70%); }
+.theater-stage--night .stage-seat--speaking::after { background: radial-gradient(ellipse 62% 48% at 50% 74%, var(--night-seat-glow-speaking, #d8b36a2b), transparent 70%); }
+.theater-stage--night .stage-seat--dead::after { content: none; }
 @keyframes night-fog { from { opacity: 0; translate: -6% 0; } 35% { opacity: .65; } to { opacity: 0; translate: 6% 0; } }
 @keyframes night-dust { from { opacity: 0; translate: 0 12px; } 30% { opacity: .5; } to { opacity: 0; translate: 12px -24px; } }
+@keyframes night-beam { from { rotate: -2.2deg; opacity: .72; } to { rotate: 2.2deg; opacity: 1; } }
 :root[data-reduced-motion="true"] .night-atmosphere__motion { display: none; }
+/* 减少动画：光束静止保留（不带摆动），层次不丢失 */
+:root[data-reduced-motion="true"] .night-atmosphere__beam { animation: none; }

@@ -2,10 +2,12 @@ import { useEffect, useRef } from 'react';
 import { DEATH_ART_REGIONS, DEATH_ART_SHEET, DEATH_EFFECT_MS, makeParticles, particleCount } from '../../presentation/death-effects.ts';
 import type { DeathBurst, DeathParticle } from '../../presentation/death-effects.ts';
 
-/** Reuse the unchanged reference atlas, just as the default avatar does. No role information. */
+/** Reuse the unchanged reference atlas, just as the default avatar does. No role information.
+   暗色主题换用亮度键控派生图（death-mark-dark.png，普通混合）——白底原图的 multiply 在暗底上隐形。 */
 export function DeathMark() {
   return <span className="seat-death-mark" aria-hidden="true">
     <svg viewBox="48 110 490 675" focusable="false"><image href="/assets/avatar-sheet.png" width="1774" height="887" /></svg>
+    <img className="seat-death-mark__dark" src="/assets/death-mark-dark.png" alt="" />
   </span>;
 }
 
