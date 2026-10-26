@@ -5,6 +5,7 @@ import { capabilities } from '../capabilities.ts';
 import type { PublicChatPolicy } from '../../visibility/chat.ts';
 import { legalTargets, type TargetAction } from '../../engine/targets.ts';
 import type { GameState } from '../../engine/types.ts';
+import { electionVoteBlockReason } from '../../engine/day.ts';
 
 export interface ViewIdentity { subjectPlayerId: string | null; readOnly: boolean }
 const targeted = new Set<string>(['SUBMIT_GUARD', 'SUBMIT_LAIKE', 'EDIT_PROPOSAL', 'SUBMIT_CHECK', 'SUBMIT_RESCUE', 'SUBMIT_REVIVE', 'SUBMIT_DAY_VOTE', 'SUBMIT_ELECTION_VOTE', 'SUBMIT_HANDOVER', 'DESIGNATE_SPEECH']);
@@ -40,7 +41,7 @@ export function gameView(room: Room, identity: ViewIdentity, now: number, public
   if (state === null) return {
     apiVersion: 2, rulesVersion: room.ruleset.version, serverTime: now, gameId: room.gameId, roomCode: room.code,
     public: { phase: 'lobby', mode: room.ruleset.mode, requiredPlayers: room.requiredPlayerCount(), members: room.members.map((m) => ({ playerId: m.playerId, nickname: m.nickname, ready: m.ready, isHost: m.playerId === room.hostPlayerId })), nightDeadline: null },
-    private: identity.subjectPlayerId === null ? null : { playerId: identity.subjectPlayerId }, windows: [],
+    private: identity.subjectPlayerId === null ? null : { playerId: identity.subjectPlayerId, electionVote: null }, windows: [],
   };
   const known = publishedState(state, room.events);
   const windows = room.driver?.windows() ?? [];
@@ -48,6 +49,7 @@ export function gameView(room: Room, identity: ViewIdentity, now: number, public
   // Global audit sequence numbers must never become a hidden-event count side channel.
   const factionRoom = view?.room ? { roomId: view.room.roomId, readOnly: view.room.readOnly, canWrite: view.room.canWrite, members: view.room.members } : null;
   const subject = identity.subjectPlayerId;
+  const blockedReason = subject ? electionVoteBlockReason(known, subject) : null;
   const subjectCaps = capabilities(known, subject, windows, now, false, publicChat);
   // Only the water role is entitled to learn the unannounced dead roster for its return choice.
   const actualCaps = capabilities(state, subject, windows, now, false, publicChat);
@@ -58,7 +60,7 @@ export function gameView(room: Room, identity: ViewIdentity, now: number, public
   return {
     apiVersion: 2, rulesVersion: state.ruleset.version, serverTime: now, gameId: room.gameId, roomCode: room.code,
     public: { phase: state.phase, dayNumber: state.dayNumber, stage: state.stage, sheriff: state.sheriff, seats: known.players.map((p) => ({ playerId: p.playerId, seat: p.seat, nickname: p.nickname, alive: p.life !== 'dead', revealedRoleId: p.revealed ? p.roleId : null })), events: publicEventLog(room.events), nightDeadline },
-    private: view === null ? null : { self: view.self, events: view.personalEvents, factionRoom, targets: allowedTargets, knowledge: knowledgeFor(view.self, state), proposal: subjectCaps.allowedCommands.includes('EDIT_PROPOSAL') ? room.driver?.proposalState(subject!) ?? null : null },
+    private: view === null ? null : { self: view.self, events: view.personalEvents, factionRoom, targets: allowedTargets, knowledge: knowledgeFor(view.self, state), proposal: subjectCaps.allowedCommands.includes('EDIT_PROPOSAL') ? room.driver?.proposalState(subject!) ?? null : null, electionVote: blockedReason ? { blockedReason } : null },
     capabilities: callerCaps,
     windows: windows.filter((w) => w.closesAt > now && (w.id !== 'revive' || subjectCaps.allowedCommands.includes('SUBMIT_REVIVE'))),
   };

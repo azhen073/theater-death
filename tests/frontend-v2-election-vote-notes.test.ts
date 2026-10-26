@@ -56,6 +56,7 @@ describe('竞选投票阶段本人提示：推导', () => {
   it('候选人本人提示候选人不得投票（R-42）', () => {
     const view = votingView();
     view.public!.day!.election!.candidates = [selfId(view)];
+    view.private!.electionVote = { blockedReason: 'candidate' };
     expect(electionVoteNote(view)).toEqual({ kind: 'blocked', reason: 'candidate' });
     expect(electionVoteNoteText({ kind: 'blocked', reason: 'candidate' })).toEqual({
       title: '你是候选人',
@@ -76,6 +77,7 @@ describe('竞选投票阶段本人提示：推导', () => {
     election.phase = 'revote';
     election.candidates = [selfId(view), otherPlayerId(view)];
     election.tiedIds = [selfId(view)];
+    view.private!.electionVote = { blockedReason: 'tied' };
     expect(electionVoteNote(view)).toEqual({ kind: 'blocked', reason: 'tied' });
     expect(electionVoteNoteText({ kind: 'blocked', reason: 'tied' })).toEqual({
       title: '你是平票者',
@@ -89,6 +91,7 @@ describe('竞选投票阶段本人提示：推导', () => {
     election.phase = 'revote';
     election.candidates = [selfId(view), otherPlayerId(view)];
     election.tiedIds = [otherPlayerId(view)];
+    view.private!.electionVote = { blockedReason: 'candidate' };
     expect(electionVoteNote(view)).toEqual({ kind: 'blocked', reason: 'candidate' });
   });
 
@@ -96,6 +99,7 @@ describe('竞选投票阶段本人提示：推导', () => {
     const view = votingView();
     view.private!.self.life = 'dead';
     view.private!.self.voteFrozen = true;
+    view.private!.electionVote = { blockedReason: 'dead' };
     expect(electionVoteNote(view)).toEqual({ kind: 'blocked', reason: 'dead' });
     expect(electionVoteNoteText({ kind: 'blocked', reason: 'dead' }).title).toBe('你已死亡');
   });
@@ -103,6 +107,7 @@ describe('竞选投票阶段本人提示：推导', () => {
   it('莱莱可翻牌禁投期间提示票权已冻结', () => {
     const view = votingView();
     view.private!.self.voteFrozen = true;
+    view.private!.electionVote = { blockedReason: 'vote_frozen' };
     expect(electionVoteNote(view)).toEqual({ kind: 'blocked', reason: 'vote_frozen' });
     expect(electionVoteNoteText({ kind: 'blocked', reason: 'vote_frozen' })).toEqual({
       title: '票权已冻结',
@@ -192,6 +197,7 @@ describe('竞选投票阶段本人提示：接入行动卡', () => {
   it('候选人本人：行动卡标题与正文替换为候选人说明', () => {
     const view = votingView();
     view.public!.day!.election!.candidates = [selfId(view)];
+    view.private!.electionVote = { blockedReason: 'candidate' };
     const presentation = idlePresentation(view);
     expect(presentation.mode).toBe('idle');
     expect(presentation.title).toBe('你是候选人');

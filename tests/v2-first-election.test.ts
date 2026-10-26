@@ -79,6 +79,23 @@ describe('v2 首日预公告竞选', () => {
     expect(currentLastWordsSpeaker(driver.snapshot() as GameState)).toBe('p_6');
   });
 
+  it('gameView 只向当前禁投的玩家提供竞选原因码', () => {
+    const firstNight = startFirstNight();
+    const { clock, driver, steps } = electionDriver(firstNight.state);
+    driver.submit({ type: 'REGISTER_CANDIDACY', playerId: 'p_6' });
+    clock.advance(30_000);
+    clock.advance(135_000);
+    const host: RoomMember = { playerId: 'p_1', nickname: '玩家1', ready: true, joinedAt: 0 };
+    const room = new Room('VOTE01', 'g_vote_guidance', host, THEATER_DEATH_13_V2);
+    room.state = driver.snapshot();
+    room.events = [...firstNight.steps.flatMap(step => step.events), ...steps.flatMap(step => step.events)];
+
+    const candidate = gameView(room, { subjectPlayerId: 'p_6', readOnly: false }, 0);
+    expect(candidate.private?.electionVote).toEqual({ blockedReason: 'candidate' });
+    const voter = gameView(room, { subjectPlayerId: 'p_7', readOnly: false }, 0);
+    expect(voter.private?.electionVote).toBeNull();
+  });
+
   it('无人报名时首日只完成一次竞选，随后公告死讯并进入遗言', () => {
     const firstNight = startFirstNight([], ['p_6']);
     const { clock, driver, steps } = electionDriver(firstNight.state);

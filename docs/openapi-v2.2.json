@@ -3906,6 +3906,18 @@
               }
             ]
           },
+          "electionVote": {
+            "description": "当前竞选投票阶段本人禁投原因；仅在被禁投时出现",
+            "type": "object",
+            "properties": {
+              "blockedReason": {
+                "type": "string",
+                "enum": ["candidate", "tied", "dead", "vote_frozen"]
+              }
+            },
+            "required": ["blockedReason"],
+            "additionalProperties": false
+          },
           "knowledge": {
             "type": "object",
             "properties": {

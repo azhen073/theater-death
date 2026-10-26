@@ -40,6 +40,7 @@ const actionCard = (page: Page) => page.getByRole('region', { name: /舞台行�
 test('候选人本人：竞选投票阶段给出候选人说明，且没有投票入口', async ({ page }) => {
   const fixture = votingFixture();
   fixture.view.public!.day!.election!.candidates = [selfId(fixture)];
+  fixture.view.private!.electionVote = { blockedReason: 'candidate' };
   await mount(page, fixture);
   await expect(actionCard(page).locator('h2')).toHaveText('你是候选人');
   await expect(actionCard(page)).toContainText('本轮不参与投票，等待其他玩家与结算。');
@@ -56,6 +57,7 @@ test('重投平票者：提示平票者，优先于候选人说明', async ({ pa
   election.round = 2;
   election.candidates = [selfId(fixture)];
   election.tiedIds = [selfId(fixture)];
+  fixture.view.private!.electionVote = { blockedReason: 'tied' };
   await mount(page, fixture);
   await expect(actionCard(page).locator('h2')).toHaveText('你是平票者');
   await expect(actionCard(page)).toContainText('重投轮不参与投票，等待结算。');
@@ -64,11 +66,13 @@ test('重投平票者：提示平票者，优先于候选人说明', async ({ pa
 test('死亡与票权冻结：分别给出对应说明', async ({ page }) => {
   const dead = votingFixture();
   dead.view.private!.self.life = 'dead';
+  dead.view.private!.electionVote = { blockedReason: 'dead' };
   await mount(page, dead);
   await expect(actionCard(page).locator('h2')).toHaveText('你已死亡');
 
   const frozen = votingFixture();
   frozen.view.private!.self.voteFrozen = true;
+  frozen.view.private!.electionVote = { blockedReason: 'vote_frozen' };
   await mount(page, frozen);
   await expect(actionCard(page).locator('h2')).toHaveText('票权已冻结');
 });
