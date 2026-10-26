@@ -4,13 +4,14 @@ import type { ControlNotice, RoomSnapshot } from '../../../../contracts/v2.ts';
 import type { BootstrapDTO } from '../../../../contracts/catalog.ts';
 import { SnapshotCursor, controlEffect } from '../../state/snapshot.ts';
 import { ApiFailure, errorMessage, get } from '../../transport/http.ts';
+import { COPY } from '../../presentation/copy.ts';
 
 export interface RoomReference { roomId: string; roomCode: string }
 export type Connection = 'connecting' | 'online' | 'reconnecting' | 'offline';
 const controlText: Record<ControlNotice['reason'], string> = {
   kicked: '你已被房主移出房间。', dissolved: '房间已解散。', taken_over: '另一台设备已接管你的房间身份。',
   session_expired: '登录已失效，请重新登录。', account_disabled: '账户已停用，请联系维护者。', host_changed: '房主已变更。', review_ended: '房主已结束复盘，返回大厅。',
-  left: '你已离开房间。', screen_revoked: '私人第二屏已撤销，正在恢复公开视角。',
+  left: '你已离开房间。', screen_revoked: `私人观战授权已撤销，正在恢复${COPY.spectator.public}。`,
 };
 
 /** Mount at the authenticated shell, not the room page: visiting Account is not a disconnect. */

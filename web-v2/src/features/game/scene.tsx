@@ -31,6 +31,7 @@ import { IdentityEntryReveal } from './identity-entry-reveal.tsx';
 import { claimIdentityReveal, identityRevealHasUrgentAction, identityRevealKey } from './identity-reveal-model.ts';
 import { reconcileDraft } from '../actions/draft-reconciliation.ts';
 import { newRequestId } from '../../transport/ids.ts';
+import { COPY } from '../../presentation/copy.ts';
 
 type Overlay =
   | { kind: 'identity' | 'rules' | 'navigation' | 'second-screen' | 'settings' }
@@ -411,7 +412,7 @@ export function GameScene({
             ? proposalConfirmedBySelf ? `已同意 v${proposal.revision}`
               : proposalConfirmationSyncing ? confirmationSyncLabel
               : `同意方案 v${proposal.revision}`
-            : '发布并确认空刀',
+            : COPY.action.confirmEmptyProposal,
           disabled: locked || proposalEditSyncing || proposal.revision > 0 && !proposalModified && (proposalConfirmedBySelf || proposalConfirmationSyncing),
         } : null,
       }
@@ -487,7 +488,7 @@ export function GameScene({
     <>
       {privateView && (
         <button type="button" className="button" onClick={hudChoose(() => setOverlay({ kind: 'identity' }))}>
-          {view.viewer.readOnly ? '当前观察身份' : '我的身份'}
+          {view.viewer.readOnly ? COPY.spectator.currentIdentity : '我的身份'}
         </button>
       )}
       <button type="button" className="button" onClick={hudChoose(() => setOverlay({ kind: 'navigation' }))}>
@@ -547,7 +548,7 @@ export function GameScene({
           <div className="hud-meta">
             <strong>{publicWindow ? formatCountdown(remaining(publicWindow.closesAt)) : view.public?.night ? formatCountdown(remaining(view.public.night.closesAt)) : '以当前任务为准'}</strong>
             <span>
-              公开存活 {view.public?.seats.filter(seat => seat.alive).length ?? 0} /{' '}
+              {COPY.game.alive} {view.public?.seats.filter(seat => seat.alive).length ?? 0} /{' '}
               {view.public?.seats.length ?? 0}
             </span>
           </div>
@@ -570,7 +571,7 @@ export function GameScene({
           )}
           {compact && hudMenu && (
             <div className="hud-menu" aria-label="对局操作">
-              <span className="hud-menu__room">房间 {view.room.code} · {view.public?.seats.filter(seat => seat.alive).length ?? 0} / {view.public?.seats.length ?? 0} 存活</span>
+              <span className="hud-menu__room">房间 {view.room.code} · {view.public?.seats.filter(seat => seat.alive).length ?? 0} / {view.public?.seats.length ?? 0} {COPY.game.alive}</span>
               {hudActions}
             </div>
           )}
@@ -578,7 +579,7 @@ export function GameScene({
 
         {view.viewer.readOnly && (
           <Notice>
-            正在观战 · {privateView ? `私人第二屏：${privateView.self.seat}号 ${privateView.self.nickname}` : '公开视角'} ·
+            正在观战 · {privateView ? `${COPY.spectator.private}：${privateView.self.seat}号 ${privateView.self.nickname}` : COPY.spectator.public} ·
             只读
           </Notice>
         )}
@@ -640,7 +641,7 @@ export function GameScene({
         )}
         {active && overlay?.kind === 'identity' && (
           <Modal
-            title={view.viewer.readOnly ? '当前观察身份' : '我的身份'}
+            title={view.viewer.readOnly ? COPY.spectator.currentIdentity : '我的身份'}
             context={context}
             onClose={() => setOverlay(null)}
           >

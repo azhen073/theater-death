@@ -81,7 +81,7 @@ describe('v2 action presentation layer (A1)', () => {
     });
     expect(idleResult.mode).toBe('idle');
     expect(idleResult.primary).toBeNull();
-    expect(idleResult.disabledReason).toContain('当前无可执行');
+    expect(idleResult.disabledReason).toBe('当前没有可执行的操作');
   });
 
   it('correctly isolates pending commands to current window and task', () => {

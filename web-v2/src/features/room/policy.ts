@@ -1,4 +1,5 @@
 import type { RoomAction, RoomMemberDTO, RoomSnapshot } from '../../../../contracts/v2.ts';
+import { COPY } from '../../presentation/copy.ts';
 
 export function canManageMember(view: RoomSnapshot, action: 'kick' | 'transfer-host', memberId: string): boolean {
   const target = [...view.room.formalMembers, ...view.room.spectators].find(member => member.memberId === memberId);
@@ -33,7 +34,7 @@ export function roomExitPresentation(view: RoomSnapshot) {
   };
   if (view.room.phase === 'review') return {
     label: '离开房间', title: '离开房间？',
-    description: `退出后返回首页，账号保持登录；其他成员可继续复盘。${view.viewer.isHost ? '你是房主：退出不会解散房间，房主由其他在线正式成员接任。' : ''}${formal ? '房间和本局复盘仍存在时，可用原账号回来查看。最后一名正式玩家退出后，房间立即关闭，剩余观众也会退出。' : '若房间仍存在，可以重新进入公开观战；私人第二屏需重新获得授权。'}`,
+    description: `退出后返回首页，账号保持登录；其他成员可继续复盘。${view.viewer.isHost ? '你是房主：退出不会解散房间，房主由其他在线正式成员接任。' : ''}${formal ? '房间和本局复盘仍存在时，可用原账号回来查看。最后一名正式玩家退出后，房间立即关闭，剩余观众也会退出。' : `若房间仍存在，可以重新进入公开观战；${COPY.spectator.private}需重新获得授权。`}`,
   };
   return {
     label: '离开房间', title: '离开房间？',
@@ -41,7 +42,7 @@ export function roomExitPresentation(view: RoomSnapshot) {
       ? hostExitDissolves(view)
         ? '你是房主：退出将立即解散房间，所有成员回到入口页、房间码立即失效。账号保持登录。'
         : '你将离开当前房间，并释放正式名额（若有）。账号保持登录。'
-      : '你将退出观战并返回首页，账号保持登录。私人第二屏需重新获得授权。',
+      : `你将退出观战并返回首页，账号保持登录。${COPY.spectator.private}需重新获得授权。`,
   };
 }
 
