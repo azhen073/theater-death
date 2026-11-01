@@ -198,7 +198,7 @@ describe('竞选投票阶段本人提示：接入行动卡', () => {
     expect(presentation.summary).toBe('本轮不参与投票，等待其他玩家与结算。');
   });
 
-  it('已投票：行动卡显示回执，而不是「本阶段无需操作」', () => {
+  it('已投票：行动卡显示回执，而不是通用等待提示', () => {
     const view = votingView();
     const target = seatOf(view, otherPlayerId(view));
     view.submissionState = [receipt(VOTE_WINDOW, [target.playerId])];
@@ -209,15 +209,15 @@ describe('竞选投票阶段本人提示：接入行动卡', () => {
 
   it('有资格的未投票玩家与其它阶段逐字保持通用文案', () => {
     expect(idlePresentation(votingView())).toMatchObject({
-      title: '本阶段无需操作',
-      summary: '等待其他玩家或服务端推进阶段。',
+      title: '现在不需要你操作',
+      summary: '等待其他玩家行动，阶段会自动继续。',
     });
     const speech = votingView();
     speech.public!.day!.election!.phase = 'speech';
     speech.public!.day!.election!.candidates = [selfId(speech)];
     expect(idlePresentation(speech)).toMatchObject({
-      title: '本阶段无需操作',
-      summary: '等待其他玩家或服务端推进阶段。',
+      title: '现在不需要你操作',
+      summary: '等待其他玩家行动，阶段会自动继续。',
     });
   });
 

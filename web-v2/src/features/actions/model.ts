@@ -1,4 +1,5 @@
 import type { CommandAction, CommandIntent, RoomSnapshot, SeatDTO, TargetSelection, TaskDTO } from '../../../../contracts/v2.ts';
+import { COPY } from '../../presentation/copy.ts';
 
 export interface ActionDraft { targets: string[]; direction: 'asc' | 'desc'; revision: number | null }
 export const targetActions = new Set<CommandAction>(['SUBMIT_GUARD', 'SUBMIT_LAIKE', 'EDIT_PROPOSAL', 'SUBMIT_CHECK', 'SUBMIT_RESCUE', 'SUBMIT_REVIVE', 'SUBMIT_ELECTION_VOTE', 'DESIGNATE_SPEECH', 'SUBMIT_DAY_VOTE', 'SUBMIT_HANDOVER']);
@@ -73,6 +74,6 @@ export function speechPreview(view: RoomSnapshot, task: TaskDTO, draft: ActionDr
 }
 
 export const skipLabels: Partial<Record<CommandAction, string>> = {
-  SUBMIT_GUARD: '确认空守', SUBMIT_LAIKE: '放弃刺杀', EDIT_PROPOSAL: '提交空刀草稿', SUBMIT_RESCUE: '不使用还魂曲',
+  SUBMIT_GUARD: '确认空守', SUBMIT_LAIKE: '放弃刺杀', EDIT_PROPOSAL: COPY.action.emptyProposal, SUBMIT_RESCUE: '不使用还魂曲',
   SUBMIT_REVIVE: '放弃回归选择', SUBMIT_ELECTION_VOTE: '确认弃票', SUBMIT_DAY_VOTE: '确认弃票', SUBMIT_HANDOVER: '销毁天理职务',
 };

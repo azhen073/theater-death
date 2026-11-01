@@ -121,8 +121,8 @@ test('首夜遗言：其他玩家没有「结束遗言」，也不会替他发�
   await expect(deadInput).toBeVisible();
   await expect(deadInput).toBeDisabled();
   await expect(page.getByRole('button', { name: '发送公屏消息' })).toBeDisabled();
-  await expect(page.getByText('当前频道仅可阅读，发送权限以当前阶段授权为准。')).toBeVisible();
-  await page.screenshot({ path: '/results/last-words-observer-' + testInfo.project.name + '.png' });
+  await expect(page.getByText('你现在只能查看，暂时不能发言。')).toBeVisible();
+  await page.screenshot({ path: '/results/last-words-observer-' + testInfo.project.name + '.png', fullPage: true });
 
   expect(mounted.commands).toEqual([]);
   expect(mounted.chats.length).toBe(1);

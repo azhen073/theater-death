@@ -169,9 +169,9 @@ test('夹具 UI 保持选择/任务/草稿边界并覆盖席位布局与公开�
   const privateFixture = loadGameFixture('private-second-screen-full.json');
   const privateView = structuredClone(privateFixture.view); privateView.viewer.kind = 'private_spectator'; privateView.viewer.readOnly = true;
   await mounted.setFixture({ ...privateFixture, view: privateView });
-  await expect(page.getByText(/正在观战 · 私人第二屏/)).toBeVisible();
-  await revealHudActions(page); await expect(page.getByRole('button', { name: '当前观察身份' })).toBeVisible();
-  await page.screenshot({ path: '/results/actions-layout-' + testInfo.project.name + '.png' });
+  await expect(page.getByText(/正在观战 · 私人观战视角/)).toBeVisible();
+  await revealHudActions(page); await expect(page.getByRole('button', { name: '你正在查看的身份' })).toBeVisible();
+  await page.screenshot({ path: '/results/actions-layout-' + testInfo.project.name + '.png', fullPage: true });
   await expectNoOverflow(page);
 });
 
@@ -388,7 +388,7 @@ test('团队方案非空时改为先清空选择、再由同一个按钮发布�
 
   // 清空本地选择后，同一个按钮改为发布空刀（而不是误确认队友的方案）
   await page.getByRole('button', { name: '清空选择' }).click();
-  await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认空刀');
+  await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('确认今晚不攻击');
   await expect(page.locator('.stage-seat--selected')).toHaveCount(0);
   // 只剩草稿目标时用青色虚线区分
   await expect(page.locator('.stage-seat--draft .seat-main')).toHaveCSS('border-top-style', 'dashed');
@@ -410,7 +410,7 @@ test('团队方案非空时改为先清空选择、再由同一个按钮发布�
   fresh.submissionState = [];
   fresh.private!.proposal = { ...view.private!.proposal, revision: 0, targetPlayerIds: [], confirmedBy: [], effective: { revision: null, targetPlayerIds: [], basis: 'empty' } };
   await mounted.setFixture({ ...base, view: fresh });
-  await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('发布并确认空刀');
+  await expect(page.getByTestId('stage-submit')).toHaveAccessibleName('确认今晚不攻击');
   await expect(page.getByTestId('stage-skip')).toHaveCount(0);
 });
 

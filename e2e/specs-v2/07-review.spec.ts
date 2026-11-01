@@ -261,7 +261,7 @@ test('复盘页离开丢失响应保留确认框，重试复用同一 requestId/
   expect(forbidden).toEqual([]);
 });
 
-test('私人第二屏只读显示当前授权窗口与当前提交，不显示动作按钮/requestId；公开观众没有角色', async ({ page }) => {
+test('私人观战只读显示当前授权窗口与当前提交，不显示动作按钮/requestId；公开观众没有角色', async ({ page }) => {
   const privateFixture = loadObservedActionsFixture();
   const seatOneNickname = privateFixture.view.public!.seats.find(seat => seat.seat === 1)!.nickname;
   const mounted = await mountPlaying(page, privateFixture);
@@ -271,7 +271,7 @@ test('私人第二屏只读显示当前授权窗口与当前提交，不显示�
   await expect(page.getByText(`1号 ${seatOneNickname}`)).toBeVisible();
   await expect(page.getByText('request-private-hidden')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '确认提交' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /放弃|提交空刀草稿|确认空守/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /放弃|提交“不攻击”方案|确认空守/ })).toHaveCount(0);
 
   const publicObserver = loadGameFixture('started-public-observer-full.json');
   await mounted.setFixture(publicObserver);

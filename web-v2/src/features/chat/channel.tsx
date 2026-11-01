@@ -3,6 +3,7 @@ import type { RoomSnapshot } from '../../../../contracts/v2.ts';
 import { post } from '../../transport/http.ts';
 import { newRequestId } from '../../transport/ids.ts';
 import { CHAT_MAX_LENGTH, ChatTracker, canPost, chatMessages, chatScope, chatTextIssue } from './model.ts';
+import { COPY } from '../../presentation/copy.ts';
 import type { ChatAcknowledgement, ChatChannel, OutgoingMessage } from './model.ts';
 
 export function ChatChannelView({ view, channel, online, active, refresh, onUnread }: {
@@ -84,6 +85,6 @@ export function ChatChannelView({ view, channel, online, active, refresh, onUnre
       }}/></label>
       <div className="button-row"><small>{draft.length} / {CHAT_MAX_LENGTH} · Shift+Enter 换行</small><button className="button" type="submit" disabled={!writable || blocked || !!chatTextIssue(draft)}>发送{label}消息</button></div>
     </form>}
-    {!writable && <p className="muted">{!online ? '连接恢复后可继续发送，草稿已保留。' : '当前频道仅可阅读，发送权限以当前阶段授权为准。'}</p>}
+    {!writable && <p className="muted">{!online ? COPY.chat.offlineDraft : COPY.chat.readOnly}</p>}
   </section>;
 }

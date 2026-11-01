@@ -54,7 +54,7 @@ test('自由发言阶段：阶段文案、全员可开麦、送达回执与「�
   await expect(page.locator('.game-hud h1')).toHaveText('自由发言');
   await expect(page.getByLabel('发言与提醒')).toContainText('自由发言进行中 · 存活玩家可开麦');
   await expect(page.getByRole('timer', { name: '自由发言剩余时间' })).toBeVisible();
-  // 行动卡：本阶段没有行动任务，但唯一的动作是开麦，不能只显示通用「本阶段无需操作」
+  // 行动卡：本阶段没有行动任务，但唯一的动作是开麦，不能只显示通用等待提示
   const card = page.getByRole('region', { name: /舞台行动|观察玩家当前行动/ });
   await expect(card.locator('h2')).toHaveText('自由发言时间');
   await expect(card).toContainText('点击上方语音条开麦发言；倒计时结束自动进入放逐投票。');

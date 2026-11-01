@@ -7,6 +7,7 @@ import { ChatChannelView } from '../chat/channel.tsx';
 import { EventHistory } from './event-history.tsx';
 import { navigateTabs } from '../../components/tab-navigation.ts';
 import { publicChatLabel } from '../../presentation/labels.ts';
+import { COPY } from '../../presentation/copy.ts';
 import { ElectionRoster } from './election-roster.tsx';
 
 export function GameSidebar({ view, catalog, online, readingPaused, refresh, onIdentity, onRules, onEvent, onTally }: { view: RoomSnapshot; catalog: CatalogDTO; online: boolean; readingPaused: boolean; refresh: () => Promise<void>; onIdentity: () => void; onRules: () => void; onEvent: (event: EventDTO) => void; onTally: (event: EventDTO) => void }) {
@@ -35,7 +36,7 @@ export function GameSidebar({ view, catalog, online, readingPaused, refresh, onI
     <ElectionRoster view={view} />
     <div className="info-panel" id="panel-public" role="tabpanel" aria-labelledby="tab-public" hidden={tab !== 'public'}><h2>公屏记录</h2><p className="muted">公屏权限：{publicChatLabel[view.room.publicChat]}（对局内全阶段可发言）</p><ChatChannelView view={view} channel="public" online={online} active={tab === 'public' && !readingPaused} refresh={refresh} onUnread={count => markUnread('public', count)}/>
       {privateView?.factionRoom && <section><h3>阵营交流记录{privateView.factionRoom.readOnly ? ' · 只读' : ''}</h3><ChatChannelView view={view} channel="faction" online={online} active={tab === 'public' && !readingPaused} refresh={refresh} onUnread={count => markUnread('faction', count)}/></section>}</div>
-    <div className="info-panel" id="panel-intel" role="tabpanel" aria-labelledby="tab-intel" hidden={tab !== 'intel'}><h2>当前视角情报</h2>{privateView ? <><button className="button button--wide" onClick={onIdentity}>{view.viewer.readOnly ? '查看观察身份' : '查看我的身份'}</button>
+    <div className="info-panel" id="panel-intel" role="tabpanel" aria-labelledby="tab-intel" hidden={tab !== 'intel'}><h2>当前视角情报</h2>{privateView ? <><button className="button button--wide" onClick={onIdentity}>{COPY.spectator.identityDetails}</button>
       {view.public && <PhaseAbility roleId={privateView.self.roleId} stage={view.public.stage} catalog={catalog} readOnly={view.viewer.readOnly} />}
       <EventHistory events={privateView.events} view={view} catalog={catalog} onDetail={onEvent} label="私人事件" active={tab === 'intel' && !readingPaused} onUnread={count => markUnread('intel', count)}/>
     </> : <p className="muted">公开观众没有私人情报或个人角色。</p>}</div>
