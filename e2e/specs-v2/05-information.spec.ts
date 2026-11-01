@@ -174,7 +174,7 @@ test('规则入口：关键词、空结果、当前角色与当前阶段跳转',
   const mounted = await mount(page, fixture);
   await page.getByRole('tab', { name: '规则' }).click();
   await page.getByRole('button', { name: '打开完整规则' }).click();
-  await expect(page.getByRole('dialog')).toContainText('完整规则 · 2.0');
+  await expect(page.getByRole('dialog')).toContainText('规则与玩法 · 2.0');
   const search = page.getByRole('searchbox', { name: '搜索规则' });
   await search.fill('门先生');
   await expect(page.getByRole('region', { name: '规则搜索结果' })).toContainText('找到');

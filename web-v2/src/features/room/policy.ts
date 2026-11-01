@@ -16,13 +16,8 @@ export function memberLabel(member: RoomMemberDTO, viewerId: string): string {
   return member.nickname + (member.userId === viewerId ? '（你）' : '') + (member.isHost ? ' · 房主' : '');
 }
 
-/**
- * 房主在大厅退出＝解散整房（与服务端 RoomGovernance.leave 一致）。
- * 此时界面只保留「解散房间」——两个按钮效果完全相同，隐藏「离开房间」避免误点。
- * 对局中（暂离）与复盘（普通离开）都不是解散，两个按钮含义不同，都要保留。
- */
 export function hostExitDissolves(view: RoomSnapshot): boolean {
-  return view.viewer.isHost && view.room.phase === 'lobby';
+  return view.capabilities.room.leave.effect === 'dissolve';
 }
 
 /** Exit semantics follow phase and membership, never hidden role/life information. */
