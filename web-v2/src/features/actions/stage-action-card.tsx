@@ -98,15 +98,9 @@ export function StageActionCard({
       {task && (
         <>
           {targetActions.has(task.action) && task.targets && (
-            <>
-              <p className="selection-summary">
-                {draft.targets.length ? targetSummary(view, draft.targets) : '尚未选择目标'}
-                <span> · {draft.targets.length} / {task.targets.maxTargets}</span>
-              </p>
-              <p className="action-hint">
-                点击舞台上的可选玩家进行选中 / 取消选中，仅改变选择；确认后才提交。
-              </p>
-            </>
+            <p className="action-hint">
+              点击舞台上的可选玩家进行选中 / 取消选中，仅改变选择；确认后才提交。
+            </p>
           )}
 
           {task.action === 'DESIGNATE_SPEECH' && (
@@ -191,55 +185,64 @@ export function StageActionCard({
             </button>
           )}
 
-          <div className="button-row">
-            {presentation.clearAction && (
-              <button
-                type="button"
-                className="button"
-                disabled={presentation.clearAction.disabled}
-                onClick={() => onDraftChange({ ...draft, targets: [] })}
-              >
-                {presentation.clearAction.label}
-              </button>
+          <div className="stage-action-card__submit">
+            <strong className="stage-action-card__compact-title">{presentation.title}</strong>
+            {targetActions.has(task.action) && task.targets && (
+              <p className="selection-summary">
+                {draft.targets.length ? targetSummary(view, draft.targets) : '尚未选择目标'}
+                <span> · {draft.targets.length} / {task.targets.maxTargets}</span>
+              </p>
             )}
-            {task.targets?.canSkip && draft.targets.length === 0 ? (
-              presentation.emptyAction && (
+            <div className="button-row">
+              {presentation.clearAction && (
                 <button
                   type="button"
-                  className="button button--primary"
-                  data-testid="stage-submit"
-                  disabled={presentation.emptyAction.disabled}
-                  onClick={onSubmitEmpty}
+                  className="button"
+                  disabled={presentation.clearAction.disabled}
+                  onClick={() => onDraftChange({ ...draft, targets: [] })}
                 >
-                  {presentation.emptyAction.label}
+                  {presentation.clearAction.label}
                 </button>
-              )
-            ) : (
-              <>
-                {presentation.emptyAction && (
+              )}
+              {task.targets?.canSkip && draft.targets.length === 0 ? (
+                presentation.emptyAction && (
                   <button
                     type="button"
-                    className="button"
-                    data-testid="stage-skip"
+                    className="button button--primary"
+                    data-testid="stage-submit"
                     disabled={presentation.emptyAction.disabled}
                     onClick={onSubmitEmpty}
                   >
                     {presentation.emptyAction.label}
                   </button>
-                )}
-                {presentation.primary && (
-                  <button
-                    type="button"
-                    className="button button--primary"
-                    data-testid="stage-submit"
-                    disabled={presentation.primary.disabled}
-                    onClick={onSubmit}
-                  >
-                    {presentation.primary.label}
-                  </button>
-                )}
-              </>
-            )}
+                )
+              ) : (
+                <>
+                  {presentation.emptyAction && (
+                    <button
+                      type="button"
+                      className="button"
+                      data-testid="stage-skip"
+                      disabled={presentation.emptyAction.disabled}
+                      onClick={onSubmitEmpty}
+                    >
+                      {presentation.emptyAction.label}
+                    </button>
+                  )}
+                  {presentation.primary && (
+                    <button
+                      type="button"
+                      className="button button--primary"
+                      data-testid="stage-submit"
+                      disabled={presentation.primary.disabled}
+                      onClick={onSubmit}
+                    >
+                      {presentation.primary.label}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </>
       )}
