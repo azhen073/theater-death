@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { CommandAction, CommandIntent, RoomSnapshot, TargetSelection, TaskDTO } from '../contracts/v2.ts';
 import { COMMAND_ACTIONS } from '../contracts/v2.ts';
-import { actionIssue, commandIntent, currentTask, emptyDraft, proposalEditAndConfirmIntent, selectionIssue, speechPreview, targetActions, taskKey, updateSelection } from '../web-v2/src/features/actions/model.ts';
+import { actionIssue, commandIntent, currentTask, emptyDraft, proposalEditAndConfirmIntent, selectionIssue, targetActions, taskKey, updateSelection } from '../web-v2/src/features/actions/model.ts';
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/contract-2.1/night-door-full.json', import.meta.url), 'utf8')) as RoomSnapshot;
 
@@ -109,15 +109,6 @@ describe('v2 action model', () => {
     const designateTask = prepare(designateView, 'DESIGNATE_SPEECH', selection);
     expect(actionIssue(designateView, designateTask, { targets: ['p_a'], direction: 'sideways' as 'asc', revision: null })).toContain('方向');
     expect(commandIntent(designateView, designateTask, { targets: ['p_a'], direction: 'asc', revision: null }, 'designate').direction).toBe('asc');
-  });
-
-  it('previews authorized speech order from the selected seat and direction', () => {
-    const view = viewCopy();
-    const seats = view.public!.seats.slice(0, 3);
-    const task = prepare(view, 'DESIGNATE_SPEECH', { playerIds: seats.map(seat => seat.playerId), maxTargets: 1, allowRepeated: false, canSkip: false, forbiddenPairs: [] });
-    expect(speechPreview(view, task, { targets: [seats[1]!.playerId], direction: 'asc', revision: null }).map(seat => seat.playerId)).toEqual([seats[1]!.playerId, seats[2]!.playerId, seats[0]!.playerId]);
-    expect(speechPreview(view, task, { targets: [seats[1]!.playerId], direction: 'desc', revision: null }).map(seat => seat.playerId)).toEqual([seats[1]!.playerId, seats[0]!.playerId, seats[2]!.playerId]);
-    expect(speechPreview(view, task, { targets: [], direction: 'asc', revision: null })).toEqual([]);
   });
 
   it('uses taskKey to isolate action slots by window and action', () => {

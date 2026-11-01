@@ -78,6 +78,13 @@ describe('v2 release HTTP non-terminal election, elimination, and handover flow'
     expect(stable.runtime!.state!.win).toBeNull();
 
     const speechOrder = await waitWindow(h, room.roomId, 'speech_order');
+    // 预览是只读查询，载荷按契约只有 startPlayerId + direction（无 requestId）。
+    const preview = await request(h, `/api/v2/rooms/${room.roomCode}/speech-order-preview`, post({ startPlayerId: successor.playerId, direction: 'asc' }), candidateUser);
+    expect(preview.status).toBe(200);
+    const previewBody = await json(preview);
+    expect(previewBody.speechOrder).toHaveLength(13);
+    expect(previewBody.speechOrder[0]).toEqual({ playerId: successor.playerId, seat: successor.seat });
+    // 预览不得影响后续指定发言：同一调用者在真窗口里仍能提交 DESIGNATE_SPEECH。
     await sendCommand(h, room.roomCode, candidateUser, { requestId: 'release-designate-speech', gameId, action: 'DESIGNATE_SPEECH', windowInstanceId: speechOrder.instanceId, targets: [successor.playerId], direction: 'asc' });
     while (stable.runtime!.driver!.windows().some((window) => window.id === 'speech_round')) {
       const day = stable.runtime!.state!.day!;

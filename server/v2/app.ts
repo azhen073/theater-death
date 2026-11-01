@@ -16,6 +16,7 @@ import { authRouter, requireAccount, textField, type AccountRevocation } from '.
 import { ApiError } from './errors.ts';
 import { gameView } from './view.ts';
 import { parseCommand } from './parse-command.ts';
+import { designateSpeechRoundIssue, previewSpeechOrder } from '../../engine/day.ts';
 import { RateLimits } from './rate-limit.ts';
 import { V2Media, DELIVERY_STATES, type DeliveryState } from './media.ts';
 import { roomVoiceChannel, roomVoiceIdentity } from './room-voice.ts';
@@ -304,6 +305,23 @@ export function createV2App(deps: V2Deps) {
       const profile = accounts.profileOrNull(subject.userId);
       return { ...p, uid: subject.uid, nickname: subject.nickname, avatarUrl: profile?.avatarUrl ?? null };
     }) } });
+  });
+  router.post('/rooms/:code/speech-order-preview', async (req, res) => {
+    limited(req, 'speech-preview', 30, 2000);
+    // 预览是只读的幂等查询（不改任何状态、不产生回执），因此不要求 requestId：
+    // 契约（docs/client-contract-2.2.md 与 openapi）只声明 startPlayerId + direction，
+    // 客户端拉预览时也不会生成 requestId。之前这里错用了 intent(req)，会先抛
+    // invalid_request_id，前端 catch 后把预览清空——功能静默失效。
+    const room = roomFor(req); const actorId = player(room, session(req));
+    const state = room.runtime?.state;
+    if (!state) throw new ApiError(409, 'game_not_started');
+    const startPlayerId = textField(req.body?.startPlayerId, 'start_player_id');
+    const direction = req.body?.direction;
+    if (direction !== 'asc' && direction !== 'desc') throw new ApiError(400, 'invalid_direction');
+    const issue = designateSpeechRoundIssue(state, actorId, startPlayerId, direction);
+    if (issue) throw new ApiError(409, issue.code);
+    const order = previewSpeechOrder(state, startPlayerId, direction);
+    res.json({ speechOrder: order.map(playerId => ({ playerId, seat: state.players.find(player => player.playerId === playerId)!.seat })) });
   });
   router.post('/rooms/:code/command', async (req, res) => {
     limited(req, 'command', 16, 2000);

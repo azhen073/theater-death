@@ -1,4 +1,4 @@
-import type { CommandAction, CommandIntent, RoomSnapshot, SeatDTO, TargetSelection, TaskDTO } from '../../../../contracts/v2.ts';
+import type { CommandAction, CommandIntent, RoomSnapshot, TargetSelection, TaskDTO } from '../../../../contracts/v2.ts';
 import { COPY } from '../../presentation/copy.ts';
 
 export interface ActionDraft { targets: string[]; direction: 'asc' | 'desc'; revision: number | null }
@@ -63,14 +63,6 @@ export function proposalEditAndConfirmIntent(view: RoomSnapshot, task: TaskDTO, 
     throw new Error('当前不能提交并确认团队方案。');
   }
   return { ...intent, confirmSelf: true, expectedRevision };
-}
-
-export function speechPreview(view: RoomSnapshot, task: TaskDTO, draft: ActionDraft): SeatDTO[] {
-  if (task.action !== 'DESIGNATE_SPEECH' || !currentTask(view, task) || !task.targets || draft.targets.length !== 1) return [];
-  const candidates = (view.public?.seats ?? []).filter(seat => task.targets!.playerIds.includes(seat.playerId)).sort((a, b) => a.seat - b.seat);
-  if (draft.direction === 'desc') candidates.reverse();
-  const start = candidates.findIndex(seat => seat.playerId === draft.targets[0]);
-  return start < 0 ? [] : [...candidates.slice(start), ...candidates.slice(0, start)];
 }
 
 export const skipLabels: Partial<Record<CommandAction, string>> = {
