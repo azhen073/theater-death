@@ -40,9 +40,14 @@ describe('v2 client bootstrap and catalog contract', () => {
     expect(catalog.rulesVersion).toBe('2.0');
     expect(catalog.roles).toHaveLength(9);
     expect(catalog.roles.map((role: any) => role.roleId)).toEqual([...ROLE_IDS]);
-    for (const role of catalog.roles as Array<{ roleId: keyof typeof ROLE_DEFINITIONS; faction: string; description: string }>) {
+    for (const role of catalog.roles as Array<{ roleId: keyof typeof ROLE_DEFINITIONS; faction: string; description: string; abilities: Array<{ stage: number; summary: string; clauses: string }> }>) {
       expect(role.faction).toBe(ROLE_DEFINITIONS[role.roleId].factionId);
       expect(role.description).toContain('R-');
+      expect(role.abilities.map(ability => ability.stage)).toEqual([1, 2]);
+      for (const ability of role.abilities) {
+        expect(ability.summary).toBeTruthy();
+        expect(ability.clauses).toContain('R-');
+      }
     }
     expect(catalog.presets).toHaveLength(1);
     expect(catalog.presets[0]).toMatchObject({ presetId: 'default-13', playerCount: 13, config: { mode: 'formal', version: '2.0' } });
