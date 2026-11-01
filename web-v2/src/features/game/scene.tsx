@@ -636,6 +636,7 @@ export function GameScene({
             context={context}
             roleId={privateView?.self.roleId}
             phase={view.public?.phase}
+            view={view}
             onClose={() => setOverlay(null)}
           />
         )}
