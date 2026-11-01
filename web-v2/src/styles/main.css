@@ -303,7 +303,12 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .review-roster .member-card { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; border: 1px solid #e1e6ec; border-radius: 10px; background: #fff; }
 .review-roster .member-card:last-child { border-bottom: 1px solid #e1e6ec; }
 .member-card__art { display: block; width: 100%; height: auto; border-radius: 6px; background: #f1f4f8; }
-/* 复盘时间线：轮次跳转 chip 与死亡座位徽标横排 */
+/* 复盘时间线：组合筛选、轮次跳转 chip 与死亡座位徽标横排 */
+.review-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: #f4f7fa; }
+.review-filters label { display: grid; gap: 6px; min-width: 130px; flex: 1; font-size: 11px; color: var(--muted); }
+.review-filters select { width: 100%; min-height: 38px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink); background: var(--paper); }
+.review-filters > .text-button { min-height: 38px; }
+.review-filter-summary { margin: 10px 0; }
 .review-day-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .review-day-nav .text-button { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 11px; }
 .event-row { scroll-margin-top: 12px; }
@@ -843,6 +848,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 :root[data-theme='dark'] .member-card__art { background: #26202e; }
 :root[data-theme='dark'] .event-row .event-deaths__seat { background: #2a2126; border-color: #5d3a44; color: #d9a7b1; }
 :root[data-theme='dark'] .review-day-nav .text-button { border-color: var(--line); }
+:root[data-theme='dark'] .review-filters { background: #211c26; }
 :root[data-theme='dark'] .lobby-seating { border-color: var(--line); }
 :root[data-theme='dark'] .lobby-seating__seat { border-color: #4a4154; }
 :root[data-theme='dark'] .lobby-seating__slot--online .lobby-seating__seat { border-color: #6f6880; }
