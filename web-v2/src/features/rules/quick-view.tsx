@@ -37,11 +37,11 @@ export function RulesQuickView({ catalog, roleId, view, onChapter }: {
     <section className="rules-quick__hero" aria-label="当前角色与阶段">
       <span className="eyebrow">NOW PLAYING</span>
       <h2>{role ? `你的身份：${role.name}` : '公开观战'}</h2>
-      {view && <p className="rules-quick__phase">当前阶段：{publicPhaseLabel(view)}</p>}
-      {role && <><p>{ability?.current}</p><p className="rules-quick__victory"><strong>胜利目标：</strong>{role.victory}</p></>}
+      {view && <p className="rules-quick__phase">{publicPhaseLabel(view)}</p>}
+      {role && <><p className="rules-quick__ability">{ability?.current}</p><p className="rules-quick__victory"><strong>胜利目标</strong><span>{role.victory}</span></p></>}
       {!role && <p>你可以查看公开对局、记录和规则，但不会获得私人身份与行动权限。</p>}
     </section>
     {view && <section className="rules-quick__actions" aria-label="当前操作提示"><h3>现在该做什么</h3>{currentOperation(view).map(operation => <p key={operation}>{operation}</p>)}<small>实际操作与倒计时以舞台和服务端状态为准。</small></section>}
-    <section aria-label="快速查询规则"><h3>快速查规则</h3><div className="rules-quick__links">{links.map(link => <button type="button" className="button" key={link.title} onClick={() => onChapter(link.chapter)}>{link.title}</button>)}</div></section>
+    <section aria-label="快速查询规则"><h3>快速查规则</h3><div className="rules-quick__links">{links.map(link => <button type="button" className="rules-quick__link" key={link.title} onClick={() => onChapter(link.chapter)}><span>{link.title}</span><span aria-hidden="true">→</span></button>)}</div></section>
   </div>;
 }

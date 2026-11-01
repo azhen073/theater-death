@@ -26,7 +26,7 @@ export function Notice({ children, error = false }: { children: ReactNode; error
   return <div className={`notice ${error ? 'notice--error' : ''}`} role={error ? 'alert' : 'status'}>{children}</div>;
 }
 
-export function Modal({ title, children, onClose, dismissible = true, context }: { title: string; children: ReactNode; onClose: () => void; dismissible?: boolean; context?: ReactNode }) {
+export function Modal({ title, children, onClose, dismissible = true, context, className = '' }: { title: string; children: ReactNode; onClose: () => void; dismissible?: boolean; context?: ReactNode; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -38,7 +38,7 @@ export function Modal({ title, children, onClose, dismissible = true, context }:
       if (previousFocus?.isConnected && previousFocus.getClientRects().length && !document.querySelector('dialog[open]')) previousFocus.focus({ preventScroll: true });
     };
   }, []);
-  return <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (dismissible) onClose(); }}>
+  return <dialog ref={ref} className={`modal ${className}`} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (dismissible) onClose(); }}>
     <header className="modal__head"><h2 id={titleId}>{title}</h2><button className="icon-button" type="button" aria-label="关闭" disabled={!dismissible} onClick={onClose}>×</button></header>
     {context}
     {children}
