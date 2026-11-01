@@ -118,6 +118,11 @@ describe('v2 client bootstrap and catalog contract', () => {
     const mismatch = await create(h, 7, { requestId: 'count-mismatch', roles: five, playerCount: 6 });
     expect(mismatch.response.status).toBe(400);
     expectError(mismatch.body, 'player_count_mismatch');
+
+    // roles 非对象（null / 字符串）必须走 400 校验失败，而不是在 Object.values 上抛成 500。
+    const nullRoles = await create(h, 8, { requestId: 'null-roles', roles: null });
+    expect(nullRoles.response.status).toBe(400);
+    expectInvalidRuleset(nullRoles.body, 'missing_roles');
   });
 
   it('keeps the default preset formal and marks supplied roles experimental even when equal to default', async () => {
@@ -131,5 +136,31 @@ describe('v2 client bootstrap and catalog contract', () => {
     const supplied = await create(h, 1, { requestId: 'equal-supplied', roles: equalRoles, playerCount: 13 });
     expect(supplied.response.status).toBe(201);
     expect(h.app.directory.byId.get(supplied.body.roomId)?.ruleset).toMatchObject({ mode: 'experimental', version: '2.0', roles: equalRoles });
+  });
+
+  it('validates experimental boards through the public ruleset endpoint', async () => {
+    const h = await makeHarness();
+    const valid = roles({ laike: 1, researcher: 1, death: 1, spirit: 1, civilian: 1 });
+    const accepted = await request(h, '/api/v2/rulesets/validate', post({ roles: valid, playerCount: 5 }));
+    expect(accepted.status).toBe(200);
+    expect(await json(accepted)).toEqual({ ok: true, issues: [] });
+
+    const invalid = await request(h, '/api/v2/rulesets/validate', post({ roles: { ...valid, researcher: 2 }, playerCount: 4 }));
+    expect(invalid.status).toBe(200);
+    const invalidBody = await json(invalid);
+    expect(invalidBody.ok).toBe(false);
+    expect(invalidBody.issues.map((issue: { code: string }) => issue.code)).toEqual(expect.arrayContaining(['duplicate_unsupported_role', 'player_count_mismatch']));
+
+    const tooMany = await request(h, '/api/v2/rulesets/validate', post({ roles: { ...valid, civilian: 61 }, playerCount: 65 }));
+    const tooManyBody = await json(tooMany);
+    expect(tooManyBody.ok).toBe(false);
+    expect(tooManyBody.issues.map((issue: { code: string }) => issue.code)).toContain('player_limit');
+
+    // 同一校验器被公开接口复用：缺失或 null 的 roles 只能是 200 + ok:false，不能 500。
+    for (const body of [{}, { roles: null }, { roles: 'abc' }]) {
+      const response = await request(h, '/api/v2/rulesets/validate', post(body));
+      expect(response.status).toBe(200);
+      expect((await json(response)).ok).toBe(false);
+    }
   });
 });

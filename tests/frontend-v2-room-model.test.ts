@@ -1,9 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import type { CatalogDTO } from '../contracts/catalog.ts';
 import type { DayDTO, Permission, RoomMemberDTO, RoomSnapshot, RoomAction } from '../contracts/v2.ts';
 import type { RoleId } from '../rulesets/types.ts';
-import { boardIssues, roleTotal } from '../web-v2/src/features/room/configuration.ts';
+import { roleTotal } from '../web-v2/src/features/room/configuration.ts';
 import { canManageMember, hostExitDissolves, memberLabel } from '../web-v2/src/features/room/policy.ts';
 import { formatCountdown, publicPhaseLabel } from '../web-v2/src/presentation/labels.ts';
 
@@ -11,7 +10,6 @@ function fixture<T>(name: string): T {
   return JSON.parse(readFileSync(new URL(`./fixtures/contract-2.1/${name}`, import.meta.url), 'utf8')) as T;
 }
 
-const catalog = fixture<CatalogDTO>('catalog-full.json');
 const lobby = fixture<RoomSnapshot>('lobby-formal-full.json');
 const night = fixture<RoomSnapshot>('night-door-full.json');
 const day = fixture<RoomSnapshot>('day-election-full.json');
@@ -24,10 +22,6 @@ function at<T>(items: T[], index: number): T {
   const item = items[index];
   if (item === undefined) throw new Error(`fixture item ${index} missing`);
   return item;
-}
-
-function hasIssue(roles: Record<RoleId, number>, text: string): void {
-  expect(boardIssues(roles, catalog).some(issue => issue.includes(text))).toBe(true);
 }
 
 function permission(allowed: boolean, reason: string | null = null): Permission {
@@ -50,34 +44,10 @@ function setDay(view: RoomSnapshot, changes: Partial<DayDTO>): void {
 }
 
 describe('v2 room board configuration', () => {
-  it('accepts the complete formal 13 role board and a valid experimental five-player board', () => {
+  it('accepts role totals supplied by the catalog and custom editor', () => {
     const formal = copy(lobby.room.config.roles);
     expect(roleTotal(formal)).toBe(13);
-    expect(boardIssues(formal, catalog)).toEqual([]);
-
-    const experimental = Object.fromEntries(catalog.roles.map(role => [role.roleId, 0])) as Record<RoleId, number>;
-    experimental.civilian = 1;
-    experimental.researcher = 1;
-    experimental.death = 1;
-    experimental.spirit = 1;
-    experimental.door = 1;
-    expect(roleTotal(experimental)).toBe(5);
-    expect(boardIssues(experimental, catalog)).toEqual([]);
-  });
-
-  it('rejects malformed counts, unknown roles, required-role gaps, no神职, and more than 64 players', () => {
-    const formal = copy(lobby.room.config.roles);
-    hasIssue({ ...formal, civilian: 1.5 }, '须为非负整数');
-    hasIssue({ ...formal, civilian: -1 }, '须为非负整数');
-
-    const missingCivilian = { ...formal } as Partial<Record<RoleId, number>>;
-    delete missingCivilian.civilian;
-    hasIssue(missingCivilian as Record<RoleId, number>, '平民人数须为非负整数');
-    hasIssue({ ...formal, mystery: 1 } as Record<RoleId, number>, '未知角色');
-    hasIssue({ ...formal, researcher: 2 }, '最多一名');
-    hasIssue({ ...formal, death: 0 }, '至少需要一名死神');
-    hasIssue({ ...formal, laike: 0, door: 0, water: 0, descender: 0 }, '至少包含一种神职');
-    hasIssue({ ...formal, civilian: 61 }, '玩家总数须在 5–64 人之间');
+    expect(roleTotal({ civilian: 1, researcher: 1, death: 1, spirit: 1, door: 1 } as Record<RoleId, number>)).toBe(5);
   });
 
   it('computes role totals from the supplied role map', () => {
