@@ -1,6 +1,9 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { loadRoomAccounts, confirmModal, dismissIdentityEntryReveal, enterRoom, leaveRoom, loginRoomAccount, memberCard, myRooms, noHorizontalOverflow, roomView, waitRoom, selectPublicChat, revealHudActions } from '../helpers-v2/rooms.ts';
 import type { RoomAccount } from '../helpers-v2/account.ts';
+import { advanceAcceptanceClock } from '../helpers-v2/full-game.ts';
+
+const CLOCK_SOCKET = process.env.ACCEPTANCE_CLOCK_SOCKET ?? '/clock-control/clock.sock';
 
 async function createPage(browser: Browser, account: RoomAccount): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext();
@@ -135,7 +138,12 @@ test('实验房间：五人冻结配置、观众晋升、离线开局与公开�
     for (const page of [formalPages[0]!, formalPages[2]!, formalPages[3]!, formalPages[4]!]) await expect(page.getByRole('button', { name: '取消准备', exact: true })).toBeVisible();
     await contexts[2]!.context.setOffline(true);
     await contexts[2]!.page.goto('about:blank');
-    await expect.poll(async () => (await roomView(hostPage, code)).room.formalMembers.find((member: Record<string, any>) => member.userId === accounts[2]!.userId)?.presence, { timeout: 30_000, intervals: [1000] }).toBe('offline');
+    const presence = async () => (await roomView(hostPage, code)).room.formalMembers.find((member: Record<string, any>) => member.userId === accounts[2]!.userId)?.presence;
+    await expect.poll(presence, { timeout: 25_000, intervals: [250] }).toBe('reconnecting');
+    await advanceAcceptanceClock(CLOCK_SOCKET, 14_999);
+    expect(await presence()).toBe('reconnecting');
+    await advanceAcceptanceClock(CLOCK_SOCKET, 1);
+    await expect.poll(presence, { timeout: 15_000, intervals: [250] }).toBe('offline');
     await hostPage.screenshot({ path: `/results/rooms-experimental-${testInfo.project.name}.png` });
     await hostPage.getByRole('button', { name: '开始游戏', exact: true }).click();
     await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 20_000 });
