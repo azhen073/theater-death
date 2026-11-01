@@ -7,6 +7,7 @@ import {
   currentLastWordsSpeaker,
   designateSpeechRound,
   designateSpeechRoundIssue,
+  electionVoteBlockReason,
   endLastWords,
   registerCandidacy,
   registerCandidacyIssue,
@@ -203,6 +204,8 @@ describe('白天流程：遗言与竞选（R-41–R-45）', () => {
     expect(submitElectionVoteIssue(current, 'p_6', 'p_7')).toBeNull();
     expect(submitElectionVoteIssue(current, 'p_7', 'p_6')?.code).toBe('vote_forbidden_candidate');
     expect(submitElectionVoteIssue(current, 'p_8', 'p_7')?.code).toBe('vote_forbidden_candidate');
+    expect(electionVoteBlockReason(current, 'p_6')).toBeNull();
+    expect(electionVoteBlockReason(current, 'p_7')).toBe('candidate');
 
     const tied = settleElectionVote(
       castElectionVotes(current, [
@@ -214,6 +217,7 @@ describe('白天流程：遗言与竞选（R-41–R-45）', () => {
     expect(tied.state.day?.election?.tiedIds).toEqual(['p_7', 'p_8']);
     expect(submitElectionVoteIssue(tied.state, 'p_7', 'p_8')?.code).toBe('vote_forbidden_candidate');
     expect(submitElectionVoteIssue(tied.state, 'p_8', 'p_7')?.code).toBe('vote_forbidden_candidate');
+    expect(electionVoteBlockReason(tied.state, 'p_7')).toBe('tied');
     expect(submitElectionVoteIssue(tied.state, 'p_6', 'p_7')).toBeNull();
   });
 

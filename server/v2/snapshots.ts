@@ -110,7 +110,7 @@ export class RoomSnapshots {
       room: this.roomCapabilities(room, member),
     };
     const windows = (projected?.windows ?? []).filter((w) => w.instanceId && w.type && w.closesAt > now && (!personalWindows.has(w.id) || subjectCaps.allowedCommands.some((a) => actionWindows[a].includes(w.id)))).map((w) => ({ id: w.id, type: w.type!, instanceId: w.instanceId!, closesAt: w.closesAt }));
-    const privateView = projected?.private?.self ? projected.private : null;
+    const privateView = projected?.private && 'self' in projected.private && projected.private.self ? projected.private : null;
     const members = [...room.members.values()].sort((a, b) => a.joinedOrder - b.joinedOrder);
     const participantById = new Map([...room.participants.values()].map((p) => [p.playerId, p]));
     const chat: RoomSnapshot['chat'] = { public: [], faction: [] };
@@ -151,6 +151,7 @@ export class RoomSnapshots {
       private: privateView ? {
         self: { playerId: privateView.self.playerId, seat: privateView.self.seat, nickname: privateView.self.nickname, roleId: privateView.self.roleId, life: privateView.self.life, revealed: privateView.self.revealed, voteFrozen: privateView.self.voteFrozen, abilities: privateView.self.abilities, guardHistory: privateView.self.guardHistory },
         events: events(privateView.events), targets: privateView.targets, proposal: privateView.proposal, knowledge: privateView.knowledge,
+        ...(privateView.electionVote ? { electionVote: privateView.electionVote } : {}),
         factionRoom: privateView.factionRoom ? { ...privateView.factionRoom, readOnly: readOnly || privateView.factionRoom.readOnly, canWrite: !readOnly && privateView.factionRoom.canWrite } : null,
         ...(delivery ? { voice: { delivery } } : {}),
       } : null,
