@@ -190,3 +190,7 @@
 **边界**：濒死不改变公开 `alive`（`publishedState` 保证）；水妖被救/救人都由服务端字段决定，客户端不做任何推断；夜间结束（濒死转死亡或被救）后字段消失、次日由公开生死反映。
 
 **验证**：`tests/frontend-v2-dying-mark.test.ts` 6 例（名单内/外、无字段、空名单、公开观众、第二屏、公开存活不变）；`tests/knowledge.test.ts` 新增 5 例（授权矩阵：降临者与水妖、水妖用后失效、二阶段/白天/未产生/本人已死亡、濒死本人保留资格、公开视图不含 + `dying_list.payload.seats` 与 `dyingSeats` 集合一致）；E2E `31-dying-mark.spec.ts` 双浏览器 **2/2**（文案与配色、无障碍名、名单外无、无字段/水妖/公开观众无、第二屏有、左下定位、1440/390/320 与「详情」按钮零重叠、截图）；回归 `03-actions`+`05-information`+`07-review`+`23-phase-identity` 双浏览器合计 **60 passed**。
+
+舞台 ring/flow/arc 的测量与观察生命周期由 `use-stage-layout` 管理，纯几何仍位于 `stage-layout.ts`；HUD、覆盖层和单个座位分别由独立组件渲染。座位事件引用稳定，并按实际 props 内容跳过无变化重渲染。
+
+相关测试以 `tests/frontend-v2-*` 和 `e2e/specs-v2/` 中行动、布局、徽标、死亡和复盘套件为准。
