@@ -130,6 +130,11 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .modal__head h2 { font-size: 23px; margin: 0; }
 .account-profile { display: flex; align-items: center; gap: 26px; }
 .account-profile h2 { overflow-wrap: anywhere; margin-bottom: 8px; }
+.seat-profile { display: flex; align-items: flex-start; gap: 18px; min-width: 0; }
+.seat-profile > .avatar { flex-shrink: 0; }
+.seat-profile__details { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.seat-profile__details h3 { margin: 4px 0 10px; }
+.seat-profile__details p { overflow-wrap: anywhere; }
 .setting-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; }
 .setting-row strong { font-size: 14px; }
 .setting-row p { margin: 8px 0 0; font-size: 12px; }
@@ -490,6 +495,11 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .game-scene--night .election-roster { background: #1d2333; border-color: #4a4436; }
 .game-scene--night .election-roster h2 > span, .game-scene--night .election-roster li > small { color: #bfa26a; }
 .game-scene--night .election-roster p { color: #93a4bd; }
+@media (min-width: 901px) {
+  .room-rules { position: sticky; top: 24px; max-height: calc(100svh - 48px); overflow-y: auto; scrollbar-width: thin; }
+  .members-list { max-height: min(52svh, 560px); overflow-y: auto; padding-right: 8px; scrollbar-width: thin; scrollbar-gutter: stable; }
+  .member-card { padding: 12px 0; }
+}
 @media (min-width: 1181px) {
   .stage-seats--ring .seat-main { min-height: 92px; padding: 5px; gap: 3px; }
   .stage-seats--ring .avatar { width: 32px; height: 32px; }
